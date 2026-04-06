@@ -1,0 +1,622 @@
+{
+  "info": {
+    "_postman_id": "rescue-management-api",
+    "name": "Hệ thống Cứu hộ 112 - Admin & Users CRUD (Simplified)",
+    "description": "API CRUD đơn giản cho Admin & Users - Không sử dụng Auth/Sanctum",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Xác thực",
+      "item": [
+        {
+          "name": "1.1 Đăng nhập Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response status = true', function () {",
+                  "    pm.expect(pm.response.json().status).to.equal(true);",
+                  "});",
+                  "pm.test('Response có data', function () {",
+                  "    pm.expect(pm.response.json()).to.have.property('data');",
+                  "});",
+                  "if (pm.response.json().data) {",
+                  "    pm.collectionVariables.set('adminId', pm.response.json().data.id_admin);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"mat_khau\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8000/api/admin/login",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "admin", "login"]
+            }
+          }
+        },
+        {
+          "name": "1.2 Đăng nhập Người dùng",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response status = true', function () {",
+                  "    pm.expect(pm.response.json().status).to.equal(true);",
+                  "});",
+                  "if (pm.response.json().data) {",
+                  "    pm.collectionVariables.set('userId', pm.response.json().data.id_nguoi_dung);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"mat_khau\": \"user123\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8000/api/nguoi-dung/login",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "nguoi-dung", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Admin - CRUD",
+      "item": [
+        {
+          "name": "2.1 Lấy danh sách Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response là array', function () {",
+                  "    pm.expect(pm.response.json().data).to.be.an('array');",
+                  "});",
+                  "pm.test('Status = true', function () {",
+                  "    pm.expect(pm.response.json().status).to.equal(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/admin/list",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "admin", "list"]
+            }
+          }
+        },
+        {
+          "name": "2.2 Lấy chi tiết Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response có data', function () {",
+                  "    pm.expect(pm.response.json()).to.have.property('data');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/admin/chi-tiet/{{adminId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "admin", "chi-tiet", "{{adminId}}"]
+            }
+          }
+        },
+        {
+          "name": "2.3 Tạo Admin mới",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response có message', function () {",
+                  "    pm.expect(pm.response.json().message).to.include('thành công');",
+                  "});",
+                  "if (pm.response.json().data) {",
+                  "    pm.collectionVariables.set('newAdminId', pm.response.json().data.id_admin);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ho_ten\": \"Admin Test {{$timestamp}}\",\n  \"email\": \"admin_test_{{$timestamp}}@example.com\",\n  \"mat_khau\": \"password123\",\n  \"so_dien_thoai\": \"0901234567\",\n  \"id_chuc_vu\": 1,\n  \"trang_thai\": 1\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8000/api/admin/create",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "admin", "create"]
+            }
+          }
+        },
+        {
+          "name": "2.4 Cập nhật Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Message chứa Cập nhật', function () {",
+                  "    pm.expect(pm.response.json().message).to.include('Cập nhật');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ho_ten\": \"Admin Updated\",\n  \"so_dien_thoai\": \"0987654321\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8000/api/admin/update/{{newAdminId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "admin", "update", "{{newAdminId}}"]
+            }
+          }
+        },
+        {
+          "name": "2.5 Thay đổi trạng thái",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Message chứa trạng thái', function () {",
+                  "    pm.expect(pm.response.json().message).to.include('trạng thái');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/admin/change-status/{{newAdminId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "admin", "change-status", "{{newAdminId}}"]
+            }
+          }
+        },
+        {
+          "name": "2.6 Tìm kiếm Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response là array', function () {",
+                  "    pm.expect(pm.response.json().data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/admin/search?noi_dung_tim=admin",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "admin", "search"],
+              "query": [
+                {
+                  "key": "noi_dung_tim",
+                  "value": "admin"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.7 Xóa Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Message chứa Xóa', function () {",
+                  "    pm.expect(pm.response.json().message).to.include('Xóa');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/admin/delete/{{newAdminId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "admin", "delete", "{{newAdminId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Người dùng - CRUD",
+      "item": [
+        {
+          "name": "3.1 Đăng ký Người dùng",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Message là Đăng ký thành công', function () {",
+                  "    pm.expect(pm.response.json().message).to.equal('Đăng ký thành công');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ho_ten\": \"User Test {{$timestamp}}\",\n  \"email\": \"user_test_{{$timestamp}}@example.com\",\n  \"mat_khau\": \"password123\",\n  \"so_dien_thoai\": \"0901234567\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8000/api/nguoi-dung/register",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "nguoi-dung", "register"]
+            }
+          }
+        },
+        {
+          "name": "3.2 Lấy danh sách Người dùng",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response là array', function () {",
+                  "    pm.expect(pm.response.json().data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/nguoi-dung/list",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "nguoi-dung", "list"]
+            }
+          }
+        },
+        {
+          "name": "3.3 Lấy chi tiết Người dùng",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response có data', function () {",
+                  "    pm.expect(pm.response.json()).to.have.property('data');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/nguoi-dung/chi-tiet/{{userId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "nguoi-dung", "chi-tiet", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "3.4 Tạo Người dùng",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Message chứa thành công', function () {",
+                  "    pm.expect(pm.response.json().message).to.include('thành công');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ho_ten\": \"User Created {{$timestamp}}\",\n  \"email\": \"user_created_{{$timestamp}}@example.com\",\n  \"so_dien_thoai\": \"0901234567\",\n  \"mat_khau\": \"password123\",\n  \"trang_thai\": 1\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8000/api/nguoi-dung/create",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "nguoi-dung", "create"]
+            }
+          }
+        },
+        {
+          "name": "3.5 Cập nhật Người dùng",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Message chứa Cập nhật', function () {",
+                  "    pm.expect(pm.response.json().message).to.include('Cập nhật');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ho_ten\": \"User Updated\",\n  \"so_dien_thoai\": \"0987654321\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8000/api/nguoi-dung/update/{{userId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "nguoi-dung", "update", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "3.6 Thay đổi trạng thái",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Message chứa trạng thái', function () {",
+                  "    pm.expect(pm.response.json().message).to.include('trạng thái');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/nguoi-dung/change-status/{{userId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "nguoi-dung", "change-status", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "3.7 Tìm kiếm Người dùng",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response là array', function () {",
+                  "    pm.expect(pm.response.json().data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/nguoi-dung/search?noi_dung_tim=user",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "nguoi-dung", "search"],
+              "query": [
+                {
+                  "key": "noi_dung_tim",
+                  "value": "user"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.8 Xóa Người dùng",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Message chứa Xóa', function () {",
+                  "    pm.expect(pm.response.json().message).to.include('Xóa');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/nguoi-dung/delete/{{userId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "nguoi-dung", "delete", "{{userId}}"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "adminId",
+      "value": ""
+    },
+    {
+      "key": "newAdminId",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    }
+  ]
+}
