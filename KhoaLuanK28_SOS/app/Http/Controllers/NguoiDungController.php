@@ -111,7 +111,7 @@ class NguoiDungController extends Controller
             'data' => $user->makeHidden(['mat_khau', 'api_token']),
         ]);
     }
-
+// ud 
     public function updateProfile(Request $request)
     {
         $user = Auth::guard('sanctum')->user();
