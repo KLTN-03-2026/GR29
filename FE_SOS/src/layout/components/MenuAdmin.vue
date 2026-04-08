@@ -14,7 +14,7 @@
 
     <nav class="flex-grow-1 px-2 pb-3 overflow-auto">
       <div class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mb-2">Tổng quan</div>
-      <router-link v-slot="{ href, navigate, isExactActive }" to="/admin/dashboard" custom>
+      <router-link v-slot="{ href, navigate, isExactActive }" to="/admin" custom>
         <a :href="href" class="nav-item-link" :class="{ 'nav-item-link--active': isExactActive }"
           @click="(e) => { e.preventDefault(); navigate(); }">
           <i class="fa-solid fa-gauge-high me-2"></i>Dashboard tổng quan
@@ -22,12 +22,6 @@
       </router-link>
       <router-link class="nav-item-link" to="/admin/queue">
         <i class="fa-solid fa-list-ol me-2"></i>Hàng đợi theo ưu tiên
-      </router-link>
-      <router-link class="nav-item-link" to="/admin/dang-xu-ly">
-        <i class="fa-solid fa-list-ol me-2"></i>Đang xử lý
-      </router-link>
-      <router-link class="nav-item-link" to="/admin/history">
-        <i class="fa-solid fa-list-ol me-2"></i>Lịch sử sự cố
       </router-link>
       <router-link class="nav-item-link" to="/admin/assignments">
         <i class="fa-solid fa-person-military-pointing me-2"></i>Phân công đội cứu hộ
@@ -50,6 +44,9 @@
       </router-link>
       <router-link class="nav-item-link" to="/admin/resources">
         <i class="fa-solid fa-helmet-safety me-2"></i>Đội cứu hộ & tài nguyên
+      </router-link>
+      <router-link class="nav-item-link" to="/admin/resource-requests">
+        <i class="fa-solid fa-truck-medical me-2"></i>Yêu cầu bổ sung tài nguyên
       </router-link>
       <router-link class="nav-item-link" to="/admin/ai-scoring">
         <i class="fa-solid fa-brain me-2"></i>Trọng số AI scoring

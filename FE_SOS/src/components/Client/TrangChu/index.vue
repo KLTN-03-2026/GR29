@@ -34,8 +34,8 @@
                 </div>
                 <div v-else class="d-flex flex-wrap gap-2">
                     <div v-for="detail in incidentDetails" :key="detail.id">
-                        <input type="checkbox" class="btn-check" :id="'detail-' + detail.id" :value="detail.id"
-                            v-model="selectedDetailIds" autocomplete="off">
+                        <input type="radio" class="btn-check" :id="'detail-' + detail.id" :value="detail.id"
+                            v-model="selectedDetailId" autocomplete="off">
                         <label class="btn btn-outline-secondary btn-sm rounded-pill px-3 border-opacity-25 shadow-sm"
                             :for="'detail-' + detail.id">
                             {{ detail.label }}
@@ -45,60 +45,23 @@
                         Khong co chi tiet cho loai su co nay.
                     </div>
                 </div>
-                <div v-if="selectedDetailIds.length > 0" class="small text-muted mt-2">
-                    Da chon {{ selectedDetailIds.length }} muc chi tiet.
-                </div>
             </div>
 
             <div class="bg-light rounded-3 p-3 mb-4 border border-secondary border-opacity-10 shadow-sm">
-                <label class="fw-bold small text-uppercase mb-2 d-block text-secondary">Cach xac dinh vi tri</label>
-                <div class="d-flex gap-2 mb-3">
-                    <button type="button" class="btn btn-sm rounded-pill px-3 fw-bold"
-                        :class="cheDoViTri === CHE_DO_VI_TRI.GPS ? 'btn-dark' : 'btn-outline-secondary'"
-                        @click="chonCheDoViTri(CHE_DO_VI_TRI.GPS)">
-                        Toi can cuu ho
-                    </button>
-                    <button type="button" class="btn btn-sm rounded-pill px-3 fw-bold"
-                        :class="cheDoViTri === CHE_DO_VI_TRI.NHAP_TAY ? 'btn-dark' : 'btn-outline-secondary'"
-                        @click="chonCheDoViTri(CHE_DO_VI_TRI.NHAP_TAY)">
-                        Toi goi giup nguoi khac
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="fw-bold small text-uppercase mb-0 text-secondary">Vi tri cua ban</label>
+                    <button type="button" class="btn btn-dark btn-sm rounded-pill px-3 fw-bold shadow-sm"
+                        style="font-size: 10px;" :disabled="locating" @click="layGps">
+                        <i class="fa-solid fa-location-crosshairs me-1"></i>
+                        {{ locating ? 'Dang lay...' : 'Xac dinh GPS' }}
                     </button>
                 </div>
-
-                <div v-if="cheDoViTri === CHE_DO_VI_TRI.GPS">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <label class="fw-bold small text-uppercase mb-0 text-secondary">Vi tri cua ban</label>
-                        <button type="button" class="btn btn-dark btn-sm rounded-pill px-3 fw-bold shadow-sm"
-                            style="font-size: 10px;" :disabled="locating" @click="layGps">
-                            <i class="fa-solid fa-location-crosshairs me-1"></i>
-                            {{ locating ? 'Dang lay...' : 'Xac dinh GPS' }}
-                        </button>
-                    </div>
-                    <div class="small text-muted bg-white rounded-3 px-3 py-2 border border-secondary border-opacity-10">
-                        Su dung GPS hien tai de gui yeu cau cuu ho cho chinh ban.
-                    </div>
+                <div class="input-group bg-white rounded-2 overflow-hidden shadow-sm">
+                    <span class="input-group-text bg-white border-0"><i
+                            class="fa-solid fa-location-dot text-danger"></i></span>
+                    <input v-model="address" type="text" class="form-control border-0 py-2 shadow-none small"
+                        placeholder="Nhap dia chi chi tiet...">
                 </div>
-
-                <div v-else>
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <label class="fw-bold small text-uppercase mb-0 text-secondary">Dia chi can cuu ho</label>
-                        <button type="button" class="btn btn-dark btn-sm rounded-pill px-3 fw-bold shadow-sm"
-                            style="font-size: 10px;" :disabled="dangTimDiaChi" @click="xacNhanDiaChiNhap">
-                            <i class="fa-solid fa-paper-plane me-1"></i>
-                            {{ dangTimDiaChi ? 'Dang xu ly...' : 'Dung dia chi nay' }}
-                        </button>
-                    </div>
-                    <div class="input-group bg-white rounded-2 overflow-hidden shadow-sm">
-                        <span class="input-group-text bg-white border-0"><i
-                                class="fa-solid fa-location-dot text-danger"></i></span>
-                        <input v-model="address" type="text" class="form-control border-0 py-2 shadow-none small"
-                            placeholder="Nhap dia chi chi tiet...">
-                    </div>
-                    <div class="small text-muted mt-2">
-                        Nhap dia chi cua nguoi can giup, sau do bam <span class="fw-semibold">Dung dia chi nay</span>.
-                    </div>
-                </div>
-
                 <div v-if="coordsText" class="small text-muted mt-2 mb-0">{{ coordsText }}</div>
             </div>
 
@@ -114,17 +77,8 @@
                     class="w-100 border border-2 border-secondary border-opacity-25 border-dashed rounded-3 p-4 text-center bg-light text-muted btn btn-light border-0 shadow-sm">
                     <i class="fa-solid fa-cloud-arrow-up fs-2"></i>
                     <p class="small mt-2 mb-0 fw-bold">Tai len anh/video</p>
-                    <input type="file" class="d-none" accept="image/*,video/*" @change="handleFileSelect">
+                    <input type="file" class="d-none" accept="image/*,video/*">
                 </label>
-                <div v-if="selectedImageName" class="small text-muted mt-2">
-                    <span class="fw-semibold">File đã chọn:</span> {{ selectedImageName }}
-                </div>
-                <div v-if="imageProcessing" class="mt-3 text-center">
-                    <i class="fa-solid fa-spinner fa-spin me-2"></i> Đang xử lý ảnh...
-                </div>
-                <div v-else-if="selectedImagePreview" class="mt-3">
-                    <img :src="selectedImagePreview" alt="Preview" class="img-fluid rounded border" style="max-height: 200px;">
-                </div>
             </div>
 
             <button type="button" class="btn btn-danger w-100 py-3 fw-bold fs-5 shadow-lg rounded-3 border-0"
@@ -182,10 +136,6 @@ import MapboxMap from "../../common/MapboxMap.vue";
 import { incidentTypeAPI, rescueRequestAPI } from "../../../services/api";
 
 const INCIDENT_ICON_FALLBACK = "fa-triangle-exclamation";
-const CHE_DO_VI_TRI = {
-    GPS: "gps",
-    NHAP_TAY: "nhap_tay",
-};
 
 const INCIDENT_ICON_RULES = [
     { keywords: ["chay", "hoa hoan", "hoan", "lua", "lua chay", "no"], icon: "fa-fire" },
@@ -263,40 +213,12 @@ function anhXaChiTietSuCo(item, index) {
     };
 }
 
-async function timToaDoTheoDiaChi(diaChi) {
-    const apiKey = import.meta.env.VITE_OPENMAP_API_KEY;
-    if (!apiKey) {
-        throw new Error("Chua cau hinh VITE_OPENMAP_API_KEY de tim dia chi.");
-    }
-
-    const query = new URLSearchParams({
-        address: diaChi,
-        apikey: apiKey,
-    });
-
-    const response = await fetch(`https://mapapis.openmap.vn/v1/geocode/forward?${query.toString()}`);
-    const data = await response.json();
-    const ketQuaDauTien = data?.results?.[0];
-    const viTri = ketQuaDauTien?.geometry?.location;
-
-    if (!response.ok || !viTri?.lat || !viTri?.lng) {
-        throw new Error(data?.message || "Khong tim thay vi tri phu hop voi dia chi da nhap.");
-    }
-
-    return {
-        lat: Number(viTri.lat),
-        lng: Number(viTri.lng),
-        diaChiDayDu: ketQuaDauTien?.formatted_address || ketQuaDauTien?.address || diaChi,
-    };
-}
-
 export default {
     components: { MapboxMap },
     data() {
         return {
-            CHE_DO_VI_TRI,
             selectedType: null,
-            selectedDetailIds: [],
+            selectedDetailId: null,
             incidentTypes: [],
             incidentDetails: [],
             loadingIncidentTypes: false,
@@ -305,19 +227,9 @@ export default {
             address: "",
             description: "",
             coordsText: "",
-            cheDoViTri: CHE_DO_VI_TRI.GPS,
             locating: false,
-            dangTimDiaChi: false,
             submitting: false,
             selectedCoords: null,
-            selectedImageName: "",
-            selectedImageData: null,
-            selectedImagePreview: null,
-            imageProcessing: false,
-            soNguoiBiAnhHuong: 1,
-            mucDoKhanCap: "HIGH",
-            diemUuTien: null,
-            trangThai: null,
             units: [
                 { name: "Canh sat", d: "1.2 km - 5p", i: "fa-shield-halved", c: "bg-primary", t: "text-primary" },
                 { name: "BV Da khoa", d: "0.8 km - 3p", i: "fa-hospital", c: "bg-danger", t: "text-danger" }
@@ -363,7 +275,7 @@ export default {
                 const items = chuanHoaDanhSach(response?.data);
                 this.incidentTypes = items.map(anhXaLoaiSuCo);
                 this.selectedType = this.incidentTypes[0]?.id ?? null;
-                this.selectedDetailIds = [];
+                this.selectedDetailId = null;
 
                 if (this.incidentTypes.length === 0) {
                     this.incidentTypeError = "Backend chua tra ve du lieu loai su co.";
@@ -376,7 +288,7 @@ export default {
                 this.incidentTypes = [];
                 this.incidentDetails = [];
                 this.selectedType = null;
-                this.selectedDetailIds = [];
+                this.selectedDetailId = null;
                 this.incidentTypeError = "Khong tai duoc loai su co tu backend.";
             } finally {
                 this.loadingIncidentTypes = false;
@@ -385,7 +297,7 @@ export default {
         async taiChiTietLoaiSuCo(typeId) {
             if (!typeId) {
                 this.incidentDetails = [];
-                this.selectedDetailIds = [];
+                this.selectedDetailId = null;
                 return;
             }
 
@@ -393,11 +305,11 @@ export default {
             try {
                 const response = await incidentTypeAPI.getDetail(typeId);
                 this.incidentDetails = this.chuanHoaChiTietSuCo(response?.data);
-                this.selectedDetailIds = [];
+                this.selectedDetailId = this.incidentDetails[0]?.id ?? null;
             } catch (error) {
                 console.error("Khong tai duoc chi tiet loai su co:", error);
                 this.incidentDetails = [];
-                this.selectedDetailIds = [];
+                this.selectedDetailId = null;
             } finally {
                 this.loadingDetails = false;
             }
@@ -408,30 +320,13 @@ export default {
             }
 
             this.selectedType = typeId;
-            this.selectedDetailIds = [];
+            this.selectedDetailId = null;
             await this.taiChiTietLoaiSuCo(typeId);
         },
-        layDanhSachChiTietDaChon() {
-            const selectedSet = new Set(this.selectedDetailIds.map((id) => Number(id)));
-
-            return this.incidentDetails
-                .filter((detail) => selectedSet.has(Number(detail.id)))
-                .map((detail) => detail.label);
-        },
-        taoChuoiChiTietSuCo() {
-            return this.layDanhSachChiTietDaChon().join(", ");
-        },
-        chonCheDoViTri(cheDo) {
-            if (this.cheDoViTri === cheDo) {
-                return;
-            }
-
-            this.cheDoViTri = cheDo;
-            this.coordsText = "";
-            this.selectedCoords = null;
+        layTenChiTietDangChon() {
+            return this.incidentDetails.find((detail) => Number(detail.id) === Number(this.selectedDetailId))?.label || "";
         },
         async layGps() {
-            this.cheDoViTri = CHE_DO_VI_TRI.GPS;
             this.locating = true;
             this.coordsText = "";
             try {
@@ -447,74 +342,6 @@ export default {
                 this.locating = false;
             }
         },
-        async xacNhanDiaChiNhap() {
-            if (!this.address.trim()) {
-                this.hienToast("warning", "Vui long nhap dia chi can cuu ho.");
-                return;
-            }
-
-            this.dangTimDiaChi = true;
-            this.coordsText = "";
-
-            try {
-                const ketQua = await timToaDoTheoDiaChi(this.address.trim());
-                this.address = ketQua.diaChiDayDu;
-                this.selectedCoords = { lat: ketQua.lat, lng: ketQua.lng };
-                this.coordsText = `Dia chi da xac nhan: ${ketQua.lat.toFixed(5)}, ${ketQua.lng.toFixed(5)}`;
-                this.$refs.mapRef?.flyTo?.(ketQua.lng, ketQua.lat, 15);
-                this.hienToast("success", "Da xac nhan vi tri tu dia chi vua nhap.");
-            } catch (error) {
-                this.selectedCoords = null;
-                this.hienToast("error", error.message || "Khong tim thay vi tri tu dia chi da nhap.");
-            } finally {
-                this.dangTimDiaChi = false;
-            }
-        },
-        handleFileSelect(event) {
-            const file = event.target.files?.[0];
-            if (!file) {
-                this.selectedImageName = "";
-                this.selectedImageData = null;
-                this.selectedImagePreview = null;
-                return;
-            }
-            this.selectedImageName = file.name;
-            this.imageProcessing = true;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => {
-                    // Resize ảnh xuống 800x600 hoặc giữ tỷ lệ
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    const maxWidth = 800;
-                    const maxHeight = 600;
-                    let { width, height } = img;
-
-                    if (width > height) {
-                        if (width > maxWidth) {
-                            height = (height * maxWidth) / width;
-                            width = maxWidth;
-                        }
-                    } else {
-                        if (height > maxHeight) {
-                            width = (width * maxHeight) / height;
-                            height = maxHeight;
-                        }
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    ctx.drawImage(img, 0, 0, width, height);
-                    const resizedDataUrl = canvas.toDataURL('image/jpeg', 0.8); // JPEG với quality 0.8
-                    this.selectedImagePreview = resizedDataUrl;
-                    this.selectedImageData = resizedDataUrl.split(',')[1];
-                    this.imageProcessing = false;
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        },
         layIdNguoiDungHienTai() {
             const sources = ["user", "client"];
             for (const key of sources) {
@@ -522,10 +349,7 @@ export default {
                 if (!raw) continue;
                 try {
                     const parsed = JSON.parse(raw);
-                    const id =
-                        layGiaTriDauTien(parsed, ["id_nguoi_dung", "id", "user_id"]) ??
-                        layGiaTriDauTien(parsed?.data, ["id_nguoi_dung", "id", "user_id"]) ??
-                        layGiaTriDauTien(parsed?.user, ["id_nguoi_dung", "id", "user_id"]);
+                    const id = layGiaTriDauTien(parsed, ["id_nguoi_dung", "id", "user_id"]);
                     if (id !== null && id !== undefined && id !== "") {
                         return Number(id);
                     }
@@ -536,11 +360,7 @@ export default {
             return null;
         },
         async guiYeuCau() {
-            const isLoggedIn =
-                !!localStorage.getItem("user_token") ||
-                !!localStorage.getItem("token") ||
-                !!localStorage.getItem("user") ||
-                !!localStorage.getItem("client");
+            const isLoggedIn = !!localStorage.getItem("token") || !!localStorage.getItem("user") || !!localStorage.getItem("client");
             if (!isLoggedIn) {
                 if (window.bootstrap) {
                     const modal = new window.bootstrap.Modal(this.$refs.loginModal);
@@ -563,18 +383,13 @@ export default {
                 return;
             }
 
-            if (this.cheDoViTri === CHE_DO_VI_TRI.NHAP_TAY && !this.address.trim()) {
+            if (!this.address.trim()) {
                 this.hienToast("warning", "Vui long nhap dia chi xay ra su co.");
                 return;
             }
 
             if (!this.selectedCoords?.lat || !this.selectedCoords?.lng) {
-                this.hienToast(
-                    "warning",
-                    this.cheDoViTri === CHE_DO_VI_TRI.GPS
-                        ? "Vui long bam Xac dinh GPS truoc khi gui yeu cau."
-                        : "Vui long bam Dung dia chi nay de xac nhan vi tri truoc khi gui yeu cau."
-                );
+                this.hienToast("warning", "Vui long bam Xac dinh GPS truoc khi gui yeu cau.");
                 return;
             }
 
@@ -585,14 +400,11 @@ export default {
                     id_loai_su_co: Number(this.selectedType),
                     vi_tri_lat: this.selectedCoords.lat,
                     vi_tri_lng: this.selectedCoords.lng,
-                    vi_tri_dia_chi: this.address.trim() || this.coordsText,
-                    chi_tiet: this.taoChuoiChiTietSuCo(),
+                    vi_tri_dia_chi: this.address.trim(),
+                    chi_tiet: this.layTenChiTietDangChon(),
                     mo_ta: this.description.trim(),
-                    hinh_anh: null, // Tạm thời không gửi ảnh để tránh lỗi database
-                    so_nguoi_bi_anh_huong: Number(this.soNguoiBiAnhHuong) || 1,
-                    muc_do_khan_cap: this.mucDoKhanCap || "HIGH",
-                    diem_uu_tien: this.diemUuTien !== null ? Number(this.diemUuTien) : null,
-                    trang_thai: this.trangThai,
+                    muc_do_khan_cap: "HIGH",
+                    so_nguoi_bi_anh_huong: 1,
                 };
 
                 const response = await rescueRequestAPI.create(payload);
@@ -605,32 +417,17 @@ export default {
                 this.description = "";
                 this.address = "";
                 this.coordsText = "";
-                this.cheDoViTri = CHE_DO_VI_TRI.GPS;
                 this.selectedCoords = null;
-                this.selectedImageName = "";
-                this.selectedImageData = null;
-                this.selectedImagePreview = null;
-                this.imageProcessing = false;
-                this.soNguoiBiAnhHuong = 1;
-                this.mucDoKhanCap = "HIGH";
-                this.diemUuTien = null;
-                this.trangThai = null;
                 this.selectedType = this.incidentTypes[0]?.id ?? null;
-                this.selectedDetailIds = [];
                 await this.taiChiTietLoaiSuCo(this.selectedType);
                 this.$router.push("/client/requests");
             } catch (error) {
                 const message =
                     error?.response?.data?.message ||
-                    error?.response?.data?.error ||
                     error?.response?.data?.errors?.id_nguoi_dung?.[0] ||
                     error?.response?.data?.errors?.id_loai_su_co?.[0] ||
                     error?.response?.data?.errors?.vi_tri_lat?.[0] ||
                     error?.response?.data?.errors?.vi_tri_lng?.[0] ||
-                    error?.response?.data?.errors?.vi_tri_dia_chi?.[0] ||
-                    error?.response?.data?.errors?.chi_tiet?.[0] ||
-                    error?.response?.data?.errors?.mo_ta?.[0] ||
-                    error?.response?.data?.errors?.muc_do_khan_cap?.[0] ||
                     "Khong the gui yeu cau cuu ho. Vui long kiem tra lai thong tin va thu lai.";
                 console.error("Gui yeu cau cuu ho that bai:", error);
                 this.hienToast("error", message);

@@ -1,8 +1,6 @@
 <template>
     <div class="wrapper client-shell">
-        <header class="client-header">
-            <MenuClient></MenuClient>
-        </header>
+        <MenuClient></MenuClient>
         <main class="client-content">
             <router-view></router-view>
         </main>
@@ -46,12 +44,6 @@ export default {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-}
-
-.client-header {
-    position: sticky;
-    top: 0;
-    z-index: 1100;
 }
 
 .client-content {

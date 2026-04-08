@@ -65,9 +65,29 @@ class DoiCuuHoController extends Controller
             $sortBy = $request->get('sort_by', 'id_doi_cuu_ho');
             $sortOrder = $request->get('sort_order', 'desc');
 
-            $items = DoiCuuHo::with(['thanhViens', 'taiNguyens', 'viTris', 'nangLuc', 'loaiSuCos', 'phanCongs'])
-                ->orderBy($sortBy, $sortOrder)
-                ->paginate($perPage);
+            // UC13 cần danh sách đội nhẹ → tránh load nhiều quan hệ gây chậm
+            $lite = (int) $request->get('lite', 0) === 1;
+            if ($lite) {
+                $items = DoiCuuHo::query()
+                    ->select([
+                        'id_doi_cuu_ho',
+                        'ten_co',
+                        'khu_vuc_quan_ly',
+                        'so_dien_thoai_hotline',
+                        'vi_tri_lat',
+                        'vi_tri_lng',
+                        'trang_thai',
+                        'mo_ta',
+                        'created_at',
+                        'updated_at',
+                    ])
+                    ->orderBy($sortBy, $sortOrder)
+                    ->paginate($perPage);
+            } else {
+                $items = DoiCuuHo::with(['thanhViens', 'taiNguyens', 'viTris', 'nangLuc', 'loaiSuCos', 'phanCongs'])
+                    ->orderBy($sortBy, $sortOrder)
+                    ->paginate($perPage);
+            }
 
             return Response::json([
                 'success' => true,
@@ -330,7 +350,8 @@ class DoiCuuHoController extends Controller
     {
         try {
             DoiCuuHo::findOrFail($id);
-            $items = TaiNguyenCuuHo::where('id_doi_cuu_ho', $id)->paginate(15);
+            $perPage = min((int) request()->get('per_page', 15), 200);
+            $items = TaiNguyenCuuHo::where('id_doi_cuu_ho', $id)->paginate($perPage);
 
             return Response::json([
                 'success' => true,
@@ -432,6 +453,35 @@ class DoiCuuHoController extends Controller
             return Response::json([
                 'success' => false,
                 'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * UC13 — Xóa tài nguyên khỏi đội
+     */
+    public function deleteTaiNguyen($id, $id_tai_nguyen)
+    {
+        try {
+            DoiCuuHo::findOrFail($id);
+            $item = TaiNguyenCuuHo::where('id_tai_nguyen', $id_tai_nguyen)
+                ->where('id_doi_cuu_ho', $id)
+                ->firstOrFail();
+            $item->delete();
+
+            return Response::json([
+                'success' => true,
+                'message' => 'Đã xóa tài nguyên.',
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Tài nguyên hoặc đội không tồn tại',
+            ], 404);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage(),
             ], 500);
         }
     }

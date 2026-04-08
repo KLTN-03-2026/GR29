@@ -14,15 +14,37 @@ class PhanCongCuuHoSeeder extends Seeder
 
     public function run(): void
     {
-        $requests = YeuCauCuuHo::where('trang_thai', 'DANG_XU_LY')
+        $requestsWaiting = YeuCauCuuHo::where('trang_thai', 'CHO_XU_LY')->get();
+        $requestsProcessing = YeuCauCuuHo::where('trang_thai', 'DANG_XU_LY')
             ->orWhere('trang_thai', 'HOAN_THANH')
             ->get();
         $teams = DoiCuuHo::all();
         $count = 0;
 
-        // Create assignments for processing/completed requests (max 10)
-        foreach ($requests->take(10) as $request) {
-            PhanCongCuuHo::create([
+        if ($teams->isEmpty()) {
+            echo "⚠️ Không có đội cứu hộ, bỏ qua seeding phân công.\n";
+            return;
+        }
+
+        // 1) Tạo nhiệm vụ MOI để đội vào trang home thấy và bấm TIẾP NHẬN
+        foreach ($requestsWaiting->take(6) as $request) {
+            PhanCongCuuHo::updateOrCreate([
+                'id_yeu_cau' => $request->id_yeu_cau,
+            ], [
+                'id_yeu_cau' => $request->id_yeu_cau,
+                'id_doi_cuu_ho' => $teams->first()->id_doi_cuu_ho, 
+                'mo_ta' => "Phân công MỚI xử lý sự cố #{$request->id_yeu_cau}",
+                'thoi_gian_phan_cong' => now()->subMinutes(rand(10, 120)),
+                'trang_thai_nhiem_vu' => 'MOI'
+            ]);
+            $count++;
+        }
+
+        // 2) Tạo dữ liệu đang xử lý / hoàn thành cho dashboard admin
+        foreach ($requestsProcessing->take(10) as $request) {
+            PhanCongCuuHo::updateOrCreate([
+                'id_yeu_cau' => $request->id_yeu_cau,
+            ], [
                 'id_yeu_cau' => $request->id_yeu_cau,
                 'id_doi_cuu_ho' => $teams->random()->id_doi_cuu_ho,
                 'mo_ta' => "Phân công xử lý sự cố #{$request->id_yeu_cau}",

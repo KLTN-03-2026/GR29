@@ -74,12 +74,6 @@ export default {
 .admin-topbar {
   background: #111827;
   border-bottom: 1px solid rgba(31, 41, 55, 0.9);
-  position: fixed;
-  top: 0;
-  left: 260px;
-  width: calc(100% - 260px);
-  height: 60px;
-  z-index: 1001;
 }
 
 .avatar-initial {
@@ -93,12 +87,5 @@ export default {
   font-size: 11px;
   font-weight: 700;
   color: #111827;
-}
-
-@media (max-width: 767.98px) {
-  .admin-topbar {
-    left: 0;
-    width: 100%;
-  }
 }
 </style>

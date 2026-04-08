@@ -14,7 +14,6 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'check.admin' => \App\Http\Middleware\CheckAdmin::class,
-            'check.user' => \App\Http\Middleware\CheckUser::class,
             'check.role' => \App\Http\Middleware\CheckRole::class,
             'auth.guard' => \App\Http\Middleware\AuthGuard::class,
         ]);
