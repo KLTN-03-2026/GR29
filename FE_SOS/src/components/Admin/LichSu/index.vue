@@ -32,7 +32,7 @@
                     </div>
 
                     <div class="col-12 col-md-2">
-                        <button class="btn btn-primary w-100" @click="taiYeuCauHoanThanh">Lọc</button>
+                        <button class="btn btn-info w-100" @click="xemTatCa">Xem tất cả</button>
                     </div>
                 </div>
             </div>
@@ -143,7 +143,7 @@ function phanTichYeuCau(payload) {
         return {
             key: `${id}-${index}`,
             id,
-            incidentTypeId: item.loai_su_co?.id_loai_su_co || item.loai_su_co?.id || "",
+            incidentTypeId: item.id_loai_su_co || item.loai_su_co_id || item.loai_su_co?.id_loai_su_co || item.loai_su_co?.id || null,
             type: chuanHoaChuoi(
                 item.loai_su_co?.ten_danh_muc ||
                 item.loai_su_co?.ten_loai ||
@@ -188,7 +188,12 @@ export default {
                 const text = `${r.id} ${r.type} ${r.description}`.toLowerCase();
                 if (q && !text.includes(q)) return false;
 
-                if (this.loaiSuCo && r.incidentTypeId !== this.loaiSuCo) return false;
+                // Filter by incident type with string conversion
+                if (this.loaiSuCo) {
+                    const selectedId = String(this.loaiSuCo).trim();
+                    const requestTypeId = r.incidentTypeId ? String(r.incidentTypeId) : "";
+                    if (requestTypeId !== selectedId) return false;
+                }
 
                 if (filterDate && r.ngaySoSanh !== filterDate) return false;
 
@@ -213,7 +218,7 @@ export default {
                 const payload = response?.data || response;
                 const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : [];
                 this.loaiSuCoList = items.map(item => ({
-                    id: item.id_loai_su_co || item.id,
+                    id: item.id_loai_su_co || item.loai_su_co_id || item.id,
                     name: chuanHoaChuoi(item.ten_danh_muc || item.ten_loai_su_co || item.name, "Không rõ")
                 }));
             } catch (err) {
@@ -221,6 +226,10 @@ export default {
             } finally {
                 this.loadingTypes = false;
             }
+        },
+        async xemTatCa() {
+            this.datLaiLoc();
+            await this.taiYeuCauHoanThanh();
         },
         async taiYeuCauHoanThanh() {
             this.loading = true;

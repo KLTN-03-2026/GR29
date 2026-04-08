@@ -11,25 +11,23 @@
       </button>
     </div>
 
-    <div class="card border-0 shadow-sm mb-4">
+    <div class="card border-0 shadow-sm mb-3">
       <div class="card-body">
-        <div class="row g-3 align-items-end">
-          <div class="col-md-3">
-            <label class="form-label text-muted small mb-1">Mã sự cố</label>
-            <input type="text" class="form-control" v-model="searchQuery.id" placeholder="Tìm theo mã" />
+        <div class="row g-2">
+          <div class="col-12 col-md-4">
+            <input v-model.trim="query" class="form-control" placeholder="Tìm kiếm yêu cầu..." />
           </div>
-          <div class="col-md-3">
-            <label class="form-label text-muted small mb-1">Loại sự cố</label>
-            <input type="text" class="form-control" v-model="searchQuery.type" placeholder="Tìm theo loại sự cố..." />
+          <div class="col-12 col-md-3">
+            <select v-model="loaiSuCo" class="form-select">
+              <option value="">Tất cả loại sự cố</option>
+              <option v-for="type in loaiSuCoList" :key="type.id" :value="type.id">{{ type.name }}</option>
+            </select>
           </div>
-          <div class="col-md-4">
-            <label class="form-label text-muted small mb-1">Ngày yêu cầu</label>
-            <input type="date" class="form-control" v-model="searchQuery.date" />
+          <div class="col-12 col-md-3">
+            <input v-model="ngayLoc" type="date" class="form-control" />
           </div>
-          <div class="col-md-2">
-            <button class="btn btn-primary w-100 h-100" style="min-height: 38px;">
-              <i class="bi bi-search me-1"></i> Tìm
-            </button>
+          <div class="col-12 col-md-2">
+            <button class="btn btn-primary w-100" @click="resetFilters">Xem tất cả</button>
           </div>
         </div>
       </div>
@@ -91,7 +89,6 @@
                   <p class="mb-1 text-muted">
                     <i class="bi bi-card-text me-1"></i> {{ request.description }}
                   </p>
-                  <p>tên các đội cứu hộ</p>
                 </div>
 
                 <div class="mt-auto d-flex flex-wrap gap-2">
@@ -115,7 +112,7 @@
 </template>
 
 <script>
-import { rescueRequestAPI } from "../../../services/api";
+import { rescueRequestAPI, incidentTypeAPI } from "../../../services/api";
 
 const STATUS_META = {
   CHO_XU_LY: { label: "Chờ xử lý", badge: "bg-info text-dark" },
@@ -215,10 +212,18 @@ function phanTichYeuCau(payload) {
     const id = item.id_yeu_cau || item.id || item.request_id || "-";
     const statusMeta = layTrangThaiMeta(item.trang_thai || item.status);
     const imageCandidates = xayDungDanhSachAnh(item.hinh_anh);
+    
+    // Extract incident type ID
+    const incidentTypeId = 
+      item.id_loai_su_co || 
+      item.loai_su_co_id || 
+      item.loai_su_co?.id || 
+      null;
 
     return {
       key: `${id}-${index}`,
       id,
+      incidentTypeId,
       type: chuanHoaChuoi(
         item.loai_su_co?.ten_danh_muc ||
           item.loai_su_co?.ten_loai ||
@@ -253,50 +258,73 @@ export default {
       requests: [],
       loading: false,
       error: "",
-      searchQuery: {
-        id: "",
-        type: "",
-        date: "",
-      },
+      query: "",
+      loaiSuCo: "",
+      ngayLoc: "",
+      loaiSuCoList: [],
     };
   },
   computed: {
     filteredRequests() {
+      if (!this.requests) return [];
       return this.requests.filter((request) => {
-        let matchId = true;
-        if (this.searchQuery.id) {
-          matchId = String(request.id).toLowerCase().includes(this.searchQuery.id.toLowerCase().trim());
+        let matchQuery = true;
+        if (this.query) {
+          const q = this.query.toLowerCase();
+          matchQuery = 
+            String(request.id).toLowerCase().includes(q) ||
+            String(request.type).toLowerCase().includes(q) ||
+            String(request.address).toLowerCase().includes(q) ||
+            String(request.incidentDetails).toLowerCase().includes(q) ||
+            String(request.description).toLowerCase().includes(q);
         }
-        
+
         let matchType = true;
-        if (this.searchQuery.type) {
-          matchType = request.type.toLowerCase().includes(this.searchQuery.type.toLowerCase().trim());
+        if (this.loaiSuCo) {
+          const selectedId = String(this.loaiSuCo).trim();
+          
+          // Try matching by ID first
+          if (request.incidentTypeId) {
+            matchType = String(request.incidentTypeId) === selectedId;
+          } else {
+            // Fallback to ID-based matching from raw data
+            matchType = 
+              String(request.raw?.id_loai_su_co) === selectedId ||
+              String(request.raw?.loai_su_co_id) === selectedId ||
+              String(request.raw?.loai_su_co?.id) === selectedId;
+          }
+          
+          // If ID matching fails, try name matching
+          if (!matchType) {
+            const selectedTypeInfo = this.loaiSuCoList.find(t => String(t.id) === selectedId);
+            if (selectedTypeInfo) {
+              matchType = String(request.type || "").toLowerCase() === String(selectedTypeInfo.name || "").toLowerCase();
+            }
+          }
         }
 
         let matchDate = true;
-        if (this.searchQuery.date) {
-            const [year, month, day] = this.searchQuery.date.split("-");
-            const formattedSearchDate = `${day}/${month}/${year}`;
-            matchDate = request.time.includes(formattedSearchDate);
+        if (this.ngayLoc) {
+          const [year, month, day] = this.ngayLoc.split("-");
+          matchDate = request.time.includes(`${day}/${month}/${year}`);
         }
 
-        return matchId && matchType && matchDate;
+        return matchQuery && matchType && matchDate;
       });
     },
   },
   async created() {
-    await this.taiDanhSachYeuCau();
+    await Promise.all([this.taiDanhSachYeuCau(), this.taiLoaiSuCo()]);
   },
   methods: {
     coTheHienPhanDieuPho() {
-      return true; // Tất cả yêu cầu đang xử lý đều có thể xem chi tiết
+      return true;
     },
     khiLoiAnh(request) {
       if (!request?.imageCandidates?.length) {
         request.imageUrl = null;
         return;
       }
-
       request.imageIndex += 1;
       request.imageUrl = request.imageCandidates[request.imageIndex] || null;
     },
@@ -309,15 +337,32 @@ export default {
     },
     hienToast(type, message) {
       if (this.$toast?.[type]) {
-        this.$toast[type](message, {
-          position: "top-right",
-          duration: 3500,
-        });
+        this.$toast[type](message, { position: "top-right", duration: 3500 });
         return;
       }
       alert(message);
     },
+    async taiLoaiSuCo() {
+      try {
+        const res = await incidentTypeAPI.getList();
+        const data = res?.data?.data || res?.data || [];
+        this.loaiSuCoList = (Array.isArray(data) ? data : []).map((item) => ({
+          id: item.id_loai_su_co || item.loai_su_co_id || item.id,
+          name: item.ten_danh_muc || item.ten_loai_su_co || item.name || "Không rõ",
+        }));
+      } catch (e) {
+        console.error("Không tải được loại sự cố:", e);
+      }
+    },
+    resetFilters() {
+      this.query = "";
+      this.loaiSuCo = "";
+      this.ngayLoc = "";
+    },
     async taiDanhSachYeuCau() {
+      this.query = "";
+      this.loaiSuCo = "";
+      this.ngayLoc = "";
       this.loading = true;
       this.error = "";
       try {

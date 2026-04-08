@@ -3,7 +3,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div>
         <h5 class="mb-0 fw-semibold">Hàng đợi yêu cầu cứu hộ</h5>
-        <p class="text-muted mb-0">Danh sách yêu cầu cứu hộ lấy từ API `/api/yeu-cau-cuu-ho`</p>
+        <p class="text-muted mb-0"> yêu cầu cứu hộ chờ điểu phối </p>
       </div>
       <button class="btn btn-outline-secondary" @click="taiDanhSachYeuCau" :disabled="loading">
         <i class="bi bi-arrow-clockwise me-2"></i>
@@ -180,10 +180,10 @@ function phanTichYeuCau(payload) {
     ? rawData.data.data
     : [];
 
-  // Lọc bỏ những yêu cầu đã bị hủy hoặc đã hoàn thành
+  // Lọc bỏ những yêu cầu đã bị hủy, đã hoàn thành, hoặc đang xử lý
   items = items.filter((item) => {
     const status = chuanHoaTrangThai(item.trang_thai || item.status);
-    return !['HUY_BO', 'HOAN_THANH', 'DONE'].includes(status);
+    return !['HUY_BO', 'HOAN_THANH', 'DONE', 'DANG_XU_LY', 'PROCESSING'].includes(status);
   });
 
   return items.map((item, index) => {
