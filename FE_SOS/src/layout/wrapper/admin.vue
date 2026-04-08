@@ -42,11 +42,6 @@ export default {
   background: #111827;
   color: #e5e7eb;
   border-right: 1px solid rgba(31, 41, 55, 0.8);
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 100vh;
-  z-index: 1000;
 }
 
 .admin-main {
@@ -54,8 +49,6 @@ export default {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  margin-left: 260px;
-  margin-top: 60px; /* Height of TopAdmin */
 }
 
 .admin-content {

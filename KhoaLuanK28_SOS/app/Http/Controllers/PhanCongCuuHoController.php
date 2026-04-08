@@ -69,8 +69,22 @@ class PhanCongCuuHoController extends Controller
             'trang_thai_nhiem_vu' => 'required|string|max:20'
         ]);
 
-        $item->update(['trang_thai_nhiem_vu' => strtoupper(trim($validated['trang_thai_nhiem_vu']))]);
-        $item->load(['yeuCau', 'doiCuuHo', 'ketQua']);
+        $newStatus = strtoupper(trim($validated['trang_thai_nhiem_vu']));
+
+        if ($newStatus === 'DANG_XU_LY') {
+            $otherActive = PhanCongCuuHo::where('id_doi_cuu_ho', $item->id_doi_cuu_ho)
+                ->where('trang_thai_nhiem_vu', 'DANG_XU_LY')
+                ->where('id_phan_cong', '!=', $item->id_phan_cong)
+                ->exists();
+            if ($otherActive) {
+                return response()->json([
+                    'message' => 'Đội đã có nhiệm vụ đang xử lý. Hoàn thành nhiệm vụ đó trước khi tiếp nhận thêm.',
+                ], 422);
+            }
+        }
+
+        $item->update(['trang_thai_nhiem_vu' => $newStatus]);
+        $item->load(['yeuCau.nguoiDung', 'yeuCau.loaiSuCo', 'doiCuuHo', 'ketQua']);
         return response()->json($item);
     }
 
@@ -94,7 +108,7 @@ class PhanCongCuuHoController extends Controller
     public function getByDoi(Request $request, $id_doi_cuu_ho)
     {
         $perPage = $request->get('per_page', 15);
-        $items = PhanCongCuuHo::with(['yeuCau', 'doiCuuHo', 'ketQua'])
+        $items = PhanCongCuuHo::with(['yeuCau.nguoiDung', 'yeuCau.loaiSuCo', 'doiCuuHo', 'ketQua'])
             ->where('id_doi_cuu_ho', $id_doi_cuu_ho)
             ->paginate($perPage);
         return response()->json($items);

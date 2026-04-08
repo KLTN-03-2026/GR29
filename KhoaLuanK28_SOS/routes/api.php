@@ -14,6 +14,7 @@ use App\Http\Controllers\PhanCongCuuHoController;
 use App\Http\Controllers\KetQuaCuuHoController;
 use App\Http\Controllers\DanhGiaCuuHoController;
 use App\Http\Controllers\ThanhVienDoiController;
+use App\Http\Controllers\YeuCauBoSungTaiNguyenController;
 
 // =========================================
 // PHÂN QUYỀN & QUẢN TRỊ
@@ -59,15 +60,10 @@ Route::post('nguoi-dung/register', [NguoiDungController::class, 'register']);
 Route::get('/nguoi-dung/check-client', [NguoiDungController::class, 'checkClient']);
 
 
-Route::middleware(['auth:sanctum', 'check.user'])->group(function () {
+Route::middleware(['auth:sanctum', 'check.admin'])->group(function () {
 
     Route::get('/client/profile/data', [NguoiDungController::class, 'getProfile']);
     Route::post('/client/profile/update', [NguoiDungController::class, 'updateProfile']);
-    Route::put('/client/profile/update', [NguoiDungController::class, 'updateProfile']);
-    Route::put('/client/profile/change-password', [NguoiDungController::class, 'changePassword']);
-});
-
-Route::middleware(['auth:sanctum', 'check.admin'])->group(function () {
 
     Route::get('nguoi-dung/list', [NguoiDungController::class, 'index']);
     Route::get('nguoi-dung/chi-tiet/{id}', [NguoiDungController::class, 'show']);
@@ -141,6 +137,12 @@ Route::delete('delete-doi-cuu-ho/{id}/thanh-vien/{id_thanh_vien}', [DoiCuuHoCont
 Route::get('get-doi-cuu-ho/{id}/tai-nguyen', [DoiCuuHoController::class, 'getTaiNguyen']);
 Route::post('post-doi-cuu-ho/{id}/tai-nguyen', [DoiCuuHoController::class, 'addTaiNguyen']);
 Route::put('put-doi-cuu-ho/{id}/tai-nguyen/{id_tai_nguyen}', [DoiCuuHoController::class, 'updateTaiNguyen']);
+Route::delete('delete-doi-cuu-ho/{id}/tai-nguyen/{id_tai_nguyen}', [DoiCuuHoController::class, 'deleteTaiNguyen']);
+
+// UC20 — Yêu cầu bổ sung tài nguyên (rescuer gửi, admin xử lý)
+Route::get('yeu-cau-bo-sung-tai-nguyen', [YeuCauBoSungTaiNguyenController::class, 'index']);
+Route::post('yeu-cau-bo-sung-tai-nguyen', [YeuCauBoSungTaiNguyenController::class, 'store']);
+Route::put('yeu-cau-bo-sung-tai-nguyen/{id}', [YeuCauBoSungTaiNguyenController::class, 'update']);
 
 Route::get('get-doi-cuu-ho/{id}/vi-tri', [DoiCuuHoController::class, 'getViTri']);
 Route::post('post-doi-cuu-ho/{id}/vi-tri', [DoiCuuHoController::class, 'addViTri']);

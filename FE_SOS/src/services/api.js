@@ -1,4 +1,4 @@
-// API service for SOS Backend (KhoaLuanK28_SOS Laravel)
+﻿// API service for SOS Backend (KhoaLuanK28_SOS Laravel)
 import axios from 'axios';
 
 const API_BASE_URL =
@@ -12,32 +12,14 @@ const api = axios.create({
   },
 });
 
-// Lấy token dựa trên endpoint để tránh việc gửi admin_token cho route của user
+// Bearer: ưu tiên admin_token, sau đó user token, sau cùng rescuer token
 api.interceptors.request.use((config) => {
-  let token = null;
-  const url = config.url || '';
-
-  if (url.startsWith('/admin') || url.startsWith('admin/')) {
-    token = localStorage.getItem("admin_token");
-  } else if (
-    url.startsWith('/client') || url.startsWith('client/') ||
-    url.startsWith('/nguoi-dung') || url.startsWith('nguoi-dung/')
-  ) {
-    token = localStorage.getItem("user_token");
-  } else if (
-    url.startsWith('/doi-cuu-ho') || url.startsWith('doi-cuu-ho/') ||
-    url.startsWith('/thanh-vien-doi') || url.startsWith('thanh-vien-doi/')
-  ) {
-    token = localStorage.getItem("token"); // giả sử đội cứu hộ sử dụng "token"
-  }
-
-  // Fallback nếu không có token cụ thể
-  if (!token) {
-    token = localStorage.getItem("admin_token") || localStorage.getItem("user_token") || localStorage.getItem("token");
-  }
-
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  const adminToken = localStorage.getItem("admin_token");
+  const userToken = localStorage.getItem("token");
+  const rescuerToken = localStorage.getItem("key_rescuer");
+  const t = adminToken || userToken || rescuerToken;
+  if (t) {
+    config.headers.Authorization = `Bearer ${t}`;
   }
   return config;
 });
@@ -47,8 +29,6 @@ export const authAPI = {
   loginAdmin: (data) => api.post('/admin/login', data),
   loginUser: (data) => api.post('/nguoi-dung/login', data),
   registerUser: (data) => api.post('/nguoi-dung/register', data),
-  checkClient: () => api.get('/nguoi-dung/check-client'),
-  changeClientPassword: (data) => api.put('/client/profile/change-password', data),
 };
 
 // Admin Management
@@ -91,70 +71,78 @@ export const incidentTypeAPI = {
 
 // Rescue Requests (Yêu cầu Cứu hộ)
 export const rescueRequestAPI = {
-  getList: () => api.get('/yeu-cau-cuu-ho'),
-  getByUser: (userId) => api.get('/yeu-cau-cuu-ho', { params: { id_nguoi_dung: userId } }),
+  getList: (params) => api.get('/yeu-cau-cuu-ho', { params }),
   getDetail: (id) => api.get(`/yeu-cau-cuu-ho/${id}`),
-  create: (data) => api.post('/yeu-cau-cuu-ho', data, {
-    headers: {
-      'Content-Type': data instanceof FormData ? 'multipart/form-data' : 'application/json'
-    }
-  }),
+  create: (data) => api.post('/yeu-cau-cuu-ho', data),
   update: (id, data) => api.put(`/yeu-cau-cuu-ho/${id}`, data),
   changeStatus: (id, data) => api.put(`/yeu-cau-cuu-ho/${id}/trang-thai`, data),
-  getByStatus: (status) => api.get('/yeu-cau-cuu-ho/theo-trang-thai', { params: { trang_thai: status } }),
-  getByPriority: (priority) => api.get('/yeu-cau-cuu-ho/theo-muc-do-khan-cap', { params: { muc_do_khan_cap: priority } }),
+  getByStatus: (status) => api.get(`/yeu-cau-cuu-ho/theo-trang-thai/${status}`),
+  getByPriority: (muc_do) => api.get(`/yeu-cau-cuu-ho/theo-muc-do-khan-cap/${muc_do}`),
   getAIClassification: () => api.get('/yeu-cau-cuu-ho/phan-loai-ai'),
-  getQueue: () => api.get('/hang-doi-xu-ly'),
-  search: (query) => api.get('/yeu-cau-cuu-ho/tim-kiem', { params: { noi_dung_tim: query } }),
+  getProcessingQueue: (params) => api.get('/hang-doi-xu-ly', { params }),
+  search: (params) => api.get('/tim-kiem/yeu-cau', { params: typeof params === 'string' ? { keyword: params } : params }),
   delete: (id) => api.delete(`/yeu-cau-cuu-ho/${id}`),
 };
 
 // Rescue Teams (Đội Cứu hộ)
 export const rescueTeamAPI = {
-  getList: () => api.get('/doi-cuu-ho'),
+  getList: (params) => api.get('/doi-cuu-ho', { params }),
   getDetail: (id) => api.get(`/doi-cuu-ho/${id}`),
   create: (data) => api.post('/doi-cuu-ho', data),
   update: (id, data) => api.put(`/doi-cuu-ho/${id}`, data),
-  getMembers: (id) => api.get(`/doi-cuu-ho/thanh-vien/${id}`),
-  addMember: (id, data) => api.post(`/doi-cuu-ho/thanh-vien/${id}`, data),
-  removeMember: (id, memberId) => api.delete(`/doi-cuu-ho/thanh-vien/${id}/${memberId}`),
-  getResources: (id) => api.get(`/doi-cuu-ho/tai-nguyen/${id}`),
-  addResource: (id, data) => api.post(`/doi-cuu-ho/tai-nguyen/${id}`, data),
-  updateResource: (id, resourceId, data) => api.put(`/doi-cuu-ho/tai-nguyen/${id}/${resourceId}`, data),
-  getLocations: (id) => api.get(`/doi-cuu-ho/vi-tri/${id}`),
-  addLocation: (id, data) => api.post(`/doi-cuu-ho/vi-tri/${id}`, data),
-  getCapabilities: (id) => api.get(`/doi-cuu-ho/nang-luc/${id}`),
-  updateCapability: (id, data) => api.put(`/doi-cuu-ho/nang-luc/${id}`, data),
-  getIncidentTypes: (id) => api.get(`/doi-cuu-ho/loai-su-co/${id}`),
-  getByStatus: (status) => api.get('/doi-cuu-ho/theo-trang-thai', { params: { trang_thai: status } }),
-  getByArea: (area) => api.get('/doi-cuu-ho/theo-khu-vuc', { params: { khu_vuc: area } }),
-  search: (query) => api.get('/doi-cuu-ho/tim-kiem', { params: { noi_dung_tim: query } }),
+  getMembers: (id) => api.get(`/get-doi-cuu-ho/${id}/thanh-vien`),
+  addMember: (id, data) => api.post(`/post-doi-cuu-ho/${id}/thanh-vien`, data),
+  removeMember: (id, memberId) => api.delete(`/delete-doi-cuu-ho/${id}/thanh-vien/${memberId}`),
+  getResources: (id, params) => api.get(`/get-doi-cuu-ho/${id}/tai-nguyen`, { params }),
+  addResource: (id, data) => api.post(`/post-doi-cuu-ho/${id}/tai-nguyen`, data),
+  updateResource: (id, resourceId, data) => api.put(`/put-doi-cuu-ho/${id}/tai-nguyen/${resourceId}`, data),
+  deleteResource: (id, resourceId) => api.delete(`/delete-doi-cuu-ho/${id}/tai-nguyen/${resourceId}`),
+  getLocations: (id) => api.get(`/get-doi-cuu-ho/${id}/vi-tri`),
+  addLocation: (id, data) => api.post(`/post-doi-cuu-ho/${id}/vi-tri`, data),
+  getCapabilities: (id) => api.get(`/get-doi-cuu-ho/${id}/nang-luc`),
+  updateCapability: (id, data) => api.put(`/put-doi-cuu-ho/${id}/nang-luc`, data),
+  getIncidentTypes: (id) => api.get(`/get-doi-cuu-ho/${id}/loai-su-co-dung-xu-ly`),
+  getByStatus: (trang_thai) => api.get(`/doi-cuu-ho/theo-trang-thai/${trang_thai}`),
+  getByArea: (khu_vuc) => api.get(`/doi-cuu-ho/theo-khu-vuc/${encodeURIComponent(khu_vuc)}`),
+  search: (query) => api.get('/tim-kiem/doi-cuu-ho', { params: { q: query, noi_dung_tim: query } }),
   delete: (id) => api.delete(`/doi-cuu-ho/${id}`),
 };
 
 // Assignments (Phân công Cứu hộ)
 export const assignmentAPI = {
-  getList: () => api.get('/phan-cong-cuu-ho'),
+  getList: (params) => api.get('/phan-cong-cuu-ho', { params }),
   getDetail: (id) => api.get(`/phan-cong-cuu-ho/${id}`),
   create: (data) => api.post('/phan-cong-cuu-ho', data),
   update: (id, data) => api.put(`/phan-cong-cuu-ho/${id}`, data),
-  changeStatus: (id) => api.put(`/phan-cong-cuu-ho/cap-nhat-trang-thai/${id}`),
-  getByRequest: (requestId) => api.get(`/phan-cong-cuu-ho/theo-yeu-cau/${requestId}`),
-  getByTeam: (teamId) => api.get(`/phan-cong-cuu-ho/theo-doi/${teamId}`),
-  getByStatus: (status) => api.get('/phan-cong-cuu-ho/theo-trang-thai', { params: { trang_thai: status } }),
+  changeStatus: (id, data) => api.put(`/phan-cong-cuu-ho/${id}/trang-thai`, data),
+  getByRequest: (requestId, params) => api.get(`/phan-cong-cuu-ho/theo-yeu-cau/${requestId}`, { params }),
+  getByTeam: (teamId, params) => api.get(`/phan-cong-cuu-ho/theo-doi/${teamId}`, { params }),
+  getByStatus: (trang_thai, params) => api.get(`/phan-cong-cuu-ho/theo-trang-thai/${trang_thai}`, { params }),
   delete: (id) => api.delete(`/phan-cong-cuu-ho/${id}`),
 };
 
-// Analytics & Reports
+// Analytics & Reports (params: from_date, to_date — Y-m-d)
 export const analyticsAPI = {
-  getTotalRequests: () => api.get('/thong-ke/tong-so-yeu-cau'),
-  getRequestsByType: () => api.get('/thong-ke/yeu-cau-theo-loai'),
-  getRequestsByPriority: () => api.get('/thong-ke/yeu-cau-theo-muc-do-khan-cap'),
-  getProcessingStatus: () => api.get('/thong-ke/trang-thai-xu-ly'),
+  getTotalRequests: (params) => api.get('/thong-ke/tong-so-yeu-cau', { params }),
+  getRequestsByType: (params) => api.get('/thong-ke/yeu-cau-theo-loai', { params }),
+  getRequestsByUrgency: (params) => api.get('/thong-ke/yeu-cau-theo-muc-do-khan-cap', { params }),
+  getProcessingStatus: (params) => api.get('/thong-ke/trang-thai-xu-ly', { params }),
   getTeamPerformance: () => api.get('/thong-ke/hieu-suat-doi-cuu-ho'),
   getAvailableTeams: () => api.get('/thong-ke/danh-sach-doi-co-san'),
   getHeatmapData: () => api.get('/thong-ke/heatmap'),
-  getQueue: () => api.get('/hang-doi-xu-ly'),
+};
+
+export const rescueResultAPI = {
+  createForAssignment: (assignmentId, data) => api.post(`/post-ket-qua-cuu-ho/phan-cong/${assignmentId}`, data),
+  getByAssignment: (assignmentId) => api.get(`/get-ket-qua-cuu-ho/phan-cong/${assignmentId}`),
+  update: (id, data) => api.put(`/ket-qua-cuu-ho/${id}`, data),
+};
+
+/** Yêu cầu bổ sung tài nguyên */
+export const resourceRequestAPI = {
+  list: (params) => api.get('/yeu-cau-bo-sung-tai-nguyen', { params }),
+  create: (data) => api.post('/yeu-cau-bo-sung-tai-nguyen', data),
+  update: (id, data) => api.put(`/yeu-cau-bo-sung-tai-nguyen/${id}`, data),
 };
 
 export const rescuerAccountAPI = {

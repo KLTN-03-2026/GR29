@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from "vue-router";
-import checkAdmin from "./checkAdmin";
 
 const routes = [
     // client
@@ -53,24 +52,13 @@ const routes = [
         component: () => import("../components/Admin/DangNhap/index.vue"),
     },
     {
-        path: "/admin/dashboard",
+        path: "/admin",
         component: () => import("../components/Admin/DashBoard/index.vue"),
         meta: { layout: "admin" },
-        beforeEnter: checkAdmin,
     },
     {
         path: "/admin/queue",
         component: () => import("../components/Admin/Queue/index.vue"),
-        meta: { layout: "admin" },
-    },
-    {
-        path: "/admin/dang-xu-ly",
-        component: () => import("../components/Admin/DangXuLy/index.vue"),
-        meta: { layout: "admin" },
-    },
-    {
-        path: "/admin/history",
-        component: () => import("../components/Admin/LichSu/index.vue"),
         meta: { layout: "admin" },
     },
     {
@@ -101,6 +89,11 @@ const routes = [
     {
         path: "/admin/resources",
         component: () => import("../components/Admin/Resources/index.vue"),
+        meta: { layout: "admin" },
+    },
+    {
+        path: "/admin/resource-requests",
+        component: () => import("../components/Admin/ResourceRequests/index.vue"),
         meta: { layout: "admin" },
     },
     {
@@ -140,18 +133,17 @@ const routes = [
         component: () => import("../components/Rescuer/TrangChu/index.vue"),
         meta: { layout: "rescuer" },
     },
+    {
+        path: "/rescuer/bao-cao",
+        component: () => import("../components/Rescuer/Baocao/index.vue"),
+        meta: { layout: "rescuer" },
+    },
+    // đã chuyển sang modal tại /rescuer/home (giữ route cũ nếu cần dùng lại)
 ];
 
 const router = createRouter({
     history: createWebHistory(),
     routes: routes,
-});
-
-router.beforeEach((to, from, next) => {
-    if (to.path.startsWith("/admin") && to.path !== "/admin/login") {
-        return checkAdmin(to, from, next);
-    }
-    next();
 });
 
 export default router;

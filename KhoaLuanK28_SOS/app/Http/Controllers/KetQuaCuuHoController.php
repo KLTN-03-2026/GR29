@@ -7,6 +7,23 @@ use Illuminate\Http\Request;
 
 class KetQuaCuuHoController extends Controller
 {
+    private function extractEvidenceImagePath(Request $request, ?string $existingPath = null): ?string
+    {
+        // Ưu tiên file upload từ máy người dùng
+        if ($request->hasFile('hinh_anh_minh_chung_file')) {
+            $file = $request->file('hinh_anh_minh_chung_file');
+            $stored = $file->store('ket-qua-minh-chung', 'public');
+            return $stored;
+        }
+
+        // Fallback: URL/string như cách cũ
+        if ($request->filled('hinh_anh_minh_chung')) {
+            return $request->input('hinh_anh_minh_chung');
+        }
+
+        return $existingPath;
+    }
+
     public function index(Request $request)
     {
         $perPage = $request->get('per_page', 15);
@@ -21,8 +38,10 @@ class KetQuaCuuHoController extends Controller
             'bao_cao_hien_truong' => 'nullable|string',
             'trang_thai_ket_qua' => 'nullable|string|max:30',
             'hinh_anh_minh_chung' => 'nullable|string|max:500',
+            'hinh_anh_minh_chung_file' => 'nullable|image|max:5120',
             'thoi_gian_ket_thuc' => 'nullable|date'
         ]);
+        $validated['hinh_anh_minh_chung'] = $this->extractEvidenceImagePath($request);
         $item = KetQuaCuuHo::create($validated);
         $item->load('phanCong');
         return response()->json($item, 201);
@@ -41,8 +60,10 @@ class KetQuaCuuHoController extends Controller
             'bao_cao_hien_truong' => 'nullable|string',
             'trang_thai_ket_qua' => 'nullable|string|max:30',
             'hinh_anh_minh_chung' => 'nullable|string|max:500',
+            'hinh_anh_minh_chung_file' => 'nullable|image|max:5120',
             'thoi_gian_ket_thuc' => 'nullable|date'
         ]);
+        $validated['hinh_anh_minh_chung'] = $this->extractEvidenceImagePath($request, $item->hinh_anh_minh_chung);
         $item->update($validated);
         $item->load('phanCong');
         return response()->json($item);
@@ -75,10 +96,12 @@ class KetQuaCuuHoController extends Controller
             'bao_cao_hien_truong' => 'nullable|string',
             'trang_thai_ket_qua' => 'nullable|string|max:30',
             'hinh_anh_minh_chung' => 'nullable|string|max:500',
+            'hinh_anh_minh_chung_file' => 'nullable|image|max:5120',
             'thoi_gian_ket_thuc' => 'nullable|date'
         ]);
 
         $validated['id_phan_cong'] = $id_phan_cong;
+        $validated['hinh_anh_minh_chung'] = $this->extractEvidenceImagePath($request);
         $item = KetQuaCuuHo::create($validated);
         $item->load('phanCong');
 

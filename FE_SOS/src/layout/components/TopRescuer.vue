@@ -1,9 +1,9 @@
 <template>
   <nav class="navbar navbar-expand-lg navbar-dark py-2 px-3 shadow-sm" style="background-color: #1a2a40;">
     <div class="container-fluid">
-      <a class="navbar-brand d-flex align-items-center fw-bold fs-4" href="#">
+      <router-link class="navbar-brand d-flex align-items-center fw-bold fs-4 text-white text-decoration-none" to="/rescuer/home">
         nowSOS <span class="text-danger ms-1">RESCUER</span>
-      </a>
+      </router-link>
 
       <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#sentinelNav">
         <span class="navbar-toggler-icon"></span>
@@ -11,7 +11,10 @@
 
       <div class="collapse navbar-collapse" id="sentinelNav">
         <div class="navbar-nav ms-auto align-items-center gap-3 gap-lg-4 pt-3 pt-lg-0">
-          
+          <a class="nav-link text-white-50 small fw-semibold" href="#" @click.prevent="$router.push('/rescuer/home')">
+            <i class="bi bi-truck-front me-1"></i> Yêu cầu tài nguyên
+          </a>
+
           <div class="d-flex align-items-center bg-white bg-opacity-10 rounded-pill px-3 py-1 border border-white border-opacity-25">
             <span class="text-white-50 small fw-bold me-2">TRẠNG THÁI TRỰC:</span>
             <div class="form-check form-switch m-0 p-0 d-flex align-items-center">

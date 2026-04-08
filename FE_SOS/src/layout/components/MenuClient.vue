@@ -176,8 +176,7 @@ function logout() {
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(10px);
     position: relative;
-    z-index: 1;
-    width: 100%;
+    z-index: 1050; /* Ensure navbar is above the map or other content */
 }
 
 .now-brand {

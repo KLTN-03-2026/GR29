@@ -1,311 +1,176 @@
 <template>
-  <div class="auth-container user-theme">
-    <div class="orb orb-1"></div>
-    <div class="orb orb-2"></div>
-    <div class="orb orb-3"></div>
+  <div class="change-password-wrapper min-vh-100 d-flex align-items-center py-5">
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-12 col-sm-10 col-md-8 col-lg-5">
+          
+          <div class="card border-0 shadow-lg profile-card">
+            <div class="card-body p-4 p-md-5">
+              
+              <div class="text-center mb-4">
+                <div class="icon-box rounded-circle bg-primary-light d-inline-flex align-items-center justify-content-center mb-3 shadow-sm">
+                  <i class="bi bi-shield-lock text-primary fs-2"></i>
+                </div>
+                <h3 class="fw-bold text-dark mb-2">Đổi mật khẩu</h3>
+                <p class="text-muted small px-lg-4">Nhập mật khẩu mới để bảo mật tài khoản.</p>
+              </div>
+              
+              <form @submit.prevent="handleChangePassword" class="mt-4">
+                <div class="mb-4">
+                  <label class="form-label fw-bold text-secondary small text-uppercase tracking-wider">Mật khẩu hiện tại</label>
+                  <div class="input-group custom-input-group">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-key"></i></span>
+                    <input type="password" class="form-control border-start-0 ps-0" placeholder="••••••••" v-model="form.current_password" required>
+                  </div>
+                </div>
 
-    <div class="auth-card">
-      <div class="brand">
-        <h1 class="logo">now<span>SOS</span></h1>
-        <p class="subtitle">Đổi mật khẩu</p>
+                <div class="d-flex align-items-center my-4">
+                  <hr class="flex-grow-1 border-light opacity-50">
+                  <span class="mx-3 text-muted fs-xs fw-bold text-uppercase">Mật khẩu mới</span>
+                  <hr class="flex-grow-1 border-light opacity-50">
+                </div>
+
+                <div class="mb-4">
+                  <div class="input-group custom-input-group">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-lock"></i></span>
+                    <input type="password" class="form-control border-start-0 ps-0" placeholder="Tối thiểu 6 ký tự" v-model="form.new_password" required>
+                  </div>
+                  
+                  <div v-if="form.new_password">
+                    <div class="password-strength-bar mt-2 rounded-pill bg-light overflow-hidden">
+                      <div class="progress-bar" role="progressbar" :style="{width: passwordStrength + '%', backgroundColor: strengthColor}"></div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-1">
+                      <small class="text-muted fs-xs">Độ mạnh: <span :style="{color: strengthColor}" class="fw-bold">{{ strengthText }}</span></small>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mb-4">
+                  <div class="input-group custom-input-group">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-patch-check"></i></span>
+                    <input type="password" class="form-control border-start-0 ps-0" placeholder="Xác nhận mật khẩu mới" v-model="form.confirm_password" required>
+                  </div>
+                  <small class="text-danger fs-xs mt-1 d-block" v-if="form.confirm_password && form.new_password !== form.confirm_password">
+                    <i class="bi bi-exclamation-circle me-1"></i>Mật khẩu xác nhận không khớp!
+                  </small>
+                </div>
+
+                <div class="d-grid gap-2 mt-5">
+                  <button type="submit" class="btn btn-primary btn-lg fw-bold shadow-sm hover-lift" :disabled="form.new_password !== form.confirm_password || !isPasswordStrong">
+                    Cập nhật mật khẩu
+                  </button>
+                  <button type="button" class="btn btn-link btn-sm text-decoration-none text-secondary hover-underline mt-2" @click="forgotPassword">
+                    Quên mật khẩu?
+                  </button>
+                </div>
+              </form>
+
+              <div class="text-center mt-4 pt-3 border-top border-light">
+                <a href="#" class="text-secondary text-decoration-none small hover-underline d-inline-flex align-items-center">
+                  <i class="bi bi-arrow-left me-2"></i> Quay lại trang cá nhân
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-
-      <form @submit.prevent="doiMatKhau" class="auth-form">
-        <div class="input-group">
-          <label for="old_password">MẬT KHẨU CŨ</label>
-          <div class="input-wrapper">
-            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-            <input v-model="payload.mat_khau_cu" type="password" id="old_password" placeholder="Nhập mật khẩu hiện tại" required>
-          </div>
-        </div>
-
-        <div class="input-group">
-          <label for="new_password">MẬT KHẨU MỚI</label>
-          <div class="input-wrapper">
-            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-            <input v-model="payload.mat_khau_moi" type="password" id="new_password" placeholder="Nhập mật khẩu mới" required>
-          </div>
-        </div>
-
-        <div class="input-group">
-          <label for="confirm_password">XÁC NHẬN MẬT KHẨU MỚI</label>
-          <div class="input-wrapper">
-            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-            <input v-model="payload.xac_nhan_mat_khau" type="password" id="confirm_password" placeholder="Nhập lại mật khẩu mới" required>
-          </div>
-        </div>
-
-        <button type="submit" class="btn-primary">Đổi Mật Khẩu</button>
-      </form>
-
-      <p class="switch-page">
-        <router-link to="/">Quay về trang chủ</router-link>
-      </p>
     </div>
   </div>
 </template>
 
 <script>
-import { authAPI } from "../../../services/api.js";
-
 export default {
+  name: 'ChangePasswordBeautiful',
   data() {
     return {
-      payload: {
-        mat_khau_cu: "",
-        mat_khau_moi: "",
-        xac_nhan_mat_khau: "",
-      },
-    };
+      form: {
+        current_password: '',
+        new_password: '',
+        confirm_password: ''
+      }
+    }
+  },
+  computed: {
+    passwordStrength() {
+      if (!this.form.new_password) return 0;
+      let strength = 0;
+      if (this.form.new_password.length >= 8) strength += 25;
+      if (/[A-Z]/.test(this.form.new_password)) strength += 25;
+      if (/[0-9]/.test(this.form.new_password)) strength += 25;
+      if (/[!@#$%^&*(),.?":{}|<>]/.test(this.form.new_password)) strength += 25;
+      return strength;
+    },
+    strengthColor() {
+      if (this.passwordStrength <= 25) return '#dc3545';
+      if (this.passwordStrength <= 50) return '#ffc107';
+      if (this.passwordStrength <= 75) return '#0dcaf0';
+      return '#198754';
+    },
+    strengthText() {
+      if (this.passwordStrength <= 25) return 'Yếu';
+      if (this.passwordStrength <= 50) return 'Trung bình';
+      if (this.passwordStrength <= 75) return 'Khá';
+      return 'Mạnh';
+    },
+    isPasswordStrong() {
+        return this.passwordStrength >= 50;
+    }
   },
   methods: {
-    async doiMatKhau() {
-      if (this.payload.mat_khau_moi !== this.payload.xac_nhan_mat_khau) {
-        this.$toast.error("Mật khẩu mới và xác nhận mật khẩu không khớp!");
-        return;
-      }
-      try {
-        const res = await authAPI.changeClientPassword({
-          current_password: this.payload.mat_khau_cu,
-          new_password: this.payload.mat_khau_moi,
-          new_password_confirmation: this.payload.xac_nhan_mat_khau,
-        });
-        const body = res.data;
-        if (body.status) {
-          this.$toast.success(body.message || "Đổi mật khẩu thành công!");
-          this.payload.mat_khau_cu = "";
-          this.payload.mat_khau_moi = "";
-          this.payload.xac_nhan_mat_khau = "";
-          this.$router.push("/");
-        } else {
-          this.$toast.error(body.message || "Đổi mật khẩu thất bại!");
-        }
-      } catch (err) {
-        const errors = err.response?.data?.errors;
-        if (errors) {
-            const firstError = Object.values(errors)[0][0];
-            this.$toast.error(firstError);
-        } else {
-            const msg = err.response?.data?.message || "Không kết nối được máy chủ!";
-            this.$toast.error(msg);
-        }
-      }
-    },
-  },
-};
+    handleChangePassword() { alert("Đã cập nhật!"); },
+    forgotPassword() { alert("Đã gửi email!"); }
+  }
+}
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap');
-
-* {
-  box-sizing: border-box;
-  font-family: 'Quicksand', sans-serif;
+.change-password-wrapper {
+  background-color: #f4f7f6;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4' viewBox='0 0 4 4'%3E%3Cpath fill='%23000' fill-opacity='0.03' d='M1 3h1v1H1V3zm2-2h1v1H2V1z'%3E%3C/path%3E%3C/svg%3E");
 }
 
-.auth-container {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #f0f4f8;
-  position: relative;
+.profile-card { border-radius: 24px; }
+.icon-box { width: 64px; height: 64px; }
+.bg-primary-light { background-color: rgba(13, 110, 253, 0.08); }
+
+/* SỬA LỖI VIỀN XANH BỊ MẤT KHÚC ĐẦU */
+.custom-input-group {
+  transition: all 0.2s ease;
+  border: 1px solid #e9ecef;
+  border-radius: 8px; /* Tùy chỉnh độ bo cho cả group */
   overflow: hidden;
-  padding: 20px;
 }
 
-.user-theme {
-  background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+.custom-input-group .input-group-text,
+.custom-input-group .form-control {
+  border: none; /* Bỏ border mặc định để dùng border của group */
+  padding: 0.75rem 1rem;
+  box-shadow: none !important; /* Tắt shadow mặc định của Bootstrap */
 }
 
-.user-theme .orb-1 {
-  background: radial-gradient(circle, rgba(122,178,255,0.8) 0%, rgba(122,178,255,0) 70%);
-  width: 500px;
-  height: 500px;
-  top: -150px;
-  left: -150px;
+/* Khi ô input được click (focus) */
+.custom-input-group:focus-within {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
 }
 
-.user-theme .orb-2 {
-  background: radial-gradient(circle, rgba(162,136,255,0.6) 0%, rgba(162,136,255,0) 70%);
-  width: 400px;
-  height: 400px;
-  bottom: -100px;
-  right: -100px;
+.custom-input-group .form-control:focus {
+  background-color: #fff;
 }
 
-.user-theme .orb-3 {
-  background: radial-gradient(circle, rgba(105,232,226,0.5) 0%, rgba(105,232,226,0) 70%);
-  width: 300px;
-  height: 300px;
-  top: 40%;
-  left: 30%;
-  animation: float 8s ease-in-out infinite;
-}
-
-.orb {
-  position: absolute;
-  border-radius: 50%;
-  z-index: 0;
-  filter: blur(40px);
-}
-
-@keyframes float {
-  0% { transform: translate(0, 0); }
-  50% { transform: translate(30px, -30px); }
-  100% { transform: translate(0, 0); }
-}
-
-.auth-card {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: 24px;
-  padding: 40px;
-  width: 100%;
-  max-width: 480px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
-  z-index: 1;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.auth-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.12);
-}
-
-.brand {
-  text-align: center;
-  margin-bottom: 30px;
-}
-
-.logo {
-  font-size: 36px;
-  font-weight: 700;
-  color: #2c3e50;
-  margin: 0;
-  letter-spacing: -1px;
-}
-
-.logo span {
-  color: #3b82f6;
-}
-
-.subtitle {
-  color: #64748b;
-  font-size: 15px;
-  margin-top: 8px;
-  font-weight: 500;
-}
-
-.auth-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.input-group label {
-  font-size: 12px;
-  font-weight: 700;
-  color: #475569;
-  letter-spacing: 0.5px;
-}
-
-.input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.input-icon {
-  position: absolute;
-  left: 16px;
-  width: 18px;
-  height: 18px;
-  color: #94a3b8;
-  transition: color 0.3s ease;
-}
-
-.input-wrapper input {
-  width: 100%;
-  padding: 14px 16px 14px 44px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.5);
-  background: rgba(255, 255, 255, 0.6);
-  font-size: 15px;
-  color: #1e293b;
-  transition: all 0.3s ease;
-  outline: none;
-}
-
-.input-wrapper input::placeholder {
-  color: #94a3b8;
-}
-
-.input-wrapper input:focus {
-  background: rgba(255, 255, 255, 0.9);
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-}
-
-.input-wrapper input:focus + .input-icon,
-.input-wrapper input:focus ~ .input-icon {
-  color: #3b82f6;
-}
-
-.btn-primary {
-  background: linear-gradient(to right, #3b82f6, #60a5fa);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  padding: 14px;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-  margin-top: 10px;
-}
-
-.btn-primary:hover {
+.password-strength-bar { height: 4px; }
+.progress-bar { transition: all 0.4s ease; }
+.hover-lift { transition: all 0.2s ease; }
+.hover-lift:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 8px 15px rgba(13, 110, 253, 0.2) !important;
 }
 
-.btn-primary:active {
-  transform: translateY(0);
-}
+.fs-xs { font-size: 0.75rem; }
+.tracking-wider { letter-spacing: 0.08em; }
 
-.switch-page {
-  text-align: center;
-  margin-top: 25px;
-  color: #64748b;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.switch-page a {
-  color: #3b82f6;
-  text-decoration: none;
-  font-weight: 700;
-  transition: color 0.2s;
-}
-
-.switch-page a:hover {
-  color: #2563eb;
-  text-decoration: underline;
-}
-
-@media (max-width: 480px) {
-  .auth-card {
-    padding: 30px 20px;
-  }
+@media (max-width: 576px) {
+  .card-body { padding: 1.5rem !important; }
 }
 </style>

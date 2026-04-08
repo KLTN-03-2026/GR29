@@ -1,9 +1,6 @@
 <template>
   <div class="mapbox-wrap position-relative w-100 h-100">
-    <div
-      v-if="!hasToken"
-      class="mapbox-fallback d-flex align-items-center justify-content-center bg-dark text-white-50 small p-4 text-center"
-    >
+    <div v-if="!hasToken" class="mapbox-fallback d-flex align-items-center justify-content-center bg-dark text-white-50 small p-4 text-center">
       <div>
         <i class="fa-solid fa-map-location-dot fs-2 mb-2 d-block text-warning"></i>
         Chưa cấu hình <code class="text-warning">VITE_OPENMAP_API_KEY</code> trong file <code>.env</code>
@@ -16,13 +13,9 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import maplibregl from "@openmapvn/openmapvn-gl";
 import "@openmapvn/openmapvn-gl/dist/maplibre-gl.css";
-
-const HEATMAP_SOURCE_ID = "codex-heatmap-source";
-const HEATMAP_LAYER_ID = "codex-heatmap-layer";
-const POINT_LAYER_ID = "codex-heatmap-points";
 
 const props = defineProps({
   center: {
@@ -33,25 +26,24 @@ const props = defineProps({
     type: Number,
     default: 12,
   },
+  /** Chế độ cũ: một marker đỏ tại center (khi không truyền user/đích) */
   showMarker: {
     type: Boolean,
     default: true,
   },
+  /** [lng, lat] — vị trí cứu hộ viên (xanh dương) */
+  userLngLat: {
+    type: Array,
+    default: null,
+  },
+  /** [lng, lat] — hiện trường / đích (đỏ) */
+  destinationLngLat: {
+    type: Array,
+    default: null,
+  },
   mapStyle: {
     type: String,
     default: "day-v1",
-  },
-  points: {
-    type: Array,
-    default: () => [],
-  },
-  useHeatmap: {
-    type: Boolean,
-    default: false,
-  },
-  fitToPoints: {
-    type: Boolean,
-    default: false,
   },
 });
 
@@ -59,236 +51,196 @@ const containerEl = ref(null);
 const hasToken = ref(!!import.meta.env.VITE_OPENMAP_API_KEY);
 
 let map = null;
-let marker = null;
-let popup = null;
-
-function getIntensityLevel(count) {
-  if (count >= 15) return "Cực cao";
-  if (count >= 11) return "Rất cao";
-  if (count >= 8) return "Cao";
-  if (count >= 5) return "Trung bình";
-  if (count >= 3) return "Thấp";
-  return "Rất thấp";
+let legacyMarker = null;
+let userMarker = null;
+let destMarker = null;
+function validLngLat(c) {
+  return Array.isArray(c) && c.length >= 2 && Number.isFinite(Number(c[0])) && Number.isFinite(Number(c[1]));
 }
 
-function buildFeatureCollection(points = []) {
-  return {
-    type: "FeatureCollection",
-    features: points
-      .filter((point) => Number.isFinite(Number(point?.lng)) && Number.isFinite(Number(point?.lat)))
-      .map((point) => ({
-        type: "Feature",
-        geometry: {
-          type: "Point",
-          coordinates: [Number(point.lng), Number(point.lat)],
-        },
-        properties: {
-          weight: Number(point.weight || point.count || 1),
-          title: point.title || "",
-          description: point.description || "",
-          color: point.color || "#ef4444",
-          count: Number(point.count || point.weight || 1),
-        },
-      })),
-  };
+const useDualMarkers = computed(() => validLngLat(props.userLngLat) || validLngLat(props.destinationLngLat));
+
+function removeLegacyMarker() {
+  legacyMarker?.remove();
+  legacyMarker = null;
 }
 
-function ensureMarker() {
+/** Kiểu Google Maps: tròn trắng viền đen */
+function makeUserDotEl() {
+  const el = document.createElement("div");
+  el.style.width = "18px";
+  el.style.height = "18px";
+  el.style.borderRadius = "50%";
+  el.style.background = "#ffffff";
+  el.style.border = "2px solid #202124";
+  el.style.boxShadow = "0 2px 6px rgba(0,0,0,.35)";
+  return el;
+}
+
+function makeDotEl(background, border = "2px solid white") {
+  const el = document.createElement("div");
+  el.style.width = "16px";
+  el.style.height = "16px";
+  el.style.borderRadius = "50%";
+  el.style.background = background;
+  el.style.border = border;
+  el.style.boxShadow = "0 1px 4px rgba(0,0,0,.45)";
+  return el;
+}
+
+function syncDualMarkers() {
   if (!map) return;
-  if (props.showMarker) {
-    if (!marker) {
-      marker = new maplibregl.Marker({ color: "#dc3545" })
-        .setLngLat(props.center)
-        .addTo(map);
-    }
-    marker.setLngLat(props.center);
-  } else if (marker) {
-    marker.remove();
-    marker = null;
-  }
-}
 
-function ensureHeatmapLayers() {
-  if (!map || !map.isStyleLoaded()) return;
-  const data = buildFeatureCollection(props.points);
-
-  if (!map.getSource(HEATMAP_SOURCE_ID)) {
-    map.addSource(HEATMAP_SOURCE_ID, {
-      type: "geojson",
-      data,
-    });
-  } else {
-    map.getSource(HEATMAP_SOURCE_ID).setData(data);
-  }
-
-  if (props.useHeatmap) {
-    if (!map.getLayer(HEATMAP_LAYER_ID)) {
-      map.addLayer({
-        id: HEATMAP_LAYER_ID,
-        type: "heatmap",
-        source: HEATMAP_SOURCE_ID,
-        maxzoom: 17,
-        paint: {
-          "heatmap-weight": [
-            "interpolate",
-            ["linear"],
-            ["get", "weight"],
-            0,
-            0,
-            20,
-            1,
-          ],
-          "heatmap-intensity": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            0,
-            1.0,
-            8,
-            1.3,
-            12,
-            1.8,
-            17,
-            2.5,
-          ],
-          "heatmap-color": [
-            "interpolate",
-            ["linear"],
-            ["heatmap-density"],
-            0,
-            "rgba(59,130,246,0)",
-            0.1,
-            "rgba(59,130,246,0.4)",
-            0.2,
-            "rgba(16,185,129,0.6)",
-            0.3,
-            "rgba(245,158,11,0.7)",
-            0.4,
-            "rgba(249,115,22,0.75)",
-            0.5,
-            "rgba(239,68,68,0.8)",
-            0.6,
-            "rgba(220,38,38,0.85)",
-            0.7,
-            "rgba(185,28,28,0.9)",
-            0.8,
-            "rgba(153,27,27,0.95)",
-            0.9,
-            "rgba(127,29,29,0.98)",
-            1,
-            "rgba(69,10,10,1.0)",
-          ],
-          "heatmap-radius": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            0,
-            20,
-            8,
-            40,
-            12,
-            55,
-            17,
-            80,
-          ],
-          "heatmap-opacity": 1.0,
-        },
-      });
-    }
-  } else if (map.getLayer(HEATMAP_LAYER_ID)) {
-    map.removeLayer(HEATMAP_LAYER_ID);
-  }
-
-  if (!map.getLayer(POINT_LAYER_ID)) {
-    map.addLayer({
-      id: POINT_LAYER_ID,
-      type: "circle",
-      source: HEATMAP_SOURCE_ID,
-      paint: {
-        "circle-radius": [
-          "interpolate",
-          ["linear"],
-          ["get", "weight"],
-          1,
-          8,
-          5,
-          12,
-          10,
-          16,
-          15,
-          20,
-          20,
-          25,
-        ],
-        "circle-color": [
-          "coalesce",
-          ["get", "color"],
-          "#ef4444",
-        ],
-        "circle-stroke-width": 1.5,
-        "circle-stroke-color": "#ffffff",
-        "circle-opacity": props.useHeatmap ? 0.55 : 0.85,
-      },
-    });
-  }
-}
-
-function fitBoundsToPoints() {
-  if (!map || !props.fitToPoints || !props.points.length) return;
-  const validPoints = props.points.filter(
-    (point) => Number.isFinite(Number(point?.lng)) && Number.isFinite(Number(point?.lat))
-  );
-  if (!validPoints.length) return;
-  if (validPoints.length === 1) {
-    map.flyTo({
-      center: [Number(validPoints[0].lng), Number(validPoints[0].lat)],
-      zoom: Math.max(props.zoom, 13),
-      essential: true,
-    });
+  if (!useDualMarkers.value) {
+    userMarker?.remove();
+    userMarker = null;
+    destMarker?.remove();
+    destMarker = null;
     return;
   }
-  const bounds = new maplibregl.LngLatBounds(
-    [Number(validPoints[0].lng), Number(validPoints[0].lat)],
-    [Number(validPoints[0].lng), Number(validPoints[0].lat)]
-  );
-  validPoints.forEach((point) => bounds.extend([Number(point.lng), Number(point.lat)]));
-  map.fitBounds(bounds, { padding: 40, maxZoom: 14, duration: 800 });
+
+  removeLegacyMarker();
+
+  if (validLngLat(props.userLngLat)) {
+    if (!userMarker) {
+      userMarker = new maplibregl.Marker({ element: makeUserDotEl(), anchor: "center" })
+        .setLngLat(props.userLngLat)
+        .addTo(map);
+    } else {
+      userMarker.setLngLat(props.userLngLat);
+    }
+  } else {
+    userMarker?.remove();
+    userMarker = null;
+  }
+
+  if (validLngLat(props.destinationLngLat)) {
+    if (!destMarker) {
+      destMarker = new maplibregl.Marker({ color: "#ea4335" })
+        .setLngLat(props.destinationLngLat)
+        .addTo(map);
+    } else {
+      destMarker.setLngLat(props.destinationLngLat);
+    }
+  } else {
+    destMarker?.remove();
+    destMarker = null;
+  }
 }
 
-function bindPointPopup() {
+function syncLegacyMarker() {
   if (!map) return;
-
-  map.on("click", POINT_LAYER_ID, (event) => {
-    const feature = event.features?.[0];
-    if (!feature) return;
-
-    const coordinates = feature.geometry.coordinates.slice();
-    const title = feature.properties?.title || "Điểm cảnh báo";
-    const description = feature.properties?.description || "Không có mô tả";
-    const count = feature.properties?.count || 1;
-
-    popup?.remove();
-    popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true })
-      .setLngLat(coordinates)
-      .setHTML(`
-        <div style="min-width:180px">
-          <div style="font-weight:600; margin-bottom:6px;">${title}</div>
-          <div style="font-size:12px; color:#6b7280; margin-bottom:4px;">${description}</div>
-          <div style="font-size:12px;">Mật độ: <strong>${count}</strong> yêu cầu</div>
-          <div style="font-size:11px; color:#6b7280; margin-top:2px;">Cấp độ: ${getIntensityLevel(count)}</div>
-        </div>
-      `)
+  if (useDualMarkers.value) return;
+  if (!props.showMarker) {
+    legacyMarker?.remove();
+    legacyMarker = null;
+    return;
+  }
+  if (!legacyMarker) {
+    legacyMarker = new maplibregl.Marker({ color: "#dc3545" })
+      .setLngLat(props.center)
       .addTo(map);
-    map.flyTo({ center: coordinates, zoom: Math.max(map.getZoom(), 13), essential: true });
-  });
+  } else {
+    legacyMarker.setLngLat(props.center);
+  }
+}
 
-  map.on("mouseenter", POINT_LAYER_ID, () => {
-    map.getCanvas().style.cursor = "pointer";
-  });
+function styleLoaded() {
+  return typeof map.isStyleLoaded !== "function" || map.isStyleLoaded();
+}
 
-  map.on("mouseleave", POINT_LAYER_ID, () => {
-    map.getCanvas().style.cursor = "";
+function clearAlternativeRoutes() {
+  if (!map) return;
+  if (map.getLayer("rescuer-route-alts-line")) map.removeLayer("rescuer-route-alts-line");
+  if (map.getSource("rescuer-alts")) map.removeSource("rescuer-alts");
+}
+
+/**
+ * Style OpenMap đôi khi thiếu sprite (town_hall-11, road_6, …) → cảnh báo console.
+ * Gắn ảnh trong suốt 1×1 để map không lỗi khi vẽ symbol.
+ */
+function installStyleImageFallback() {
+  if (!map) return;
+  map.on("styleimagemissing", (e) => {
+    if (map.hasImage(e.id)) return;
+    try {
+      map.addImage(e.id, {
+        width: 1,
+        height: 1,
+        data: new Uint8Array(4),
+      });
+    } catch {
+      /* ignore */
+    }
   });
+}
+
+function initRouteLayer() {
+  if (!map || !styleLoaded() || map.getSource("rescuer-route")) return;
+  map.addSource("rescuer-route", {
+    type: "geojson",
+    data: {
+      type: "Feature",
+      properties: {},
+      geometry: { type: "LineString", coordinates: [] },
+    },
+  });
+  /* Không truyền beforeId: thêm vào cuối stack = vẽ trên cùng (tránh bị chìm dưới layer nền) */
+  map.addLayer({
+    id: "rescuer-route-casing",
+    type: "line",
+    source: "rescuer-route",
+    layout: { "line-join": "round", "line-cap": "round" },
+    paint: {
+      "line-color": "#ffffff",
+      "line-width": 12,
+      "line-opacity": 1,
+    },
+  });
+  map.addLayer({
+    id: "rescuer-route-line",
+    type: "line",
+    source: "rescuer-route",
+    layout: { "line-join": "round", "line-cap": "round" },
+    paint: {
+      "line-color": "#1a73e8",
+      "line-width": 7,
+      "line-opacity": 1,
+    },
+  });
+}
+
+/** Tuyến phụ (màu nhạt, giống gợi ý phụ trên Google Maps) */
+function setAlternativeRoutes(alternatives) {
+  if (!map || !styleLoaded()) return;
+  clearAlternativeRoutes();
+  if (!alternatives?.length) return;
+  const features = alternatives
+    .filter((c) => Array.isArray(c) && c.length > 1)
+    .map((coordinates) => ({
+      type: "Feature",
+      properties: {},
+      geometry: { type: "LineString", coordinates },
+    }));
+  if (!features.length) return;
+  map.addSource("rescuer-alts", {
+    type: "geojson",
+    data: { type: "FeatureCollection", features },
+  });
+  map.addLayer({
+    id: "rescuer-route-alts-line",
+    type: "line",
+    source: "rescuer-alts",
+    layout: { "line-join": "round", "line-cap": "round" },
+    paint: {
+      "line-color": "#A8C7FA",
+      "line-width": 6,
+      "line-opacity": 0.9,
+    },
+  });
+  if (map.getLayer("rescuer-route-casing")) {
+    map.moveLayer("rescuer-route-alts-line", "rescuer-route-casing");
+  }
 }
 
 function initMap() {
@@ -303,23 +255,93 @@ function initMap() {
     zoom: props.zoom,
   });
   map.addControl(new maplibregl.NavigationControl(), "top-right");
-
-  ensureMarker();
+  installStyleImageFallback();
 
   map.on("load", () => {
-    ensureHeatmapLayers();
-    fitBoundsToPoints();
-    bindPointPopup();
     map.resize();
+    initRouteLayer();
+    syncDualMarkers();
+    syncLegacyMarker();
   });
 }
 
 function flyTo(lng, lat, zoom = 15) {
   if (!map) return;
   map.flyTo({ center: [lng, lat], zoom, essential: true });
-  if (marker) {
-    marker.setLngLat([lng, lat]);
+  if (!useDualMarkers.value && legacyMarker) {
+    legacyMarker.setLngLat([lng, lat]);
   }
+}
+
+/** Đưa tuyến chính lên trên cùng (tránh bị layer của style thêm sau che mất) */
+function bringRouteLayersToFront() {
+  if (!map) return;
+  try {
+    if (map.getLayer("rescuer-route-casing")) map.moveLayer("rescuer-route-casing");
+    if (map.getLayer("rescuer-route-line")) map.moveLayer("rescuer-route-line");
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * @param {{ primary: number[][], alternatives?: number[][] }} payload
+ */
+function setRouteData(payload) {
+  const coords = payload?.primary;
+  const alternatives = payload?.alternatives;
+  if (!map || !coords?.length) return;
+  const apply = () => {
+    if (!map || !styleLoaded()) return;
+    clearAlternativeRoutes();
+    if (!map.getSource("rescuer-route")) {
+      initRouteLayer();
+    }
+    const src = map.getSource("rescuer-route");
+    if (!src) return;
+    src.setData({
+      type: "Feature",
+      properties: {},
+      geometry: { type: "LineString", coordinates: coords },
+    });
+    if (alternatives?.length) setAlternativeRoutes(alternatives);
+    bringRouteLayersToFront();
+    map.once("idle", bringRouteLayersToFront);
+  };
+  if (styleLoaded()) apply();
+  else map.once("load", apply);
+}
+
+/** Tương thích cũ: chỉ một LineString */
+function setRouteCoordinates(coords) {
+  setRouteData({ primary: coords });
+}
+
+function clearRoute() {
+  if (!map) return;
+  clearAlternativeRoutes();
+  const src = map.getSource("rescuer-route");
+  if (src) {
+    src.setData({
+      type: "Feature",
+      properties: {},
+      geometry: { type: "LineString", coordinates: [] },
+    });
+  }
+}
+
+/** Giới hạn khung nhìn để thấy tất cả điểm [lng, lat] */
+function fitBounds(points, padding = 72, maxZoom = 15) {
+  if (!map || !points?.length) return;
+  const valid = points.filter(validLngLat);
+  if (!valid.length) return;
+  if (valid.length === 1) {
+    map.flyTo({ center: valid[0], zoom: maxZoom, essential: true });
+    return;
+  }
+  const bounds = new maplibregl.LngLatBounds(valid[0], valid[0]);
+  valid.forEach((p) => bounds.extend(p));
+  map.fitBounds(bounds, { padding, maxZoom, essential: true });
 }
 
 function locateUser() {
@@ -339,10 +361,6 @@ function locateUser() {
   });
 }
 
-function onResize() {
-  map?.resize();
-}
-
 onMounted(() => {
   initMap();
   window.addEventListener("resize", onResize);
@@ -350,61 +368,58 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener("resize", onResize);
-  popup?.remove();
-  popup = null;
-  marker?.remove();
-  marker = null;
+  legacyMarker?.remove();
+  legacyMarker = null;
+  userMarker?.remove();
+  userMarker = null;
+  destMarker?.remove();
+  destMarker = null;
   map?.remove();
   map = null;
 });
+
+function onResize() {
+  map?.resize();
+}
 
 watch(
   () => [...props.center],
   (c) => {
     if (map && c?.length === 2) {
       map.setCenter(c);
-      if (marker) marker.setLngLat(c);
+      if (!useDualMarkers.value) syncLegacyMarker();
     }
   }
 );
 
 watch(
-  () => props.showMarker,
+  () => [props.userLngLat, props.destinationLngLat, props.showMarker],
   () => {
-    ensureMarker();
-  }
-);
-
-watch(
-  () => props.points,
-  () => {
-    if (!map || !map.isStyleLoaded()) return;
-    ensureHeatmapLayers();
-    fitBoundsToPoints();
+    if (!map) return;
+    syncDualMarkers();
+    syncLegacyMarker();
   },
   { deep: true }
 );
 
-watch(
-  () => props.useHeatmap,
-  () => {
-    if (!map || !map.isStyleLoaded()) return;
-    ensureHeatmapLayers();
-  }
-);
-
-defineExpose({ flyTo, locateUser, map: () => map });
+defineExpose({
+  flyTo,
+  locateUser,
+  setRouteData,
+  setRouteCoordinates,
+  clearRoute,
+  fitBounds,
+  map: () => map,
+});
 </script>
 
 <style scoped>
 .mapbox-wrap {
   min-height: 280px;
 }
-
 .mapbox-canvas {
   min-height: inherit;
 }
-
 .mapbox-fallback {
   min-height: 280px;
   border-radius: 1rem;

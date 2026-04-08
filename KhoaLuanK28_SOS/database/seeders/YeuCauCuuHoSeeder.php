@@ -17,17 +17,20 @@ class YeuCauCuuHoSeeder extends Seeder
         $users = NguoiDung::pluck('id_nguoi_dung')->toArray();
         $types = LoaiSuCo::pluck('id_loai_su_co')->toArray();
 
+        // Khu vực Đà Nẵng (trung tâm ~ 16.0544, 108.2022)
         $locations = [
-            ['dia_chi' => '123 Đường Lê Duẩn, Hải Châu', 'lat' => 16.0678, 'lng' => 108.2208],
-            ['dia_chi' => '456 Đường Nguyễn Văn Linh, Hải Châu', 'lat' => 16.0600, 'lng' => 108.2200],
-            ['dia_chi' => 'Cầu Rồng, Hải Châu', 'lat' => 16.0617, 'lng' => 108.2270],
-            ['dia_chi' => 'Biển Mỹ Khê, Sơn Trà', 'lat' => 16.0675, 'lng' => 108.2450],
-            ['dia_chi' => 'Đường Điện Biên Phủ, Thanh Khê', 'lat' => 16.0750, 'lng' => 108.2000],
-            ['dia_chi' => 'Chợ Hàn, Hải Châu', 'lat' => 16.0700, 'lng' => 108.2240],
-            ['dia_chi' => 'Công viên 29/3, Thanh Khê', 'lat' => 16.0725, 'lng' => 108.2100],
-            ['dia_chi' => 'Bán đảo Sơn Trà', 'lat' => 16.1200, 'lng' => 108.3000],
-            ['dia_chi' => 'Ngũ Hành Sơn', 'lat' => 16.0037, 'lng' => 108.2630],
-            ['dia_chi' => 'Đường Hoàng Sa, Sơn Trà', 'lat' => 16.1000, 'lng' => 108.2700],
+            ['dia_chi' => 'Cầu Rồng, Hải Châu', 'lat' => 16.0610, 'lng' => 108.2275],
+            ['dia_chi' => 'Chợ Hàn, Hải Châu', 'lat' => 16.0675, 'lng' => 108.2220],
+            ['dia_chi' => 'Bãi biển Mỹ Khê, Sơn Trà', 'lat' => 16.0900, 'lng' => 108.2460],
+            ['dia_chi' => 'Cầu Thuận Phước, Hải Châu', 'lat' => 16.0950, 'lng' => 108.2100],
+            ['dia_chi' => 'Công viên Biển Đông, Sơn Trà', 'lat' => 16.1180, 'lng' => 108.2520],
+            ['dia_chi' => 'Ga Đà Nẵng, Thanh Khê', 'lat' => 16.0560, 'lng' => 108.1720],
+            ['dia_chi' => 'Cầu Sông Hàn, Hải Châu', 'lat' => 16.0680, 'lng' => 108.2250],
+            ['dia_chi' => 'Làng Vân, Ngũ Hành Sơn', 'lat' => 15.9950, 'lng' => 108.2650],
+            ['dia_chi' => 'Cầu Nguyễn Văn Trỗi, Hải Châu', 'lat' => 16.0480, 'lng' => 108.2180],
+            ['dia_chi' => 'ĐH Đà Nẵng, Liên Chiểu', 'lat' => 16.0475, 'lng' => 108.1580],
+            ['dia_chi' => 'Helio Center, Hải Châu', 'lat' => 16.0400, 'lng' => 108.2120],
+            ['dia_chi' => 'Big C Đà Nẵng, Cẩm Lệ', 'lat' => 16.0150, 'lng' => 108.2050],
         ];
 
         $statuses = ['CHO_XU_LY', 'DANG_XU_LY', 'HOAN_THANH', 'HUY_BO'];

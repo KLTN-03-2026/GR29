@@ -111,7 +111,7 @@ class NguoiDungController extends Controller
             'data' => $user->makeHidden(['mat_khau', 'api_token']),
         ]);
     }
-// ud 
+
     public function updateProfile(Request $request)
     {
         $user = Auth::guard('sanctum')->user();
@@ -123,91 +123,16 @@ class NguoiDungController extends Controller
             ], 401);
         }
 
-        $validated = $request->validate([
-            'ho_ten' => 'sometimes|required|string|max:255',
-            'email' => 'sometimes|required|email|unique:nguoi_dung,email,' . $user->id_nguoi_dung . ',id_nguoi_dung',
-            'so_dien_thoai' => 'sometimes|nullable|string|regex:/^0\d{9,10}$/',
-            'mat_khau' => 'sometimes|required|string|min:6|confirmed',
+        $user->update([
+            'ho_ten' => $request->ho_ten ?? $user->ho_ten,
+            'email' => $request->email ?? $user->email,
+            'so_dien_thoai' => $request->so_dien_thoai ?? $user->so_dien_thoai,
         ]);
-
-        $updateData = [];
-
-        foreach (['ho_ten', 'email', 'so_dien_thoai'] as $field) {
-            if (array_key_exists($field, $validated)) {
-                $updateData[$field] = $validated[$field];
-            }
-        }
-
-        if (array_key_exists('mat_khau', $validated)) {
-            $updateData['mat_khau'] = Hash::make($validated['mat_khau']);
-        }
-
-        if (empty($updateData)) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Khong co du lieu de cap nhat',
-            ], 422);
-        }
-
-        $user->update($updateData);
 
         return response()->json([
             'status' => true,
             'message' => 'Cap nhat thong tin thanh cong',
             'data' => $user->fresh()->makeHidden(['mat_khau', 'api_token']),
-        ]);
-    }
-
-    public function changePassword(Request $request)
-    {
-        $user = Auth::guard('sanctum')->user();
-
-        if (!$user || !($user instanceof NguoiDung)) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Unauthorized',
-            ], 401);
-        }
-
-        $request->merge([
-            'current_password' => $request->input('current_password')
-                ?? $request->input('currentPassword')
-                ?? $request->input('old_password')
-                ?? $request->input('oldPassword'),
-            'new_password' => $request->input('new_password')
-                ?? $request->input('newPassword')
-                ?? $request->input('mat_khau_moi'),
-            'new_password_confirmation' => $request->input('new_password_confirmation')
-                ?? $request->input('newPasswordConfirmation')
-                ?? $request->input('confirm_password')
-                ?? $request->input('confirmPassword')
-                ?? $request->input('mat_khau_moi_confirmation'),
-        ]);
-
-        $validated = $request->validate([
-            'current_password' => 'required|string',
-            'new_password' => 'required|string|min:6|different:current_password|confirmed',
-        ], [
-            'current_password.required' => 'Vui long nhap mat khau hien tai',
-            'new_password.required' => 'Vui long nhap mat khau moi',
-            'new_password.min' => 'Mat khau moi phai co it nhat 6 ky tu',
-            'new_password.different' => 'Mat khau moi phai khac mat khau hien tai',
-            'new_password.confirmed' => 'Xac nhan mat khau moi khong khop',
-        ]);
-
-        if (!Hash::check($validated['current_password'], $user->mat_khau)) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Mat khau hien tai khong dung',
-            ], 422);
-        }
-
-        $user->mat_khau = Hash::make($validated['new_password']);
-        $user->save();
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Doi mat khau thanh cong',
         ]);
     }
 
