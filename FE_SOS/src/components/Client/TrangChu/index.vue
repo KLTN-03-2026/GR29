@@ -2,7 +2,7 @@
     <div class="container-fluid p-0 d-flex flex-column flex-lg-row flex-grow-1 overflow-hidden h-100">
         <div class="col-lg-5 col-xl-4 bg-white p-4 p-xl-5 overflow-y-auto" style="max-height: 100%;">
             <h2 class="fw-bold mb-1">Yêu cầu cứu hộ mới</h2>
-            <p class="text-muted small mb-4">Cung cap thong tin chinh xac de luc luong phan ung tiep can nhanh nhat.</p>
+            <p class="text-muted small mb-4">Cung cấp thông tin chính xác để lực lượng phản ứng tiếp cận nhanh nhất.</p>
 
             <label class="fw-bold small text-uppercase mb-2 d-block text-secondary text-opacity-75">Loai su co khan
                 cap</label>
