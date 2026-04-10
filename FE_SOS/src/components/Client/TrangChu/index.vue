@@ -1,14 +1,14 @@
 <template>
     <div class="container-fluid p-0 d-flex flex-column flex-lg-row flex-grow-1 overflow-hidden h-100">
         <div class="col-lg-5 col-xl-4 bg-white p-4 p-xl-5 overflow-y-auto" style="max-height: 100%;">
-            <h2 class="fw-bold mb-1">Yeu cau cuu ho moi</h2>
+            <h2 class="fw-bold mb-1">Yêu cầu cứu hộ mới</h2>
             <p class="text-muted small mb-4">Cung cap thong tin chinh xac de luc luong phan ung tiep can nhanh nhat.</p>
 
             <label class="fw-bold small text-uppercase mb-2 d-block text-secondary text-opacity-75">Loai su co khan
                 cap</label>
             <div class="row g-2 mb-4 mt-2">
                 <div v-if="loadingIncidentTypes" class="col-12">
-                    <div class="small text-muted bg-light rounded-3 px-3 py-2">Dang tai loai su co...</div>
+                    <div class="small text-muted bg-light rounded-3 px-3 py-2">Đang tải loại sự cố...</div>
                 </div>
                 <div v-else-if="incidentTypes.length === 0" class="col-12">
                     <div class="small text-danger bg-light rounded-3 px-3 py-2">
@@ -27,10 +27,10 @@
             </div>
 
             <div v-if="selectedType" class="mb-4">
-                <label class="fw-bold small text-uppercase mb-2 d-block text-secondary text-opacity-75">Chi tiet su
-                    co</label>
+                <label class="fw-bold small text-uppercase mb-2 d-block text-secondary text-opacity-75">Chi tiết sự cố
+                </label>
                 <div v-if="loadingDetails" class="small text-muted text-center py-2 bg-light rounded-3">
-                    <i class="fas fa-spinner fa-spin me-2"></i> Dang tai chi tiet...
+                    <i class="fas fa-spinner fa-spin me-2"></i> Đang tải chi tiết...
                 </div>
                 <div v-else class="d-flex flex-wrap gap-2">
                     <div v-for="detail in incidentDetails" :key="detail.id">
@@ -42,7 +42,7 @@
                         </label>
                     </div>
                     <div v-if="incidentDetails.length === 0" class="small text-muted py-2 px-3 bg-light rounded-3">
-                        Khong co chi tiet cho loai su co nay.
+                        Không có chi tiết cho loại sự cố này.
                     </div>
                 </div>
             </div>
