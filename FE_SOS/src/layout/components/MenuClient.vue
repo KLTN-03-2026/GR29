@@ -175,8 +175,11 @@ function logout() {
     background: linear-gradient(135deg, #15253b 0%, #1a2a40 40%, #16253a 100%);
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(10px);
-    position: relative;
-    z-index: 1050; /* Ensure navbar is above the map or other content */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1050;
 }
 
 .now-brand {

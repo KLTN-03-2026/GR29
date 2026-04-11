@@ -1,8 +1,8 @@
 <template>
     <div class="container-fluid p-0 d-flex flex-column flex-lg-row flex-grow-1 overflow-hidden h-100">
         <div class="col-lg-5 col-xl-4 bg-white p-4 p-xl-5 overflow-y-auto" style="max-height: 100%;">
-            <h2 class="fw-bold mb-1">Yeu cau cuu ho moi</h2>
-            <p class="text-muted small mb-4">Cung cap thong tin chinh xac de luc luong phan ung tiep can nhanh nhat.</p>
+            <h2 class="fw-bold mb-1">Yêu Cầu Cứu Hộ Mới</h2>
+            <p class="text-muted small mb-4">Cung cấp thông tin chính xác để lực lượng phản ứng tiếp cận nhanh nhất.</p>
 
             <label class="fw-bold small text-uppercase mb-2 d-block text-secondary text-opacity-75">Loai su co khan
                 cap</label>
@@ -47,22 +47,55 @@
                 </div>
             </div>
 
-            <div class="bg-light rounded-3 p-3 mb-4 border border-secondary border-opacity-10 shadow-sm">
+            <div
+                class="bg-light rounded-3 p-3 mb-3 border border-secondary border-opacity-10 shadow-sm position-relative">
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <label class="fw-bold small text-uppercase mb-0 text-secondary">Vi tri cua ban</label>
+                    <label class="fw-bold small text-uppercase mb-0 text-secondary">Vị Trí của bạn</label>
                     <button type="button" class="btn btn-dark btn-sm rounded-pill px-3 fw-bold shadow-sm"
                         style="font-size: 10px;" :disabled="locating" @click="layGps">
                         <i class="fa-solid fa-location-crosshairs me-1"></i>
-                        {{ locating ? 'Dang lay...' : 'Xac dinh GPS' }}
+                        {{ locating ? 'Dang lay...' : 'Xác định GPS' }}
                     </button>
                 </div>
                 <div class="input-group bg-white rounded-2 overflow-hidden shadow-sm">
-                    <span class="input-group-text bg-white border-0"><i
-                            class="fa-solid fa-location-dot text-danger"></i></span>
-                    <input v-model="address" type="text" class="form-control border-0 py-2 shadow-none small"
-                        placeholder="Nhap dia chi chi tiet...">
+                    <span class="input-group-text bg-white border-0 py-1">
+                        <i class="fa-solid fa-magnifying-glass text-muted"></i>
+                    </span>
+                    <input v-model="addressSearch" type="text" class="form-control border-0 py-1 shadow-none small"
+                        placeholder="Tim dia chi..." @input="timDiaChi">
+                    <button class="btn btn-secondary border-0 rounded-0 py-1" type="button" @click="timDiaChi"
+                        :disabled="!addressSearch.trim()">
+                        <i class="fa-solid fa-search"></i>
+                    </button>
                 </div>
-                <div v-if="coordsText" class="small text-muted mt-2 mb-0">{{ coordsText }}</div>
+                <div v-if="addressSuggestions.length > 0" class="list-group shadow-sm mt-1 rounded-2 overflow-hidden"
+                    style="position: absolute; left: 12px; right: 12px; z-index: 1050; max-height: 120px; overflow-y: auto;">
+                    <button v-for="(suggestion, index) in addressSuggestions" :key="index" type="button"
+                        class="list-group-item list-group-item-action py-1 px-2 small text-start"
+                        style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+                        @click="chonDiaChi(suggestion)">
+                        <i class="fa-solid fa-location-dot text-danger me-1"></i>
+                        {{ suggestion.display_name }}
+                    </button>
+                </div>
+                <div class="input-group bg-white rounded-2 overflow-hidden shadow-sm mt-2">
+                    <span class="input-group-text bg-white border-0 py-1">
+                        <i class="fa-solid fa-location-dot text-danger"></i>
+                    </span>
+                    <input v-model="address" type="text" class="form-control border-0 py-1 shadow-none small bg-light"
+                        readonly placeholder="Dia chi se hien thi sau khi chon vi tri...">
+                </div>
+                <div v-if="coordsText" class="small text-muted mt-1 mb-0 d-flex align-items-center">
+                    <i class="fa-solid fa-check-circle text-success me-1"></i>
+                    {{ coordsText }}
+                    <span v-if="coordsSource" class="ms-2 badge bg-success-subtle text-success" style="font-size: 9px;">
+                        {{ coordsSource }}
+                    </span>
+                </div>
+                <div v-if="!selectedCoords" class="small text-muted mt-1 mb-0 fst-italic">
+                    <i class="fa-solid fa-hand-pointer me-1"></i>
+                    Click len ban do hoac tim dia chi
+                </div>
             </div>
 
             <div class="mb-4">
@@ -116,7 +149,8 @@
             style="min-height: 320px;">
             <div class="flex-grow-1 rounded-4 overflow-hidden border border-white border-4 shadow-lg position-relative bg-white"
                 style="min-height: 320px;">
-                <MapboxMap ref="mapRef" class="position-absolute top-0 start-0 w-100 h-100" />
+                <MapboxMap ref="mapRef" class="position-absolute top-0 start-0 w-100 h-100" :enableClick="true"
+                    @mapClick="xuLyClickMap" />
                 <div class="position-absolute bottom-0 start-0 m-3 d-none d-md-block">
                     <div class="card border-0 shadow-lg p-3 rounded-4" style="width: 260px;">
                         <h6 class="fw-bold small text-uppercase mb-3 text-secondary">Luc luong lan can</h6>
@@ -228,6 +262,9 @@ export default {
             loadingDetails: false,
             incidentTypeError: "",
             address: "",
+            addressSearch: "",
+            addressSuggestions: [],
+            coordsSource: "",
             description: "",
             coordsText: "",
             locating: false,
@@ -239,6 +276,7 @@ export default {
             mucDoKhanCap: "HIGH",
             diemUuTien: null,
             trangThai: null,
+            searchTimeout: null,
             units: [
                 { name: "Canh sat", d: "1.2 km - 5p", i: "fa-shield-halved", c: "bg-primary", t: "text-primary" },
                 { name: "BV Da khoa", d: "0.8 km - 3p", i: "fa-hospital", c: "bg-danger", t: "text-danger" }
@@ -344,13 +382,73 @@ export default {
                     const { lng, lat } = await map.locateUser();
                     this.selectedCoords = { lng, lat };
                     this.coordsText = `GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+                    this.coordsSource = "GPS";
                 }
             } catch (e) {
                 this.coordsText = "Khong lay duoc vi tri (cap quyen trinh duyet hoac dung HTTPS).";
             } finally {
                 this.locating = false;
             }
-        },        handleFileSelect(event) {
+        },
+        xuLyClickMap({ lng, lat }) {
+            this.selectedCoords = { lng, lat };
+            this.coordsText = `GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+            this.coordsSource = "Ban do";
+            this.addressSuggestions = [];
+            this.diaChiTuCoords(lat, lng);
+        },
+        async diaChiTuCoords(lat, lng) {
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=vi`
+                );
+                const data = await response.json();
+                if (data && data.display_name) {
+                    this.address = data.display_name;
+                }
+            } catch (e) {
+                console.error("Khong lay duoc dia chi tu toa do:", e);
+            }
+        },
+        async timDiaChi() {
+            if (!this.addressSearch.trim()) {
+                this.addressSuggestions = [];
+                return;
+            }
+
+            if (this.searchTimeout) {
+                clearTimeout(this.searchTimeout);
+            }
+
+            this.searchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(
+                        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(this.addressSearch)}&limit=5&accept-language=vi`
+                    );
+                    const results = await response.json();
+                    this.addressSuggestions = results;
+                } catch (e) {
+                    console.error("Loi tim dia chi:", e);
+                    this.addressSuggestions = [];
+                }
+            }, 300);
+        },
+        chonDiaChi(suggestion) {
+            const lat = parseFloat(suggestion.lat);
+            const lng = parseFloat(suggestion.lon);
+
+            this.selectedCoords = { lng, lat };
+            this.coordsText = `GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+            this.coordsSource = "Tim kiem";
+            this.address = suggestion.display_name;
+            this.addressSuggestions = [];
+            this.addressSearch = "";
+
+            const map = this.$refs.mapRef;
+            if (map?.flyTo) {
+                map.flyTo(lng, lat, 16);
+            }
+        }, handleFileSelect(event) {
             const file = event.target.files?.[0];
             if (!file) {
                 this.selectedImageName = "";
@@ -363,7 +461,7 @@ export default {
                 this.selectedImageData = String(reader.result);
             };
             reader.readAsDataURL(file);
-        },        layIdNguoiDungHienTai() {
+        }, layIdNguoiDungHienTai() {
             const sources = ["user", "client"];
             for (const key of sources) {
                 const raw = localStorage.getItem(key);
@@ -404,13 +502,8 @@ export default {
                 return;
             }
 
-            if (!this.address.trim()) {
-                this.hienToast("warning", "Vui long nhap dia chi xay ra su co.");
-                return;
-            }
-
             if (!this.selectedCoords?.lat || !this.selectedCoords?.lng) {
-                this.hienToast("warning", "Vui long bam Xac dinh GPS truoc khi gui yeu cau.");
+                this.hienToast("warning", "Vui long chon vi tri tren ban do hoac tim kiem dia chi.");
                 return;
             }
 
@@ -440,7 +533,10 @@ export default {
                 );
                 this.description = "";
                 this.address = "";
+                this.addressSearch = "";
+                this.addressSuggestions = [];
                 this.coordsText = "";
+                this.coordsSource = "";
                 this.selectedCoords = null;
                 this.selectedImageName = "";
                 this.selectedImageData = null;
