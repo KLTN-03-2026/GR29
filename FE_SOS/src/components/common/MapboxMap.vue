@@ -17,6 +17,8 @@ import { onMounted, onUnmounted, ref, watch } from "vue";
 import maplibregl from "@openmapvn/openmapvn-gl";
 import "@openmapvn/openmapvn-gl/dist/maplibre-gl.css";
 
+const emit = defineEmits(["mapClick"]);
+
 const props = defineProps({
   center: {
     type: Array,
@@ -35,6 +37,11 @@ const props = defineProps({
   mapStyle: {
     type: String,
     default: "day-v1",
+  },
+  /** Bật click trên map để lấy tọa độ */
+  enableClick: {
+    type: Boolean,
+    default: false,
   },
 });
 
@@ -57,6 +64,15 @@ function initMap() {
   });
   map.addControl(new maplibregl.NavigationControl(), "top-right");
 
+  // Xử lý click trên map
+  if (props.enableClick) {
+    map.on("click", (e) => {
+      const { lng, lat } = e.lngLat;
+      setMarkerPosition(lng, lat);
+      emit("mapClick", { lng, lat });
+    });
+  }
+
   if (props.showMarker) {
     marker = new maplibregl.Marker({ color: "#dc3545" })
       .setLngLat(props.center)
@@ -71,7 +87,15 @@ function initMap() {
 function flyTo(lng, lat, zoom = 15) {
   if (!map) return;
   map.flyTo({ center: [lng, lat], zoom, essential: true });
-  if (marker) {
+  setMarkerPosition(lng, lat);
+}
+
+function setMarkerPosition(lng, lat) {
+  if (!marker) {
+    marker = new maplibregl.Marker({ color: "#dc3545" })
+      .setLngLat([lng, lat])
+      .addTo(map);
+  } else {
     marker.setLngLat([lng, lat]);
   }
 }
@@ -120,7 +144,7 @@ watch(
   }
 );
 
-defineExpose({ flyTo, locateUser, map: () => map });
+defineExpose({ flyTo, locateUser, setMarkerPosition, map: () => map });
 </script>
 
 <style scoped>

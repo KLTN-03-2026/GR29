@@ -139,4 +139,15 @@ export const rescuerAccountAPI = {
   delete: (id) => api.delete(`/thanh-vien-doi/delete/${id}`),
 };
 
+// Rescue Results (Kết quả Cứu hộ)
+export const rescueResultAPI = {
+  getList: () => api.get('/ket-qua-cuu-ho'),
+  getByUser: (userId) => api.get('/ket-qua-cuu-ho', { params: { id_nguoi_dung: userId } }),
+  getDetail: (id) => api.get(`/ket-qua-cuu-ho/${id}`),
+  create: (data) => api.post('/ket-qua-cuu-ho', data),
+  update: (id, data) => api.put(`/ket-qua-cuu-ho/${id}`, data),
+  search: (query) => api.get('/ket-qua-cuu-ho/tim-kiem', { params: { noi_dung_tim: query } }),
+  delete: (id) => api.delete(`/ket-qua-cuu-ho/${id}`),
+};
+
 export default api;

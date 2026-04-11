@@ -1,47 +1,218 @@
 <template>
-  <div class="bg-light min-vh-100 p-4 p-md-5">
-    <div class="mb-5">
-      <h1 class="fw-bold" style="color: #1a2a40;"> Yêu cầu của bạn</h1>
-      <p class="text-secondary text-uppercase small fw-bold tracking-wider">THEO DÕI CÁC TÍN HIỆU KHẨN CẤP CỦA BẠN</p>
-    </div>
+  <div class="bg-light min-vh-100 py-4 py-md-5 px-3 px-md-5">
+    <div class="container-fluid px-0">
+      <!-- Header Section -->
+      <div class="mb-5">
+        <h1 class="fw-bold font-headline tracking-tight" style="color: #1a2a40; font-size: 2.5rem;">Yêu cầu của bạn</h1>
+        <p class="text-secondary text-uppercase small fw-bold tracking-wider">THEO DÕI CÁC TÍN HIỆU KHẨN CẤP CỦA BẠN</p>
+      </div>
 
-    
+      <!-- Filter Bar - All in one row -->
+      <div class="d-flex flex-wrap align-items-end gap-3 mb-4 p-3 rounded-4" 
+           style="background: #f1f4f6;">
+        <!-- Thanh tìm kiếm -->
+        <div class="position-relative flex-grow-1" style="min-width: 250px; max-width: 350px;">
+          <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3" 
+             style="color: #737687; font-size: 1rem;"></i>
+          <input 
+            type="text" 
+            class="form-control ps-5 py-2.5 rounded-3 border-0" 
+            style="font-size: 0.875rem; background: #ffffff;"
+            placeholder="Tìm ID hoặc tiêu đề..."
+            v-model="searchQuery"
+            @input="onSearchInput"
+          >
+        </div>
 
-    <div class="row g-4">
-      <div v-for="item in danhsach" :key="item.id" class="col-12 col-md-6 col-xl-4">
-        <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
-          <div class="card-body p-4">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-              <span class="badge bg-secondary bg-opacity-10 text-secondary px-3 py-2 border">SOS-{{ item.id }}</span>
-              <span :class="['badge rounded-pill px-3 py-2', item.statusBg]">
-                <i class="bi bi-circle-fill me-2" style="font-size: 0.5rem;"></i> {{ item.statusText }}
-              </span>
+        <!-- Lọc theo loại sự cố -->
+        <div style="min-width: 180px;">
+          <select class="form-select py-2.5 px-4 rounded-3 border-0" 
+                  style="font-size: 0.875rem; background: #ffffff; color: #434655;"
+                  v-model="selectedType" @change="onFilterChange">
+            <option value="">Loại sự cố</option>
+            <option v-for="type in uniqueTypes" :key="type" :value="type">{{ type }}</option>
+          </select>
+        </div>
+
+        <!-- Lọc theo trạng thái -->
+        <div style="min-width: 180px;">
+          <select class="form-select py-2.5 px-4 rounded-3 border-0" 
+                  style="font-size: 0.875rem; background: #ffffff; color: #434655;"
+                  v-model="selectedStatus" @change="onFilterChange">
+            <option value="">Trạng thái</option>
+            <option value="CHO_XU_LY">Chờ xử lý</option>
+            <option value="DANG_XU_LY">Đang xử lý</option>
+            <option value="HOAN_THANH">Hoàn thành</option>
+          </select>
+        </div>
+
+        <!-- Nút xem tất cả -->
+        <button class="btn rounded-pill px-4 py-2.5 fw-bold shadow-sm" 
+                style="background: #feb700; color: #6b4b00; font-size: 0.875rem; white-space: nowrap;"
+                @click="viewAll">
+          Xem tất cả
+        </button>
+      </div>
+
+      <!-- Hiển thị số kết quả -->
+      <div class="mb-3" v-if="searchQuery || selectedType || selectedStatus">
+        <p class="text-secondary mb-0">
+          <i class="bi bi-info-circle me-1"></i>
+          Tìm thấy <strong>{{ filteredList.length }}</strong> kết quả
+        </p>
+      </div>
+
+      <!-- Loading state -->
+      <div v-if="loading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Đang tải...</span>
+        </div>
+        <p class="text-secondary mt-3">Đang tải danh sách yêu cầu...</p>
+      </div>
+
+      <!-- 2x2 Bento Grid of Request Cards -->
+      <div v-else-if="filteredList.length > 0" class="row g-4">
+        <div v-for="item in filteredList" :key="item.id" class="col-12 col-md-6">
+          <div class="glass-card rounded-4 p-4 d-flex flex-column flex-sm-row gap-4 hover-card">
+            <!-- Hình ảnh -->
+            <div class="rounded-3 overflow-hidden shrink-0 position-relative" 
+                 style="width: 100%; height: 180px; max-width: 180px;">
+              <img v-if="item.anh_hien_truong" 
+                   :src="item.anh_hien_truong" 
+                   class="w-100 h-100 object-fit-cover hover-image"
+                   alt="Ảnh hiện trường">
+              <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center" style="background: #e0e3e5;">
+                <i :class="['bi fs-1', item.icon, item.iconColor]"></i>
+              </div>
+              <div class="position-absolute top-2 start-2 bg-dark bg-opacity-50 backdrop-blur-md text-white px-2 py-1 rounded" 
+                   style="font-size: 0.625rem; font-weight: 700;">
+                ẢNH HIỆN TRƯỜNG
+              </div>
             </div>
 
-            <div class="d-flex align-items-start mb-4">
-              <div :class="['rounded-3 p-3 me-3 d-flex align-items-center justify-content-center', item.iconBg]" style="width:56px; height:56px;">
-                <i :class="['bi fs-4', item.icon, item.iconColor]"></i>
-              </div>
+            <!-- Nội dung -->
+            <div class="d-flex flex-column justify-content-between flex-grow py-1">
               <div>
-                <h5 class="fw-bold mb-1">{{ item.loai }}</h5>
-                <p class="text-muted small mb-0">{{ item.time }}</p>
-              </div>
-            </div>
-
-            <div class="d-flex align-items-center text-muted small mb-4">
-              <i class="bi bi-geo-alt me-2 text-danger"></i>
-              <span class="text-truncate">{{ item.address }}</span>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6 lg-6">
-                    <button class="btn btn-outline-danger d-flex align-items-center gap-2" @click="huyYeuCau(item)">
-                        <i class="bi bi-x-circle"></i>
-                        Hủy Yêu Cầu
-                    </button>
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <span class="px-2.5 py-1 rounded" 
+                        style="font-size: 0.75rem; font-weight: 700; background: #e0e3e5; color: #434655;">
+                    SOS-{{ item.id }}
+                  </span>
+                  <span :class="['px-2.5 py-1 rounded fw-bold', item.statusBadgeClass]" 
+                        style="font-size: 0.75rem;">
+                    {{ item.statusText }}
+                  </span>
                 </div>
+
+                <h3 class="fw-bold mb-1" style="font-size: 1.25rem; font-family: 'Manrope', sans-serif; color: #181c1e;">
+                  {{ item.loai }}
+                </h3>
+
+                <div class="d-flex align-items-center gap-2 text-secondary mb-3" style="font-size: 0.75rem;">
+                  <i class="bi bi-clock" style="font-size: 0.875rem;"></i>
+                  <span>{{ item.time }}</span>
+                  <span class="mx-1">•</span>
+                  <i class="bi bi-geo-alt text-danger" style="font-size: 0.875rem;"></i>
+                  <span>{{ item.address }}</span>
+                </div>
+
+                <p class="text-secondary line-clamp-2 mb-0" style="font-size: 0.875rem; line-height: 1.5;">
+                  {{ item.moTa }}
+                </p>
+              </div>
+
+              <!-- Nút hành động -->
+              <div class="d-flex gap-3 mt-3">
+                <button class="btn text-white rounded-pill fw-bold flex-fill" 
+                        style="background: #0042b3; font-size: 0.875rem; padding: 0.5rem 1rem;"
+                        @click="showDetailModal(item)">
+                  Chi tiết
+                </button>
+                <button v-if="item.statusKey !== 'HOAN_THANH' && item.statusKey !== 'huy_bo'"
+                        class="btn text-danger border rounded-pill fw-bold flex-fill" 
+                        style="font-size: 0.875rem; border-color: rgba(195, 198, 216, 0.2); padding: 0.5rem 1rem;"
+                        @click="huyYeuCau(item)">
+                  Hủy Yêu Cầu
+                </button>
+                <button v-else
+                        class="btn text-secondary border rounded-pill fw-bold flex-fill opacity-50" 
+                        style="font-size: 0.875rem; border-color: rgba(195, 198, 216, 0.2); padding: 0.5rem 1rem; cursor: not-allowed;"
+                        disabled>
+                  Đã kết thúc
+                </button>
+              </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Thông báo không có kết quả -->
+      <div v-else class="text-center py-5">
+        <i class="bi bi-inbox fs-1 text-secondary"></i>
+        <h5 class="text-secondary mt-3">Không tìm thấy yêu cầu nào</h5>
+        <p class="text-secondary">Hãy thử thay đổi từ khóa tìm kiếm hoặc bộ lọc</p>
+        <button class="btn btn-outline-primary mt-2" @click="viewAll">
+          <i class="bi bi-arrow-clockwise me-2"></i>
+          Xem tất cả yêu cầu
+        </button>
+      </div>
+
+      <!-- Tải thêm yêu cầu -->
+      
+    </div>
+
+    <!-- Modal Chi tiết -->
+    <div v-if="isModalOpen" class="modal-overlay" @click.self="closeModal">
+      <div class="modal-content rounded-4 p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h4 class="fw-bold mb-0" style="font-family: 'Manrope', sans-serif; color: #181c1e;">
+            Chi tiết yêu cầu #{{ selectedItem?.id }}
+          </h4>
+          <button class="btn-close" @click="closeModal"></button>
+        </div>
+        
+        <div class="mb-3">
+          <span :class="['px-3 py-2 rounded fw-bold', selectedItem?.statusBadgeClass]" 
+                style="font-size: 0.875rem;">
+            {{ selectedItem?.statusText }}
+          </span>
+        </div>
+
+        <div class="mb-3">
+          <label class="fw-bold text-secondary small text-uppercase mb-2">Loại sự cố</label>
+          <p class="mb-0" style="font-size: 1rem;">{{ selectedItem?.loai }}</p>
+        </div>
+
+        <div class="mb-3">
+          <label class="fw-bold text-secondary small text-uppercase mb-2">Địa chỉ</label>
+          <p class="mb-0" style="font-size: 1rem;">
+            <i class="bi bi-geo-alt text-danger me-2"></i>{{ selectedItem?.address }}
+          </p>
+        </div>
+
+        <div class="mb-3">
+          <label class="fw-bold text-secondary small text-uppercase mb-2">Thời gian</label>
+          <p class="mb-0" style="font-size: 1rem;">
+            <i class="bi bi-clock me-2"></i>{{ selectedItem?.time }}
+          </p>
+        </div>
+
+        <div class="mb-3">
+          <label class="fw-bold text-secondary small text-uppercase mb-2">Mô tả</label>
+          <div class="p-3 rounded-3" style="background: #f1f4f6;">
+            <p class="mb-0" style="font-size: 1rem; line-height: 1.6;">{{ selectedItem?.moTa || 'Không có mô tả' }}</p>
+          </div>
+        </div>
+
+        <div v-if="selectedItem?.chiTiet" class="mb-3">
+          <label class="fw-bold text-secondary small text-uppercase mb-2">Chi tiết</label>
+          <p class="mb-0" style="font-size: 1rem;">{{ selectedItem.chiTiet }}</p>
+        </div>
+
+        <div class="d-flex justify-content-end gap-3 mt-4 pt-3 border-top">
+          <button class="btn btn-secondary rounded-pill px-4" @click="closeModal">
+            Đóng
+          </button>
         </div>
       </div>
     </div>
@@ -54,11 +225,12 @@ import { rescueRequestAPI } from "../../../services/api";
 const STATUS_META = {
   hoan_thanh: { label: "Hoàn thành", badge: "bg-success text-white" },
   dang_xu_ly: { label: "Đang xử lý", badge: "bg-warning text-dark" },
-  cho_xu_ly: { label: "Chờ xử lý", badge: "bg-info text-dark" },
-  huy_bo: { label: "Đã huỷ", badge: "bg-danger text-white" },
+  cho_xu_ly: { label: "Chờ xử lý", badge: "bg-danger text-white" },
+  huy_bo: { label: "Đã huỷ", badge: "bg-secondary text-white" },
   processing: { label: "Đang xử lý", badge: "bg-warning text-dark" },
-  waiting: { label: "Chờ xử lý", badge: "bg-info text-dark" },
+  waiting: { label: "Chờ xử lý", badge: "bg-danger text-white" },
   done: { label: "Hoàn thành", badge: "bg-success text-white" },
+  hoan_thanh_v2: { label: "Hoàn thành", badge: "bg-success text-white" },
 };
 
 const TYPE_ICON = {
@@ -141,6 +313,44 @@ function parseStatus(rawStatus) {
   return STATUS_META[key] || { label: normalizeValue(rawStatus), badge: "bg-secondary text-white" };
 }
 
+function parseStatusBadgeClass(rawStatus) {
+  const key = normalizeStatusKey(rawStatus);
+  switch (key) {
+    case "hoan_thanh":
+    case "done":
+      return "d-none";
+    case "dang_xu_ly":
+    case "processing":
+      return "text-warning";
+    case "cho_xu_ly":
+    case "waiting":
+      return "text-primary";
+    case "huy_bo":
+      return "text-secondary";
+    default:
+      return "text-secondary";
+  }
+}
+
+function parseStatusBgClass(rawStatus) {
+  const key = normalizeStatusKey(rawStatus);
+  switch (key) {
+    case "hoan_thanh":
+    case "done":
+      return "d-none";
+    case "dang_xu_ly":
+    case "processing":
+      return "bg-warning bg-opacity-20";
+    case "cho_xu_ly":
+    case "waiting":
+      return "bg-primary bg-opacity-10";
+    case "huy_bo":
+      return "bg-secondary bg-opacity-10";
+    default:
+      return "bg-secondary bg-opacity-10";
+  }
+}
+
 function parseTypeIcon(rawType) {
   const type = normalizeValue(rawType).toLowerCase();
   for (const key of Object.keys(TYPE_ICON)) {
@@ -157,12 +367,72 @@ export default {
       danhsach: [],
       loading: false,
       error: "",
+      searchQuery: "",
+      selectedType: "",
+      selectedStatus: "",
+      isModalOpen: false,
+      selectedItem: null,
     };
+  },
+  computed: {
+    uniqueTypes() {
+      const types = this.danhsach.map(item => item.loai);
+      return [...new Set(types)].filter(type => type && type !== "Không rõ");
+    },
+    uniqueStatuses() {
+      const statuses = this.danhsach.map(item => item.statusKey).filter(status => status);
+      return [...new Set(statuses)];
+    },
+    filteredList() {
+      let result = [...this.danhsach];
+
+      // Ẩn các yêu cầu đã hoàn thành
+      result = result.filter(item => {
+        const key = normalizeStatusKey(item.statusKey);
+        return key !== "hoan_thanh" && key !== "done";
+      });
+
+      if (this.searchQuery.trim()) {
+        const query = this.searchQuery.toLowerCase().trim();
+        result = result.filter(item => {
+          const loai = (item.loai || "").toLowerCase();
+          const address = (item.address || "").toLowerCase();
+          const moTa = (item.moTa || "").toLowerCase();
+          const chiTiet = (item.chiTiet || "").toLowerCase();
+          const id = String(item.id || "").toLowerCase();
+          
+          return loai.includes(query) || 
+                 address.includes(query) || 
+                 moTa.includes(query) ||
+                 chiTiet.includes(query) ||
+                 id.includes(query);
+        });
+      }
+
+      if (this.selectedType) {
+        result = result.filter(item => item.loai === this.selectedType);
+      }
+
+      if (this.selectedStatus) {
+        result = result.filter(item => item.statusKey === this.selectedStatus);
+      }
+
+      return result;
+    },
   },
   async created() {
     await this.loadRequests();
   },
   methods: {
+    onSearchInput() {},
+    onFilterChange() {},
+    
+    viewAll() {
+      this.searchQuery = "";
+      this.selectedType = "";
+      this.selectedStatus = "";
+    },
+    
     hienToast(type, message) {
       if (this.$toast?.[type]) {
         this.$toast[type](message, {
@@ -173,6 +443,7 @@ export default {
       }
       alert(message);
     },
+
     normalizeRequests(items) {
       if (!Array.isArray(items)) {
         return [];
@@ -189,17 +460,24 @@ export default {
         return {
           id,
           loai: typeLabel,
+          moTa: normalizeValue(item.mo_ta || item.moTa || item.mota || item.moTa || item.description || ""),
+          chiTiet: normalizeValue(item.chi_tiet || item.chiTiet || item.chi_tiet_su_co || ""),
           time: time || "Không xác định",
           address: address || "Chưa có địa chỉ",
           statusText: statusMeta.label,
           statusBg: statusMeta.badge,
+          statusBadgeClass: parseStatusBadgeClass(rawStatus),
+          statusBgClass: parseStatusBgClass(rawStatus),
+          statusKey: rawStatus,
           icon: typeMeta.icon,
           iconColor: typeMeta.color,
           iconBg: typeMeta.bg,
+          anh_hien_truong: item.anh_hien_truong || item.anh || item.image || null,
           raw: item,
         };
       });
     },
+
     async loadRequests() {
       this.loading = true;
       this.error = "";
@@ -214,7 +492,6 @@ export default {
         try {
           response = await rescueRequestAPI.getByUser(currentUserId);
         } catch (error) {
-          // fallback nếu API chưa hỗ trợ query theo user
           response = await rescueRequestAPI.getList();
         }
         const rawData = response?.data;
@@ -238,6 +515,7 @@ export default {
         this.loading = false;
       }
     },
+
     async huyYeuCau(item) {
       const requestId = item?.id;
       if (!requestId) {
@@ -260,10 +538,130 @@ export default {
         this.hienToast("error", message);
       }
     },
+
+    showDetailModal(item) {
+      this.selectedItem = item;
+      this.isModalOpen = true;
+      document.body.style.overflow = 'hidden';
+    },
+
+    closeModal() {
+      this.isModalOpen = false;
+      this.selectedItem = null;
+      document.body.style.overflow = 'auto';
+    },
   },
 };
 </script>
 
-<style>
+<style scoped>
 
+/* Glass card effect */
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  box-shadow: 0 1rem 2rem rgba(0, 66, 179, 0.08);
+}
+
+/* Card hover effect */
+.hover-card {
+  transition: all 0.3s ease;
+}
+
+.hover-card:hover {
+  box-shadow: 0 1rem 2rem rgba(0, 66, 179, 0.12);
+  transform: translateY(-2px);
+}
+
+/* Image hover zoom */
+.hover-image {
+  transition: transform 0.5s ease;
+}
+
+.hover-image:hover {
+  transform: scale(1.05);
+}
+
+/* Search input focus style */
+.form-control:focus,
+.form-select:focus {
+  border-color: #0042b3;
+  box-shadow: 0 0 0 0.15rem rgba(0, 66, 179, 0.15);
+}
+
+/* Line clamp */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Object fit */
+.object-fit-cover {
+  object-fit: cover;
+}
+
+/* Button hover */
+.btn:hover {
+  filter: brightness(1.05);
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+}
+
+.modal-content {
+  background: #ffffff;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 2rem 4rem rgba(0, 0, 0, 0.2);
+}
+
+/* Status colors */
+.text-success {
+  color: #00591c !important;
+}
+
+.text-warning {
+  color: #7c5800 !important;
+}
+
+.text-danger {
+  color: #ba1a1a !important;
+}
+
+.text-secondary {
+  color: #434655 !important;
+}
+
+/* Container spacing */
+.container-fluid {
+  max-width: 1400px;
+  margin: 0 auto;
+}
 </style>
