@@ -6,7 +6,7 @@
 
     <div class="auth-card">
       <div class="brand">
-        <h1 class="logo">now<span>SOS</span></h1>
+        <h1 class="logo">GR29 <span>SOS</span></h1>
         <p class="subtitle">Chào mừng bạn </p>
       </div>
 
@@ -31,7 +31,7 @@
           <label class="remember-me">
             <input type="checkbox"> Ghi nhớ đăng nhập
           </label>
-          <a href="#" class="forgot-password">Quên mật khẩu?</a>
+          <a href="#" class="forgot-password" @click.prevent="$router.push('/client/forgot-password')">Quên mật khẩu?</a>
         </div>
 
         <button type="submit" class="btn-primary">Đăng Nhập</button>
