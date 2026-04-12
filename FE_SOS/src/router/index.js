@@ -32,6 +32,10 @@ const routes = [
         meta: { layout: "client" },
     },
     {
+        path: "/client/forgot-password",
+        component: () => import("../components/Client/QuenMatKhau/index.vue"),
+    },
+    {
         path: "/client/history",
         component: () => import("../components/Client/LichSuYeuCau/index.vue"),
         meta: { layout: "client" },

@@ -98,9 +98,10 @@
                         style="font-size: 0.75rem; font-weight: 700; background: #e0e3e5; color: #434655;">
                     SOS-{{ item.id }}
                   </span>
-                  <span :class="['px-2.5 py-1 rounded fw-bold', item.statusBadgeClass]" 
-                        style="font-size: 0.75rem;">
-                    {{ item.statusText }}
+                <!-- Trạng thái với icon -->
+                  <span :class="['status-badge px-3 py-2 rounded-3 fw-bold d-inline-flex align-items-center gap-2', item.statusBadgeClass]">
+                    <i :class="['bi', item.statusIcon]" style="font-size: 0.875rem;"></i>
+                    <span>{{ item.statusText }}</span>
                   </span>
                 </div>
 
@@ -124,19 +125,19 @@
               <!-- Nút hành động -->
               <div class="d-flex gap-3 mt-3">
                 <button class="btn text-white rounded-pill fw-bold flex-fill" 
-                        style="background: #0042b3; font-size: 0.875rem; padding: 0.5rem 1rem;"
+                        style="background: #0042b3; font-size: 0.875rem; padding: 0.6rem 1rem; min-width: 140px;"
                         @click="showDetailModal(item)">
                   Chi tiết
                 </button>
                 <button v-if="item.statusKey !== 'HOAN_THANH' && item.statusKey !== 'huy_bo'"
                         class="btn text-danger border rounded-pill fw-bold flex-fill" 
-                        style="font-size: 0.875rem; border-color: rgba(195, 198, 216, 0.2); padding: 0.5rem 1rem;"
+                        style="font-size: 0.875rem; border-color: rgba(195, 198, 216, 0.2); padding: 0.6rem 1rem; min-width: 140px;"
                         @click="huyYeuCau(item)">
                   Hủy Yêu Cầu
                 </button>
                 <button v-else
                         class="btn text-secondary border rounded-pill fw-bold flex-fill opacity-50" 
-                        style="font-size: 0.875rem; border-color: rgba(195, 198, 216, 0.2); padding: 0.5rem 1rem; cursor: not-allowed;"
+                        style="font-size: 0.875rem; border-color: rgba(195, 198, 216, 0.2); padding: 0.6rem 1rem; min-width: 140px; cursor: not-allowed;"
                         disabled>
                   Đã kết thúc
                 </button>
@@ -212,6 +213,34 @@
         <div class="d-flex justify-content-end gap-3 mt-4 pt-3 border-top">
           <button class="btn btn-secondary rounded-pill px-4" @click="closeModal">
             Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Xác nhận Hủy Yêu Cầu -->
+    <div v-if="isCancelModalOpen" class="modal-overlay" @click.self="closeCancelModal">
+      <div class="cancel-modal-content rounded-4 p-4 text-center">
+        <div class="mb-4">
+          <div class="warning-icon-wrapper mb-3">
+            <i class="bi bi-exclamation-triangle-fill text-warning"></i>
+          </div>
+          <h4 class="fw-bold mb-2" style="color: #181c1e;">Xác nhận hủy yêu cầu</h4>
+          <p class="text-secondary mb-0" style="font-size: 0.9rem;">
+            Bạn có chắc muốn hủy yêu cầu <strong>#{{ cancelItem?.id }}</strong> không?
+          </p>
+        </div>
+        <div class="d-flex gap-3">
+          <button class="btn flex-fill rounded-pill py-2.5 fw-bold" 
+                  style="background: #f1f4f6; color: #434655;"
+                  @click="closeCancelModal">
+            Không, giữ lại
+          </button>
+          <button class="btn flex-fill rounded-pill py-2.5 fw-bold text-white" 
+                  style="background: #dc2626;"
+                  @click="confirmHuyYeuCau">
+            <i class="bi bi-trash3 me-1"></i>
+            Hủy yêu cầu
           </button>
         </div>
       </div>
@@ -318,36 +347,54 @@ function parseStatusBadgeClass(rawStatus) {
   switch (key) {
     case "hoan_thanh":
     case "done":
-      return "d-none";
+      return "status-badge status-completed";
     case "dang_xu_ly":
     case "processing":
-      return "text-warning";
+      return "status-badge status-processing";
     case "cho_xu_ly":
     case "waiting":
-      return "text-primary";
+      return "status-badge status-pending";
     case "huy_bo":
-      return "text-secondary";
+      return "status-badge status-cancelled";
     default:
-      return "text-secondary";
+      return "status-badge status-cancelled";
   }
 }
 
-function parseStatusBgClass(rawStatus) {
+function parseStatusBg(rawStatus) {
   const key = normalizeStatusKey(rawStatus);
   switch (key) {
     case "hoan_thanh":
     case "done":
-      return "d-none";
     case "dang_xu_ly":
     case "processing":
-      return "bg-warning bg-opacity-20";
+      return "#dcfce7";
     case "cho_xu_ly":
     case "waiting":
-      return "bg-primary bg-opacity-10";
+      return "#fef3c7";
     case "huy_bo":
-      return "bg-secondary bg-opacity-10";
+      return "#f3f4f6";
     default:
-      return "bg-secondary bg-opacity-10";
+      return "#f3f4f6";
+  }
+}
+
+function parseStatusIcon(rawStatus) {
+  const key = normalizeStatusKey(rawStatus);
+  switch (key) {
+    case "hoan_thanh":
+    case "done":
+      return "bi-check-lg";
+    case "dang_xu_ly":
+    case "processing":
+      return "bi-clock-fill";
+    case "cho_xu_ly":
+    case "waiting":
+      return "bi-hourglass-split";
+    case "huy_bo":
+      return "bi-x-lg";
+    default:
+      return "bi-circle-fill";
   }
 }
 
@@ -372,6 +419,8 @@ export default {
       selectedStatus: "",
       isModalOpen: false,
       selectedItem: null,
+      isCancelModalOpen: false,
+      cancelItem: null,
     };
   },
   computed: {
@@ -454,6 +503,7 @@ export default {
         const rawStatus = item.trang_thai || item.status || item.statusText || "CHO_XU_LY";
         const statusMeta = parseStatus(rawStatus);
         const typeMeta = parseTypeIcon(typeLabel);
+        const statusIcon = parseStatusIcon(rawStatus);
         const address = normalizeValue(item.vi_tri_dia_chi || item.dia_chi || item.address || `${item.vi_tri_lat || ""}, ${item.vi_tri_lng || ""}`);
         const time = formatTime(item.created_at || item.ngay_tao || item.thoi_gian || item.updated_at || item.time);
 
@@ -465,9 +515,8 @@ export default {
           time: time || "Không xác định",
           address: address || "Chưa có địa chỉ",
           statusText: statusMeta.label,
-          statusBg: statusMeta.badge,
           statusBadgeClass: parseStatusBadgeClass(rawStatus),
-          statusBgClass: parseStatusBgClass(rawStatus),
+          statusIcon: statusIcon,
           statusKey: rawStatus,
           icon: typeMeta.icon,
           iconColor: typeMeta.color,
@@ -516,29 +565,6 @@ export default {
       }
     },
 
-    async huyYeuCau(item) {
-      const requestId = item?.id;
-      if (!requestId) {
-        this.hienToast("warning", "Không xác định được yêu cầu cần hủy.");
-        return;
-      }
-      const confirmed = window.confirm(`Bạn có chắc muốn hủy yêu cầu #${requestId}?`);
-      if (!confirmed) {
-        return;
-      }
-      try {
-        await rescueRequestAPI.delete(requestId);
-        this.hienToast("success", "Hủy yêu cầu thành công.");
-        await this.loadRequests();
-      } catch (error) {
-        console.error("Hủy yêu cầu thất bại:", error);
-        const message =
-          error?.response?.data?.message ||
-          "Không thể hủy yêu cầu. Vui lòng thử lại.";
-        this.hienToast("error", message);
-      }
-    },
-
     showDetailModal(item) {
       this.selectedItem = item;
       this.isModalOpen = true;
@@ -550,11 +576,54 @@ export default {
       this.selectedItem = null;
       document.body.style.overflow = 'auto';
     },
+
+    huyYeuCau(item) {
+      const requestId = item?.id;
+      if (!requestId) {
+        this.hienToast("warning", "Không xác định được yêu cầu cần hủy.");
+        return;
+      }
+      this.cancelItem = item;
+      this.isCancelModalOpen = true;
+      document.body.style.overflow = 'hidden';
+    },
+
+    async confirmHuyYeuCau() {
+      const requestId = this.cancelItem?.id;
+      if (!requestId) {
+        this.hienToast("warning", "Không xác định được yêu cầu cần hủy.");
+        return;
+      }
+      this.isCancelModalOpen = false;
+      document.body.style.overflow = 'auto';
+      try {
+        await rescueRequestAPI.delete(requestId);
+        this.hienToast("success", "Hủy yêu cầu thành công.");
+        await this.loadRequests();
+      } catch (error) {
+        console.error("Hủy yêu cầu thất bại:", error);
+        const message =
+          error?.response?.data?.message ||
+          "Không thể hủy yêu cầu. Vui lòng thử lại.";
+        this.hienToast("error", message);
+      } finally {
+        this.cancelItem = null;
+      }
+    },
+
+    closeCancelModal() {
+      this.isCancelModalOpen = false;
+      this.cancelItem = null;
+      document.body.style.overflow = 'auto';
+    },
   },
 };
 </script>
 
 <style scoped>
+:root {
+  --status-bg: transparent;
+}
 
 /* Glass card effect */
 .glass-card {
@@ -659,9 +728,67 @@ export default {
   color: #434655 !important;
 }
 
+/* Status Badge - Giống Lịch sử Yêu cầu */
+.status-badge {
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+}
+
+/* Hoàn thành */
+.status-badge.status-completed {
+  color: #fff;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+/* Đang xử lý */
+.status-badge.status-processing {
+  color: #fff;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+/* Chờ xử lý */
+.status-badge.status-pending {
+  color: #fff;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+/* Đã hủy */
+.status-badge.status-cancelled {
+  color: #fff;
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  box-shadow: 0 2px 8px rgba(107, 114, 128, 0.3);
+}
+
 /* Container spacing */
 .container-fluid {
   max-width: 1400px;
   margin: 0 auto;
+}
+
+/* Cancel Modal Styles */
+.cancel-modal-content {
+  background: #ffffff;
+  width: 100%;
+  max-width: 400px;
+  padding: 2rem;
+  box-shadow: 0 2rem 4rem rgba(0, 0, 0, 0.2);
+}
+
+.warning-icon-wrapper {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #fef3c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.warning-icon-wrapper i {
+  font-size: 2.5rem;
 }
 </style>

@@ -30,6 +30,15 @@ export const authAPI = {
   registerUser: (data) => api.post('/nguoi-dung/register', data),
 };
 
+// Password Reset
+export const passwordAPI = {
+  sendOtp: (email) => api.post('/password/send-otp', { email }),
+  verifyOtp: (email, ma_otp) => api.post('/password/verify-otp', { email, ma_otp }),
+  resetPassword: (email, reset_token, mat_khau_moi, mat_khau_moi_confirmation) =>
+    api.post('/password/reset', { email, reset_token, mat_khau_moi, mat_khau_moi_confirmation }),
+  resendOtp: (email) => api.post('/password/resend-otp', { email }),
+};
+
 // Admin Management
 export const adminAPI = {
   getList: () => api.get('/admin/list'),

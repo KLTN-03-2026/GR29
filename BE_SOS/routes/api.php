@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\ChucNangController;
 use App\Http\Controllers\ChucVuController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\NguoiDungController;
 use App\Http\Controllers\LoaiSuCoController;
 use App\Http\Controllers\YeuCauCuuHoController;
@@ -50,6 +51,14 @@ Route::middleware(['auth:sanctum', 'check.admin'])->group(function () {
     Route::put('admin/change-status/{id}', [AdminController::class, 'changeStatus']);
     Route::put('admin/active/{id}', [AdminController::class, 'active']);
 });
+
+// =========================================
+// QUÊN MẬT KHẨU (PASSWORD RESET)
+// =========================================
+Route::post('password/send-otp', [PasswordResetController::class, 'guiMaOtp']);
+Route::post('password/verify-otp', [PasswordResetController::class, 'xacNhanOtp']);
+Route::post('password/reset', [PasswordResetController::class, 'datLaiMatKhau']);
+Route::post('password/resend-otp', [PasswordResetController::class, 'guiLaiMaOtp']);
 
 // =========================================
 // NGƯỜI DÙNG (USERS)
