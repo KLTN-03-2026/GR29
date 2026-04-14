@@ -20,7 +20,7 @@
         <span>Trực 24/7</span>
       </div>
       <button class="btn btn-sm btn-outline-light rounded-circle">
-        <i class="fa-regular fa-bell"></i>
+        <i class="bi bi-bell"></i>
       </button>
       <div class="dropdown">
         <button class="btn btn-sm btn-outline-light d-flex align-items-center rounded-pill px-2" type="button"
@@ -74,6 +74,10 @@ export default {
 .admin-topbar {
   background: #111827;
   border-bottom: 1px solid rgba(31, 41, 55, 0.9);
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+  flex-shrink: 0;
 }
 
 .avatar-initial {

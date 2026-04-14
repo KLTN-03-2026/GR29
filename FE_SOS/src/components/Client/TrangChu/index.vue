@@ -4,8 +4,7 @@
             <h2 class="fw-bold mb-1">Yêu Cầu Cứu Hộ Mới</h2>
             <p class="text-muted small mb-4">Cung cấp thông tin chính xác để lực lượng phản ứng tiếp cận nhanh nhất.</p>
 
-            <label class="fw-bold small text-uppercase mb-2 d-block text-secondary text-opacity-75">Loai su co khan
-                cap</label>
+            <label class="fw-bold small text-uppercase mb-2 d-block text-secondary text-opacity-75">Loại sự cố</label>
             <div class="row g-2 mb-4 mt-2">
                 <div v-if="loadingIncidentTypes" class="col-12">
                     <div class="small text-muted bg-light rounded-3 px-3 py-2">Dang tai loai su co...</div>
@@ -18,7 +17,9 @@
                 <div v-else class="col-3" v-for="type in incidentTypes" :key="type.id">
                     <button @click="chonLoaiSuCo(type.id)" type="button" :class="[
                         'btn w-100 h-100 py-3 border-2 shadow-sm d-flex flex-column align-items-center justify-content-center',
-                        selectedType === type.id ? 'btn-outline-danger active' : 'btn-outline-light text-dark border-light-subtle bg-light'
+                        selectedType === type.id
+                            ? 'btn-outline-danger active'
+                            : 'btn-outline-light text-dark border-light-subtle bg-light'
                     ]">
                         <i :class="['fa-solid fs-4 mb-1 mt-2', type.icon]"></i>
                         <span style="font-size: 10px;" class="fw-bold text-uppercase">{{ type.label }}</span>
@@ -27,27 +28,26 @@
             </div>
 
             <div v-if="selectedType" class="mb-4">
-                <label class="fw-bold small text-uppercase mb-2 d-block text-secondary text-opacity-75">Chi tiet su
-                    co</label>
+                <label class="fw-bold small text-uppercase mb-2 d-block text-secondary text-opacity-75">Bạn cần giúp gì?</label>
                 <div v-if="loadingDetails" class="small text-muted text-center py-2 bg-light rounded-3">
                     <i class="fas fa-spinner fa-spin me-2"></i> Dang tai chi tiet...
                 </div>
                 <div v-else class="d-flex flex-wrap gap-2">
-                    <div v-for="detail in incidentDetails" :key="detail.id">
-                        <input type="radio" class="btn-check" :id="'detail-' + detail.id" :value="detail.id"
-                            v-model="selectedDetailId" autocomplete="off">
-                        <label class="btn btn-outline-secondary btn-sm rounded-pill px-3 border-opacity-25 shadow-sm"
-                            :for="'detail-' + detail.id">
-                            {{ detail.label }}
-                        </label>
-                    </div>
+                    <button v-for="detail in incidentDetails" :key="detail.id" type="button" :class="[
+                        'btn btn-sm rounded-pill px-3 border-opacity-25 shadow-sm',
+                        selectedDetailIds.includes(detail.id)
+                            ? 'btn-danger'
+                            : 'btn-outline-secondary'
+                    ]" @click="chuyenDoiChiTiet(detail.id)">
+                        {{ detail.label }}
+                    </button>
                     <div v-if="incidentDetails.length === 0" class="small text-muted py-2 px-3 bg-light rounded-3">
                         Khong co chi tiet cho loai su co nay.
                     </div>
                 </div>
             </div>
 
-            <div
+            <!-- <div
                 class="bg-light rounded-3 p-3 mb-3 border border-secondary border-opacity-10 shadow-sm position-relative">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <label class="fw-bold small text-uppercase mb-0 text-secondary">Vị Trí của bạn</label>
@@ -95,6 +95,90 @@
                 <div v-if="!selectedCoords" class="small text-muted mt-1 mb-0 fst-italic">
                     <i class="fa-solid fa-hand-pointer me-1"></i>
                     Click len ban do hoac tim dia chi
+                </div>
+            </div> -->
+
+            <div class="ns-location-picker p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="d-flex align-items-center">
+                        <div class="ns-icon-wrapper me-3">
+                            <i class="fa-solid fa-map-location-dot fs-5 text-ns-primary"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold mb-0 text-dark">Vị Trí Cần Cứu Hộ</h5>
+                            <p class="text-muted small mb-0" style="font-size: 11px;">
+                                <i class="fa-solid fa-circle-check text-success me-1"></i>
+                                Chính xác để lực lượng phản ứng nhanh nhất
+                            </p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-ns-gps btn-sm rounded-pill px-4 fw-bold transition-all"
+                        :disabled="locating" @click="layGps">
+                        <i :class="['fa-solid me-1', locating ? 'fa-spinner fa-spin' : 'fa-location-crosshairs']"></i>
+                        {{ locating ? 'Đang xác định...' : 'Sử dụng GPS' }}
+                    </button>
+                </div>
+
+                <div class="position-relative mb-3">
+                    <div class="ns-search-input-group d-flex align-items-center">
+                        <i class="fa-solid fa-magnifying-glass text-muted ms-3 fs-6"></i>
+                        <input v-model="addressSearch" type="text"
+                            class="form-control ns-search-input border-0 shadow-none ps-3 pe-5"
+                            placeholder="Nhập địa chỉ, tên đường hoặc khu vực..."
+                            @input="timDiaChi"
+                            @keydown.enter.prevent="chonDiaChiDauTien">
+                        <button v-if="addressSearch" @click="addressSearch = ''; addressSuggestions = []"
+                            class="btn-ns-clear btn btn-link text-muted position-absolute end-0 me-3" type="button">
+                            <i class="fa-solid fa-xmark fs-6"></i>
+                        </button>
+                    </div>
+
+                    <transition name="ns-fade">
+                        <div v-if="addressSuggestions.length > 0"
+                            class="list-group ns-suggestions-dropdown shadow-lg mt-2 rounded-4 overflow-hidden position-absolute w-100"
+                            style="z-index: 1060; max-height: 250px; overflow-y: auto;">
+                            <button v-for="(suggestion, index) in addressSuggestions" :key="index" type="button"
+                                class="list-group-item list-group-item-action py-3 px-3 border-0 d-flex align-items-start"
+                                @click="chonDiaChi(suggestion)">
+                                <i class="fa-solid fa-location-dot text-danger mt-1 me-3"></i>
+                                <div>
+                                    <span class="d-block text-dark fw-medium text-truncate" style="font-size: 13px;">{{
+                                        suggestion.display_name }}</span>
+                                    <span class="d-block text-muted" style="font-size: 11px;">Xác nhận bằng Tìm
+                                        kiếm</span>
+                                </div>
+                            </button>
+                        </div>
+                    </transition>
+                </div>
+
+                <div class="ns-address-box rounded-4 p-3 d-flex align-items-start border border-dashed">
+                    <div class="ns-location-icon-wrapper me-3">
+                        <i class="fa-solid fa-map-pin fs-3 text-danger"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <label class="text-uppercase fw-bold text-muted small mb-1"
+                            style="font-size: 10px; letter-spacing: 0.5px;">Địa chỉ hiện tại</label>
+                        <p class="mb-0 fw-bold text-dark ns-selected-address" v-if="address">{{ address }}</p>
+                        <p class="mb-0 text-muted fst-italic" v-else>Chưa xác định...</p>
+                    </div>
+                </div>
+
+                <div class="mt-3 d-flex align-items-center justify-content-between px-2">
+                    <div class="small text-muted fst-italic" style="font-size: 10px;">
+                        <i class="fa-solid fa-circle-info me-1"></i> Hoặc click trực tiếp lên bản đồ
+                    </div>
+                    <transition name="ns-fade">
+                        <div v-if="coordsText" class="d-flex align-items-center">
+                            <span class="badge bg-ns-success text-success rounded-pill px-3 py-1 fw-bold"
+                                style="font-size: 10px;">
+                                Nguồn: {{ coordsSource }}
+                            </span>
+                            <span class="ms-3 text-muted fw-mono ns-coords"
+                                style="font-size: 10px; letter-spacing: 0.2px;">{{ coordsText.replace('GPS: ', '')
+                                }}</span>
+                        </div>
+                    </transition>
                 </div>
             </div>
 
@@ -255,7 +339,7 @@ export default {
     data() {
         return {
             selectedType: null,
-            selectedDetailId: null,
+            selectedDetailIds: [],
             incidentTypes: [],
             incidentDetails: [],
             loadingIncidentTypes: false,
@@ -271,7 +355,7 @@ export default {
             submitting: false,
             selectedCoords: null,
             selectedImageName: "",
-            selectedImageData: null,
+            selectedImageFile: null,
             soNguoiBiAnhHuong: 1,
             mucDoKhanCap: "HIGH",
             diemUuTien: null,
@@ -321,57 +405,69 @@ export default {
                 const response = await incidentTypeAPI.getList();
                 const items = chuanHoaDanhSach(response?.data);
                 this.incidentTypes = items.map(anhXaLoaiSuCo);
-                this.selectedType = this.incidentTypes[0]?.id ?? null;
-                this.selectedDetailId = null;
+                this.selectedType = null;
+                this.selectedDetailIds = [];
 
                 if (this.incidentTypes.length === 0) {
                     this.incidentTypeError = "Backend chua tra ve du lieu loai su co.";
-                    this.incidentDetails = [];
-                } else {
-                    await this.taiChiTietLoaiSuCo(this.selectedType);
                 }
             } catch (error) {
                 console.error("Khong tai duoc loai su co:", error);
                 this.incidentTypes = [];
                 this.incidentDetails = [];
                 this.selectedType = null;
-                this.selectedDetailId = null;
+                this.selectedDetailIds = [];
                 this.incidentTypeError = "Khong tai duoc loai su co tu backend.";
             } finally {
                 this.loadingIncidentTypes = false;
             }
         },
-        async taiChiTietLoaiSuCo(typeId) {
-            if (!typeId) {
+        async taiChiTietLoaiSuCo() {
+            if (!this.selectedType) {
                 this.incidentDetails = [];
-                this.selectedDetailId = null;
+                this.selectedDetailIds = [];
                 return;
             }
 
             this.loadingDetails = true;
             try {
-                const response = await incidentTypeAPI.getDetail(typeId);
+                const response = await incidentTypeAPI.getDetail(this.selectedType);
                 this.incidentDetails = this.chuanHoaChiTietSuCo(response?.data);
-                this.selectedDetailId = this.incidentDetails[0]?.id ?? null;
+                this.selectedDetailIds = [];
             } catch (error) {
                 console.error("Khong tai duoc chi tiet loai su co:", error);
                 this.incidentDetails = [];
-                this.selectedDetailId = null;
+                this.selectedDetailIds = [];
             } finally {
                 this.loadingDetails = false;
             }
         },
         async chonLoaiSuCo(typeId) {
-            if (Number(this.selectedType) === Number(typeId)) {
-                return;
-            }
+            const id = Number(typeId);
 
-            this.selectedType = typeId;
-            this.selectedDetailId = null;
-            await this.taiChiTietLoaiSuCo(typeId);
+            if (this.selectedType === id) {
+                this.selectedType = null;
+                this.incidentDetails = [];
+                this.selectedDetailIds = [];
+            } else {
+                this.selectedType = id;
+                await this.taiChiTietLoaiSuCo();
+            }
+        },
+        chuyenDoiChiTiet(detailId) {
+            const id = Number(detailId);
+            const idx = this.selectedDetailIds.indexOf(id);
+            if (idx > -1) {
+                this.selectedDetailIds.splice(idx, 1);
+            } else {
+                this.selectedDetailIds.push(id);
+            }
         },
         layTenChiTietDangChon() {
-            return this.incidentDetails.find((detail) => Number(detail.id) === Number(this.selectedDetailId))?.label || "";
+            return this.incidentDetails
+                .filter((detail) => this.selectedDetailIds.includes(detail.id))
+                .map((d) => d.label)
+                .join(", ");
         },
         async layGps() {
             this.locating = true;
@@ -383,6 +479,7 @@ export default {
                     this.selectedCoords = { lng, lat };
                     this.coordsText = `GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
                     this.coordsSource = "GPS";
+                    await this.diaChiTuCoords(lat, lng);
                 }
             } catch (e) {
                 this.coordsText = "Khong lay duoc vi tri (cap quyen trinh duyet hoac dung HTTPS).";
@@ -448,19 +545,22 @@ export default {
             if (map?.flyTo) {
                 map.flyTo(lng, lat, 16);
             }
-        }, handleFileSelect(event) {
+        },
+        chonDiaChiDauTien() {
+            if (this.addressSuggestions.length > 0) {
+                this.chonDiaChi(this.addressSuggestions[0]);
+            } else if (this.addressSearch.trim()) {
+                this.timDiaChi();
+            }
+        },         handleFileSelect(event) {
             const file = event.target.files?.[0];
             if (!file) {
                 this.selectedImageName = "";
-                this.selectedImageData = null;
+                this.selectedImageFile = null;
                 return;
             }
             this.selectedImageName = file.name;
-            const reader = new FileReader();
-            reader.onload = () => {
-                this.selectedImageData = String(reader.result);
-            };
-            reader.readAsDataURL(file);
+            this.selectedImageFile = file;
         }, layIdNguoiDungHienTai() {
             const sources = ["user", "client"];
             for (const key of sources) {
@@ -498,7 +598,7 @@ export default {
             }
 
             if (!this.selectedType) {
-                this.hienToast("warning", "Vui long chon loai su co phu hop.");
+                this.hienToast("warning", "Vui long chon it nhat mot loai su co.");
                 return;
             }
 
@@ -509,20 +609,25 @@ export default {
 
             this.submitting = true;
             try {
-                const payload = {
-                    id_nguoi_dung: userId,
-                    id_loai_su_co: Number(this.selectedType),
-                    vi_tri_lat: this.selectedCoords.lat,
-                    vi_tri_lng: this.selectedCoords.lng,
-                    vi_tri_dia_chi: this.address.trim(),
-                    chi_tiet: this.layTenChiTietDangChon(),
-                    mo_ta: this.description.trim(),
-                    hinh_anh: this.selectedImageData || null,
-                    so_nguoi_bi_anh_huong: Number(this.soNguoiBiAnhHuong) || 1,
-                    muc_do_khan_cap: this.mucDoKhanCap || "HIGH",
-                    diem_uu_tien: this.diemUuTien !== null ? Number(this.diemUuTien) : null,
-                    trang_thai: this.trangThai,
-                };
+                const payload = new FormData();
+                payload.append('id_nguoi_dung', userId);
+                payload.append('id_loai_su_co', JSON.stringify([this.selectedType]));
+                payload.append('vi_tri_lat', this.selectedCoords.lat);
+                payload.append('vi_tri_lng', this.selectedCoords.lng);
+                payload.append('vi_tri_dia_chi', this.address.trim());
+                payload.append('chi_tiet', this.layTenChiTietDangChon());
+                payload.append('mo_ta', this.description.trim());
+                if (this.selectedImageFile) {
+                    payload.append('hinh_anh', this.selectedImageFile);
+                }
+                payload.append('so_nguoi_bi_anh_huong', Number(this.soNguoiBiAnhHuong) || 1);
+                payload.append('muc_do_khan_cap', this.mucDoKhanCap || "HIGH");
+                if (this.diemUuTien !== null) {
+                    payload.append('diem_uu_tien', Number(this.diemUuTien));
+                }
+                if (this.trangThai) {
+                    payload.append('trang_thai', this.trangThai);
+                }
 
                 const response = await rescueRequestAPI.create(payload);
                 const newId = response?.data?.data?.id_yeu_cau || response?.data?.id_yeu_cau || "";
@@ -539,13 +644,14 @@ export default {
                 this.coordsSource = "";
                 this.selectedCoords = null;
                 this.selectedImageName = "";
-                this.selectedImageData = null;
+                this.selectedImageFile = null;
                 this.soNguoiBiAnhHuong = 1;
                 this.mucDoKhanCap = "HIGH";
                 this.diemUuTien = null;
                 this.trangThai = null;
-                this.selectedType = this.incidentTypes[0]?.id ?? null;
-                await this.taiChiTietLoaiSuCo(this.selectedType);
+                this.selectedDetailIds = [];
+                this.selectedType = null;
+                this.incidentDetails = [];
                 this.$router.push("/client/requests");
             } catch (error) {
                 const message =
@@ -554,6 +660,7 @@ export default {
                     error?.response?.data?.errors?.id_loai_su_co?.[0] ||
                     error?.response?.data?.errors?.vi_tri_lat?.[0] ||
                     error?.response?.data?.errors?.vi_tri_lng?.[0] ||
+                    error?.response?.data?.errors?.hinh_anh?.[0] ||
                     "Khong the gui yeu cau cuu ho. Vui long kiem tra lai thong tin va thu lai.";
                 console.error("Gui yeu cau cuu ho that bai:", error);
                 this.hienToast("error", message);
@@ -577,4 +684,124 @@ export default {
 };
 </script>
 
-<style scoped></style>
+<style scoped>
+/* -- CẤU HÌNH CSS CHO PHONG CÁCH MỚI -- */
+.text-ns-primary {
+    color: #007bff;
+}
+
+/* Màu xanh đặc trưng SOS */
+.text-ns-success {
+    color: #28a745;
+}
+
+.bg-ns-success {
+    background-color: rgba(40, 167, 69, 0.1);
+}
+
+.ns-location-picker {
+    background: #f8f9fa;
+    /* Màu nền nhẹ, đồng nhất */
+    border-radius: 20px;
+    box-shadow: 10px 10px 30px rgba(0, 0, 0, 0.05), -10px -10px 30px rgba(255, 255, 255, 0.8);
+    /* Neumorphic shadow */
+}
+
+/* Nút GPS */
+.btn-ns-gps {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    font-size: 12px;
+    letter-spacing: 0.3px;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 4px 6px rgba(0, 123, 255, 0.2);
+}
+
+.btn-ns-gps:hover:not(:disabled) {
+    background-color: #0056b3;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 123, 255, 0.3);
+}
+
+.btn-ns-gps:disabled {
+    background-color: #a0cfff;
+    opacity: 0.8;
+}
+
+/* Ô tìm kiếm */
+.ns-search-input-group {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.05), inset -2px -2px 5px rgba(255, 255, 255, 1);
+    /* Khối chìm vào */
+    overflow: hidden;
+}
+
+.ns-search-input {
+    height: 45px;
+    font-size: 14px;
+    background: transparent;
+}
+
+.btn-ns-clear {
+    padding: 0;
+    transition: color 0.2s ease;
+}
+
+.btn-ns-clear:hover {
+    color: #ff4757;
+}
+
+/* Danh sách gợi ý */
+.ns-suggestions-dropdown {
+    border: none;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    transform-origin: top;
+}
+
+.list-group-item-action {
+    transition: background-color 0.2s ease;
+}
+
+.list-group-item-action:hover {
+    background-color: #f1f8ff;
+}
+
+/* Box hiển thị địa chỉ */
+.ns-address-box {
+    background: #ffffff;
+    border: 2px dashed rgba(0, 123, 255, 0.2);
+    box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.03);
+}
+
+.ns-location-icon-wrapper {
+    background: rgba(255, 71, 87, 0.1);
+    padding: 10px;
+    border-radius: 12px;
+}
+
+.ns-selected-address {
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+/* Tọa độ */
+.ns-coords {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    /* Font mono cho tọa độ */
+    font-size: 11px;
+}
+
+/* Hiệu ứng Fade cho Transition */
+.ns-fade-enter-active,
+.ns-fade-leave-active {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.ns-fade-enter-from,
+.ns-fade-leave-to {
+    opacity: 0;
+    transform: translateY(-5px);
+}
+</style>

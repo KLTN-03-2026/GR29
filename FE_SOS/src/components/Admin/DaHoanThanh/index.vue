@@ -1,13 +1,13 @@
 <template>
-  <div class="admin-queue-wrapper py-4 px-3 px-md-4">
-    <div class="header-section d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5 gap-3">
+  <div class="admin-da-hoan-thanh-wrapper py-4 px-3 px-md-4">
+    <div class="header-section d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
       <div class="title-wrapper d-flex align-items-start gap-3">
         <div class="icon-box">
-          <i class="bi bi-inboxes-fill text-white fs-4"></i>
+          <i class="bi bi-check-circle-fill text-white fs-4"></i>
         </div>
         <div>
-          <h4 class="mb-1 fw-bolder page-title">Hàng Đợi Truy Xuất</h4>
-          <p class="text-muted mb-0 page-subtitle">Quản lý và tiếp nhận các yêu cầu cần hỗ trợ khẩn cấp</p>
+          <h4 class="mb-1 fw-bolder page-title">Đã Hoàn Thành</h4>
+          <p class="text-muted mb-0 page-subtitle">Danh sách các yêu cầu cứu hộ đã được xử lý xong</p>
         </div>
       </div>
       <button class="btn btn-refresh d-flex align-items-center gap-2 align-self-md-auto align-self-start" @click="loadRequests" :disabled="loading">
@@ -15,6 +15,38 @@
         <span>Làm mới dữ liệu</span>
       </button>
     </div>
+
+    <!-- Search / Filter Functionality -->
+    <form @submit.prevent="onTimKiem" class="search-filter-section bg-white p-3 rounded-4 shadow-sm border border-light mb-5">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label text-muted small fw-bold mb-1">Tìm kiếm chung</label>
+          <div class="input-group">
+            <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input v-model="searchQuery" type="text" class="form-control border-start-0 ps-0 bg-light" placeholder="Mã sự cố, địa chỉ...">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label text-muted small fw-bold mb-1">Loại sự cố</label>
+          <select v-model="searchType" class="form-select bg-light">
+            <option value="">Tất cả loại sự cố</option>
+            <option v-for="type in incidentTypes" :key="type.id" :value="type.id">{{ type.ten_danh_muc || type.ten_loai }}</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label text-muted small fw-bold mb-1">Thời gian</label>
+          <input v-model="searchDate" type="date" class="form-control bg-light">
+        </div>
+        <div class="col-md-2 d-flex align-items-end gap-2">
+          <button type="submit" class="btn btn-primary w-100 action-btn hover-elevate border-0">
+            <i class="bi bi-funnel-fill me-1"></i> Lọc
+          </button>
+          <button type="button" class="btn btn-outline-secondary px-3" title="Xóa bộ lọc" @click="resetFilters">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+      </div>
+    </form>
 
     <!-- Alerts and Loading States -->
     <div v-if="error" class="alert custom-alert-danger mb-4 shadow-sm border-0 d-flex align-items-center gap-3 rounded-3">
@@ -31,8 +63,8 @@
       <div class="empty-icon text-muted mb-3">
         <i class="bi bi-shield-check" style="font-size: 4rem; opacity: 0.3;"></i>
       </div>
-      <h5 class="fw-bold text-dark mb-1">Hàng đợi trống</h5>
-      <p class="text-muted mb-0">Tuyệt vời! Hiện tại không có yêu cầu cứu hộ nào đang chờ xử lý.</p>
+      <h5 class="fw-bold text-dark mb-1">Không có dữ liệu</h5>
+      <p class="text-muted mb-0">Hiện tại chưa có yêu cầu cứu hộ nào được hoàn thành.</p>
     </div>
 
     <!-- Requests List -->
@@ -78,7 +110,6 @@
 
                 <!-- Details -->
                 <div class="info-list d-flex flex-column gap-3 mb-4 flex-grow-1">
-                  <!-- Lấy chi tiet su co -->
                   <div class="info-item d-flex gap-3 align-items-start">
                     <div class="info-icon bg-blue-light text-primary rounded-circle d-flex align-items-center justify-content-center shadow-sm">
                       <i class="bi bi-people-fill"></i>
@@ -98,7 +129,7 @@
                       <div class="info-value text-dark fw-semibold text-truncate-2" :title="request.address">{{ request.address }}</div>
                     </div>
                   </div>
-                  
+
                   <div class="info-item d-flex gap-3 align-items-start" v-if="request.description">
                     <div class="info-icon bg-yellow-light text-warning rounded-circle d-flex align-items-center justify-content-center shadow-sm">
                       <i class="bi bi-card-text"></i>
@@ -112,14 +143,15 @@
 
                 <!-- Actions -->
                 <div class="mt-auto action-footer border-top pt-4">
-                  <button 
-                    class="btn action-btn w-100 d-flex align-items-center justify-content-center gap-2 fw-bold" 
-                    :class="['CHO_XU_LY', 'WAITING'].includes(request.status) ? 'btn-primary text-white hover-elevate' : request.buttonClass" 
-                    @click="navigateToAssignments(request)" :disabled="request.updating"
+                  <button
+                    class="btn action-btn w-100 d-flex align-items-center justify-content-center gap-2 fw-bold"
+                    :class="request.buttonClass"
+                    @click="viewDetail(request)"
+                    :disabled="request.loading"
                   >
-                    <i class="bi bi-arrow-right-circle-fill fs-5" v-if="!request.updating"></i>
+                    <i class="bi bi-eye-fill fs-5" v-if="!request.loading"></i>
                     <span class="spinner-border spinner-border-sm" v-else role="status" aria-hidden="true"></span>
-                    <span>{{ ['CHO_XU_LY', 'WAITING'].includes(request.status) ? 'Tiếp nhận & Điều phối ngay' : 'Cập nhật trạng thái' }}</span>
+                    <span>Xem chi tiết</span>
                   </button>
                 </div>
               </div>
@@ -132,7 +164,7 @@
 </template>
 
 <script>
-import { rescueRequestAPI } from "../../../services/api";
+import { rescueRequestAPI, incidentTypeAPI } from "../../../services/api";
 
 const BASE_URL = 'http://localhost:8000';
 
@@ -180,15 +212,12 @@ function getStatusMeta(status) {
 function getImageUrl(image) {
   const raw = normalizeText(image);
   if (!raw) return null;
-  // Nếu là URL đầy đủ (http/https) hoặc data URI, giữ nguyên
   if (/^(https?:|data:)/i.test(raw)) {
     return raw;
   }
-  // Nếu là đường dẫn tương đối (uploads/...) thì ghép với BASE_URL
   if (raw.startsWith('uploads/') || raw.startsWith('/uploads/')) {
-    return BASE_URL + '/' + raw;
+    return BASE_URL + (raw.startsWith('/') ? '' : '/') + raw;
   }
-  // Nếu là text thuần (không phải URL), trả về null để hiện placeholder
   return null;
 }
 
@@ -230,22 +259,29 @@ function parseRequests(payload) {
       buttonLabel: statusMeta.buttonLabel,
       imageUrl: getImageUrl(item.hinh_anh),
       raw: item,
-      updating: false,
+      loading: false,
     };
   });
 }
 
 export default {
-  name: "AdminQueue",
+  name: "AdminDaHoanThanh",
   data() {
     return {
       requests: [],
+      incidentTypes: [],
+      searchQuery: "",
+      searchType: "",
+      searchDate: "",
       loading: false,
       error: "",
     };
   },
   async created() {
-    await this.loadRequests();
+    await Promise.all([
+      this.loadIncidentTypes(),
+      this.loadRequests()
+    ]);
   },
   methods: {
     hienToast(type, message) {
@@ -258,70 +294,68 @@ export default {
       }
       alert(message);
     },
+    async loadIncidentTypes() {
+      try {
+        const response = await incidentTypeAPI.getList();
+        const data = response?.data?.data || response?.data || [];
+        this.incidentTypes = Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.error("Không tải được danh mục sự cố:", error);
+      }
+    },
     async loadRequests() {
       this.loading = true;
       this.error = "";
       try {
         const response = await rescueRequestAPI.getList();
-        const all = parseRequests(response?.data || response);
-        this.requests = all.filter(r => r.status === 'CHO_XU_LY' || r.status === 'WAITING');
+        let all = parseRequests(response?.data || response);
+        all = all.filter(r => r.status === "HOAN_THANH" || r.status === "DONE");
+
+        if (this.searchQuery) {
+          const q = this.searchQuery.toLowerCase();
+          all = all.filter(r =>
+            r.id?.toString().includes(q) ||
+            r.address?.toLowerCase().includes(q) ||
+            r.description?.toLowerCase().includes(q) ||
+            r.type?.toLowerCase().includes(q)
+          );
+        }
+        if (this.searchType) {
+          const st = this.searchType.toString();
+          all = all.filter(r => r.raw?.id_loai_su_co?.toString() === st || r.raw?.loai_su_co?.id?.toString() === st);
+        }
+        if (this.searchDate) {
+          const d = this.searchDate;
+          all = all.filter(r => r.time?.includes(d));
+        }
+
+        this.requests = all;
       } catch (error) {
-        console.error("Không tải được yêu cầu cứu hộ:", error);
+        console.error("Không tải được yêu cầu đã hoàn thành:", error);
         this.error = "Không tải được danh sách yêu cầu. Vui lòng thử lại.";
         this.hienToast("error", this.error);
       } finally {
         this.loading = false;
       }
     },
-    navigateToAssignments(request) {
-      const id = request.id;
-      if (!id) {
-        this.hienToast("warning", "Không xác định được ID yêu cầu.");
-        return;
-      }
-      this.$router.push({ path: '/admin/assignments', query: { id } });
+    onTimKiem() {
+      this.loadRequests();
     },
-    getNextStatus(currentStatus) {
-      const map = {
-        CHO_XU_LY: 'DANG_XU_LY',
-        WAITING: 'DANG_XU_LY',
-        DANG_XU_LY: 'HOAN_THANH',
-        PROCESSING: 'HOAN_THANH',
-        HOAN_THANH: 'HOAN_THANH',
-        DONE: 'DONE',
-        HUY_BO: 'HUY_BO',
-      };
-      return map[currentStatus] || 'DANG_XU_LY';
+    resetFilters() {
+      this.searchQuery = "";
+      this.searchType = "";
+      this.searchDate = "";
+      this.loadRequests();
     },
-    async changeRequestStatus(request) {
-      request.updating = true;
-      try {
-        const id = request.raw.id_yeu_cau || request.raw.id || request.id;
-        const nextStatus = this.getNextStatus(request.status);
-        const response = await rescueRequestAPI.changeStatus(id, { trang_thai: nextStatus });
-        const data = response?.data?.data || response?.data || {};
-        const newStatus = normalizeStatus(data.trang_thai || data.status || response?.data?.trang_thai || response?.data?.data?.trang_thai || nextStatus);
-        const statusMeta = getStatusMeta(newStatus);
-        request.status = newStatus;
-        request.statusLabel = statusMeta.label;
-        request.statusClass = statusMeta.badge;
-        request.buttonClass = statusMeta.button;
-        request.buttonLabel = statusMeta.buttonLabel;
-        request.raw.trang_thai = newStatus;
-        this.hienToast("success", `Đã cập nhật trạng thái thành ${statusMeta.label}.`);
-      } catch (error) {
-        console.error("Cập nhật trạng thái thất bại:", error);
-        this.hienToast("error", "Không thể thay đổi trạng thái. Vui lòng thử lại.");
-      } finally {
-        request.updating = false;
-      }
+    viewDetail(request) {
+      this.$router.push({ path: '/admin/assignments', query: { id: request.id } });
     },
   },
 };
 </script>
 
 <style scoped>
-.admin-queue-wrapper {
+.admin-da-hoan-thanh-wrapper {
   background-color: transparent;
   min-height: 100%;
 }
@@ -335,12 +369,12 @@ export default {
 .icon-box {
   width: 52px;
   height: 52px;
-  background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 16px -4px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 8px 16px -4px rgba(16, 185, 129, 0.4);
 }
 
 .page-title {
@@ -355,7 +389,7 @@ export default {
 
 .btn-refresh {
   background: white;
-  color: #4f46e5;
+  color: #10b981;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 0.75rem 1.25rem;
@@ -365,9 +399,9 @@ export default {
 }
 
 .btn-refresh:hover:not(:disabled) {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-  color: #4338ca;
+  background: #f0fdf4;
+  border-color: #6ee7b7;
+  color: #059669;
   transform: translateY(-2px);
   box-shadow: 0 6px 10px -2px rgba(0, 0, 0, 0.05);
 }
@@ -378,6 +412,32 @@ export default {
 
 @keyframes spin {
   100% { transform: rotate(360deg); }
+}
+
+/* Search Area */
+.search-filter-section {
+  background-color: #ffffff;
+  border-radius: 16px;
+  padding: 1.5rem;
+}
+
+.search-filter-section .form-control,
+.search-filter-section .form-select {
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  border-color: #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.search-filter-section .form-control:focus,
+.search-filter-section .form-select:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.search-filter-section .input-group-text {
+  border-color: #e2e8f0;
+  background-color: #f8fafc;
 }
 
 /* Card Styles */
@@ -482,7 +542,6 @@ export default {
 .text-truncate-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
-  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -501,22 +560,18 @@ export default {
 
 .action-btn.hover-elevate:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3), 0 4px 6px -2px rgba(79, 70, 229, 0.15);
-  background-color: #4338ca;
-  border-color: #4338ca;
-}
-
-.action-btn:hover:not(:disabled):not(.hover-elevate) {
-  background-color: var(--bs-btn-color, #475569);
-  color: #fff !important;
+  box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3), 0 4px 6px -2px rgba(16, 185, 129, 0.15);
+  background-color: #059669;
+  border-color: #059669;
+  color: white;
 }
 
 /* Loading & Empty States */
 .spinner {
   width: 50px;
   height: 50px;
-  border: 4px solid #e0e7ff;
-  border-top-color: #4f46e5;
+  border: 4px solid #d1fae5;
+  border-top-color: #10b981;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }

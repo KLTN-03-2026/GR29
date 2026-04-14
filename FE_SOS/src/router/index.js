@@ -6,6 +6,7 @@ const routes = [
     {
         path: "/client/register",
         component: () => import("../components/Client/DangKy/index.vue"),
+        meta: { layout: "client" },
     },
     {
         path: "/client/login",
@@ -16,7 +17,12 @@ const routes = [
         component: () => import("../components/Client/TrangChu/index.vue"),
         meta: { layout: "client" },
     },
-     {
+    {
+        path: "/client/dang-xu-ly",
+        component: () => import("../components/Client/DangXuLy/index.vue"),
+        meta: { layout: "client" },
+    },
+    {
         path: "/client/requests",
         component: () => import("../components/Client/Request/index.vue"),
         meta: { layout: "client" },
@@ -65,6 +71,16 @@ const routes = [
     {
         path: "/admin/queue",
         component: () => import("../components/Admin/Queue/index.vue"),
+        meta: { layout: "admin" },
+    },
+    {
+        path: "/admin/dang-xu-ly",
+        component: () => import("../components/Admin/DangXuLy/index.vue"),
+        meta: { layout: "admin" },
+    },
+    {
+        path: "/admin/da-hoan-thanh",
+        component: () => import("../components/Admin/DaHoanThanh/index.vue"),
         meta: { layout: "admin" },
     },
     {
@@ -126,7 +142,7 @@ const routes = [
 
     // rescuer
     {
-        path: "/rescuser/login",
+        path: "/rescuer/login",
         component: () => import("../components/Rescuer/DangNhap/index.vue"),
     },
     {

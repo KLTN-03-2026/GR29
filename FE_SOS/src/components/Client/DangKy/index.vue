@@ -59,7 +59,7 @@
       <input v-model="nguoi_dung.mat_khau" :type="showPassword ? 'text' : 'password'" id="password"
         placeholder="Tao mat khau" required>
       <span class="eye-icon" @click="showPassword = !showPassword">
-        <i :class="showPassword ? 'bx bx-show' : 'bx bx-hide'"></i>
+        <i :class="showPassword ? 'fa-regular fa-eye' : 'fa-regular fa-eye-slash'"></i>
       </span>
     </div>
   </div>
@@ -75,7 +75,7 @@
       <input v-model="nguoi_dung.repassword" :type="showRePassword ? 'text' : 'password'" id="repassword"
         placeholder="Nhap lai mat khau" required>
       <span class="eye-icon" @click="showRePassword = !showRePassword">
-        <i :class="showRePassword ? 'bx bx-show' : 'bx bx-hide'"></i>
+        <i :class="showRePassword ? 'fa-regular fa-eye' : 'fa-regular fa-eye-slash'"></i>
       </span>
     </div>
   </div>

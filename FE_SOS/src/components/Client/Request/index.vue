@@ -29,21 +29,36 @@
           <select class="form-select py-2.5 px-4 rounded-3 border-0" 
                   style="font-size: 0.875rem; background: #ffffff; color: #434655;"
                   v-model="selectedType" @change="onFilterChange">
-            <option value="">Loại sự cố</option>
+            <option value=""> Tất cả loại sự cố</option>
             <option v-for="type in uniqueTypes" :key="type" :value="type">{{ type }}</option>
           </select>
         </div>
 
-        <!-- Lọc theo trạng thái -->
-        <div style="min-width: 180px;">
-          <select class="form-select py-2.5 px-4 rounded-3 border-0" 
-                  style="font-size: 0.875rem; background: #ffffff; color: #434655;"
-                  v-model="selectedStatus" @change="onFilterChange">
-            <option value="">Trạng thái</option>
-            <option value="CHO_XU_LY">Chờ xử lý</option>
-            <option value="DANG_XU_LY">Đang xử lý</option>
-            <option value="HOAN_THANH">Hoàn thành</option>
-          </select>
+        <!-- Tìm kiếm theo ngày tháng -->
+        <div class="d-flex align-items-center gap-2" style="min-width: 280px;">
+          <div class="position-relative flex-grow-1">
+            <i class="bi bi-calendar3 position-absolute top-50 start-0 translate-middle-y ms-3" 
+               style="color: #737687; font-size: 0.875rem;"></i>
+            <input 
+              type="date" 
+              class="form-control ps-5 py-2.5 rounded-3 border-0"
+              style="font-size: 0.875rem; background: #ffffff; color: #434655;"
+              v-model="startDate"
+              @change="onFilterChange"
+            >
+          </div>
+          <span class="text-secondary fw-bold">-</span>
+          <div class="position-relative flex-grow-1">
+            <i class="bi bi-calendar3 position-absolute top-50 start-0 translate-middle-y ms-3" 
+               style="color: #737687; font-size: 0.875rem;"></i>
+            <input 
+              type="date" 
+              class="form-control ps-5 py-2.5 rounded-3 border-0"
+              style="font-size: 0.875rem; background: #ffffff; color: #434655;"
+              v-model="endDate"
+              @change="onFilterChange"
+            >
+          </div>
         </div>
 
         <!-- Nút xem tất cả -->
@@ -52,10 +67,10 @@
                 @click="viewAll">
           Xem tất cả
         </button>
-      </div>
+      </div> 
 
       <!-- Hiển thị số kết quả -->
-      <div class="mb-3" v-if="searchQuery || selectedType || selectedStatus">
+      <div class="mb-3" v-if="searchQuery || selectedType || startDate || endDate">
         <p class="text-secondary mb-0">
           <i class="bi bi-info-circle me-1"></i>
           Tìm thấy <strong>{{ filteredList.length }}</strong> kết quả
@@ -251,6 +266,8 @@
 <script>
 import { rescueRequestAPI } from "../../../services/api";
 
+const BASE_URL = 'http://localhost:8000';
+
 const STATUS_META = {
   hoan_thanh: { label: "Hoàn thành", badge: "bg-success text-white" },
   dang_xu_ly: { label: "Đang xử lý", badge: "bg-warning text-dark" },
@@ -408,6 +425,21 @@ function parseTypeIcon(rawType) {
   return { icon: "bi-shield-fill-check", color: "text-secondary", bg: "bg-secondary bg-opacity-15" };
 }
 
+function getImageUrl(image) {
+  if (!image) return null;
+  const raw = String(image).trim();
+  if (!raw) return null;
+  // URL đầy đủ hoặc data URI
+  if (/^(https?:|data:)/i.test(raw)) {
+    return raw;
+  }
+  // Đường dẫn tương đối (uploads/...) → ghép với BASE_URL
+  if (raw.startsWith('uploads/') || raw.startsWith('/uploads/')) {
+    return BASE_URL + '/' + raw;
+  }
+  return null;
+}
+
 export default {
   data() {
     return {
@@ -416,7 +448,8 @@ export default {
       error: "",
       searchQuery: "",
       selectedType: "",
-      selectedStatus: "",
+      startDate: "",
+      endDate: "",
       isModalOpen: false,
       selectedItem: null,
       isCancelModalOpen: false,
@@ -462,8 +495,18 @@ export default {
         result = result.filter(item => item.loai === this.selectedType);
       }
 
-      if (this.selectedStatus) {
-        result = result.filter(item => item.statusKey === this.selectedStatus);
+      if (this.startDate || this.endDate) {
+        result = result.filter(item => {
+          const itemDate = new Date(item.raw?.created_at || item.raw?.ngay_tao || item.raw?.time);
+          if (isNaN(itemDate.getTime())) return true;
+
+          const start = this.startDate ? new Date(this.startDate) : null;
+          const end = this.endDate ? new Date(this.endDate + "T23:59:59") : null;
+
+          if (start && itemDate < start) return false;
+          if (end && itemDate > end) return false;
+          return true;
+        });
       }
 
       return result;
@@ -479,7 +522,8 @@ export default {
     viewAll() {
       this.searchQuery = "";
       this.selectedType = "";
-      this.selectedStatus = "";
+      this.startDate = "";
+      this.endDate = "";
     },
     
     hienToast(type, message) {
@@ -521,7 +565,7 @@ export default {
           icon: typeMeta.icon,
           iconColor: typeMeta.color,
           iconBg: typeMeta.bg,
-          anh_hien_truong: item.anh_hien_truong || item.anh || item.image || null,
+          anh_hien_truong: item.anh_hien_truong || item.anh || item.image || getImageUrl(item.hinh_anh) || null,
           raw: item,
         };
       });

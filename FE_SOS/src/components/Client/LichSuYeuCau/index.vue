@@ -268,6 +268,8 @@
 <script>
 import { rescueRequestAPI } from "../../../services/api";
 
+const BASE_URL = 'http://localhost:8000';
+
 const TYPE_ICON = {
   "y tế": { icon: "bi-heart-pulse-fill", color: "text-danger", bg: "bg-danger bg-opacity-10" },
   "cháy nổ": { icon: "bi-flame-fill", color: "text-danger", bg: "bg-danger bg-opacity-10" },
@@ -355,6 +357,18 @@ function parseTypeIcon(rawType) {
     }
   }
   return { icon: "bi-shield-fill-check", color: "text-secondary", bg: "bg-secondary bg-opacity-15" };
+}
+
+function getImageUrl(image) {
+  if (!image) return null;
+  const raw = String(image);
+  if (/^(https?:|data:)/i.test(raw)) {
+    return raw;
+  }
+  if (raw.startsWith('uploads/') || raw.startsWith('/uploads/')) {
+    return BASE_URL + (raw.startsWith('/') ? '' : '/') + raw;
+  }
+  return null;
 }
 
 export default {
@@ -498,16 +512,16 @@ export default {
         }
         danhGia = danhGia || item.diem_danh_gia || item.danh_gia || item.danh_gia_sao || item.rating || null;
 
-        // Xử lý hình ảnh
+        // Xử lý hình ảnh - ưu tiên hinh_anh từ backend, rồi ghép với BASE_URL nếu là đường dẫn tương đối
         let anhHienTruong = null;
         if (item.hinh_anh) {
-          anhHienTruong = item.hinh_anh;
+          anhHienTruong = getImageUrl(item.hinh_anh);
         } else if (item.anh_hien_truong) {
-          anhHienTruong = item.anh_hien_truong;
+          anhHienTruong = getImageUrl(item.anh_hien_truong);
         } else if (item.anh) {
-          anhHienTruong = item.anh;
+          anhHienTruong = getImageUrl(item.anh);
         } else if (item.image) {
-          anhHienTruong = item.image;
+          anhHienTruong = getImageUrl(item.image);
         }
 
         return {

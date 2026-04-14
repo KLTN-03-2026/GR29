@@ -21,10 +21,16 @@
         </a>
       </router-link>
       <router-link class="nav-item-link" to="/admin/queue">
-        <i class="fa-solid fa-list-ol me-2"></i>Hàng đợi theo ưu tiên
+        <i class="fa-solid fa-list-check me-2"></i>Hàng đợi theo ưu tiên
+      </router-link>
+      <router-link class="nav-item-link" to="/admin/dang-xu-ly">
+        <i class="fa-solid fa-spinner me-2"></i>Đang Xử Lý
       </router-link>
       <router-link class="nav-item-link" to="/admin/assignments">
         <i class="fa-solid fa-person-military-pointing me-2"></i>Phân công đội cứu hộ
+      </router-link>
+      <router-link class="nav-item-link" to="/admin/da-hoan-thanh">
+        <i class="fa-solid fa-circle-check me-2"></i>Đã Hoàn Thành
       </router-link>
 
       <div class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mt-3 mb-2">Giám sát</div>
@@ -75,6 +81,7 @@ export default {
 <style scoped>
 .admin-menu {
   background: radial-gradient(circle at top, #111827 0, #020617 48%, #020617 100%);
+  height: 100%;
 }
 
 .brand-icon {

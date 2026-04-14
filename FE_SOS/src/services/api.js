@@ -77,15 +77,29 @@ export const incidentTypeAPI = {
   delete: (id) => api.delete(`/loai-su-co/${id}`),
 };
 
+// Processing Queue (HangDoiXuLy)
+export const hangDoiAPI = {
+  getList: () => api.get('/hang-doi-xu-ly'),
+  getByStatus: (status) => api.get(`/hang-doi-xu-ly/theo-trang-thai/${status}`),
+};
+
 // Rescue Requests (Yêu cầu Cứu hộ)
 export const rescueRequestAPI = {
   getList: () => api.get('/yeu-cau-cuu-ho'),
   getByUser: (userId) => api.get('/yeu-cau-cuu-ho', { params: { id_nguoi_dung: userId } }),
   getDetail: (id) => api.get(`/yeu-cau-cuu-ho/${id}`),
-  create: (data) => api.post('/yeu-cau-cuu-ho', data),
+  create: (data) => {
+    // Nếu là FormData (có file upload) thì bỏ Content-Type để axios tự set boundary
+    if (data instanceof FormData) {
+      return api.post('/yeu-cau-cuu-ho', data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
+    return api.post('/yeu-cau-cuu-ho', data);
+  },
   update: (id, data) => api.put(`/yeu-cau-cuu-ho/${id}`, data),
   changeStatus: (id, data) => api.put(`/yeu-cau-cuu-ho/${id}/trang-thai`, data),
-  getByStatus: (status) => api.get('/yeu-cau-cuu-ho/theo-trang-thai', { params: { trang_thai: status } }),
+  getByStatus: (status, params = {}) => api.get('/yeu-cau-cuu-ho/theo-trang-thai', { params: { trang_thai: status, ...params } }),
   getByPriority: (priority) => api.get('/yeu-cau-cuu-ho/theo-muc-do-khan-cap', { params: { muc_do_khan_cap: priority } }),
   getAIClassification: () => api.get('/yeu-cau-cuu-ho/phan-loai-ai'),
   getQueue: () => api.get('/yeu-cau-cuu-ho/hang-doi'),

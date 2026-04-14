@@ -24,6 +24,12 @@
                     </li>
 
                     <li class="nav-item">
+                        <router-link class="nav-link now-nav__link" to="/client/dang-xu-ly">
+                            <i class="fa-solid fa-bullhorn me-2"></i>Yêu cầu đang xử lý
+                        </router-link>
+                    </li>
+
+                    <li class="nav-item">
                         <router-link class="nav-link now-nav__link" to="/client/history">
                             <i class="fa-solid fa-clock-rotate-left me-2"></i>Lịch sử yêu cầu
                         </router-link>
