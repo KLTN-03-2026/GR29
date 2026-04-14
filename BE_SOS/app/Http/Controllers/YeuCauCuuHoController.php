@@ -124,14 +124,39 @@ class YeuCauCuuHoController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function store(YeuCauCuuHoRequest $request)
+    public function store(Request $request)
     {
         try {
+            // Parse id_loai_su_co if sent as JSON array string "[3]" or "3"
+            if ($request->has('id_loai_su_co')) {
+                $raw = $request->input('id_loai_su_co');
+                // If it's a JSON array like "[3]", extract the first element
+                if (is_string($raw) && preg_match('/^\[\s*(\d+)\s*\]$/', $raw, $matches)) {
+                    $request->merge(['id_loai_su_co' => (int) $matches[1]]);
+                }
+            }
+
+            // Validate basic fields manually (skip YeuCauCuuHoRequest to handle file upload separately)
+            $baseValidated = $request->validate([
+                'id_nguoi_dung' => 'required|exists:nguoi_dung,id_nguoi_dung',
+                'id_loai_su_co' => 'required|exists:loai_su_co,id_loai_su_co',
+                'vi_tri_lat' => 'required|numeric',
+                'vi_tri_lng' => 'required|numeric',
+                'vi_tri_dia_chi' => 'nullable|string|max:500',
+                'chi_tiet' => 'nullable|string',
+                'mo_ta' => 'required|string',
+                'hinh_anh' => 'nullable|file|image|max:10240',
+                'so_nguoi_bi_anh_huong' => 'nullable|integer|min:0',
+                'muc_do_khan_cap' => 'nullable|string|max:20',
+                'diem_uu_tien' => 'nullable|numeric',
+                'trang_thai' => 'nullable|string|max:30',
+            ]);
+
             if (is_array($request->input('chi_tiet'))) {
                 $request->merge(['chi_tiet' => implode(', ', $request->input('chi_tiet'))]);
             }
 
-            $validated = $request->validated();
+            $validated = $baseValidated;
 
             if (array_key_exists('trang_thai', $validated)) {
                 $validated['trang_thai'] = $this->normalizeTrangThaiYeuCau($validated['trang_thai']);
@@ -153,7 +178,19 @@ class YeuCauCuuHoController extends Controller
                 $validated['trang_thai'] = 'CHO_XU_LY';
             }
 
-            $item = YeuCauCuuHo::create($validated);
+            // Handle file upload - store file and save filename to DB
+            $hinhAnhPath = null;
+            if ($request->hasFile('hinh_anh')) {
+                $file = $request->file('hinh_anh');
+                $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $file->move(public_path('uploads/hinh_anh'), $filename);
+                $hinhAnhPath = 'uploads/hinh_anh/' . $filename;
+            }
+
+            $item = YeuCauCuuHo::create([
+                ...$validated,
+                'hinh_anh' => $hinhAnhPath,
+            ]);
 
             // Create processing queue entry
             HangDoiXuLy::create([
@@ -398,8 +435,13 @@ class YeuCauCuuHoController extends Controller
 
             // Update processing queue status if applicable
             if ($item->hangDoiXuLy) {
-                $queueStatus = $normalized === 'CHO_XU_LY' ? 'WAITING' : ($normalized === 'DANG_XU_LY' ? 'PROCESSING' : 'DONE');
-                $item->hangDoiXuLy->update(['trang_thai' => $queueStatus]);
+                if ($normalized === 'HUY_BO') {
+                    // When cancelled, remove from queue entirely
+                    $item->hangDoiXuLy->delete();
+                } else {
+                    $queueStatus = $normalized === 'CHO_XU_LY' ? 'WAITING' : ($normalized === 'DANG_XU_LY' ? 'PROCESSING' : 'DONE');
+                    $item->hangDoiXuLy->update(['trang_thai' => $queueStatus]);
+                }
             }
 
             $item->load('nguoiDung', 'loaiSuCo', 'hangDoiXuLy');
@@ -1013,6 +1055,52 @@ class YeuCauCuuHoController extends Controller
             return Response::json([
                 'success' => false,
                 'message' => 'Lỗi khi lấy dữ liệu: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get dashboard statistics
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getDashboardStats(Request $request)
+    {
+        try {
+            $totalRequestsToday = YeuCauCuuHo::whereDate('created_at', now()->toDateString())->count();
+            $totalRequests = YeuCauCuuHo::count();
+            $choXuLy = YeuCauCuuHo::where('trang_thai', 'CHO_XU_LY')->count();
+            $dangXuLy = YeuCauCuuHo::where('trang_thai', 'DANG_XU_LY')->count();
+            $hoanThanh = YeuCauCuuHo::where('trang_thai', 'HOAN_THANH')
+                ->whereDate('created_at', now()->toDateString())
+                ->count();
+            $huyBo = YeuCauCuuHo::where('trang_thai', 'HUY_BO')->count();
+            $criticalCount = YeuCauCuuHo::where('muc_do_khan_cap', 'CRITICAL')
+                ->whereNotIn('trang_thai', ['HOAN_THANH', 'HUY_BO'])
+                ->count();
+
+            $avgWaitMinutes = YeuCauCuuHo::where('trang_thai', 'CHO_XU_LY')
+                ->selectRaw('AVG(TIMESTAMPDIFF(MINUTE, created_at, NOW())) as avg_wait')
+                ->value('avg_wait') ?? 0;
+
+            return Response::json([
+                'success' => true,
+                'data' => [
+                    'total_requests_today' => $totalRequestsToday,
+                    'total_requests' => $totalRequests,
+                    'cho_xu_ly' => $choXuLy,
+                    'dang_xu_ly' => $dangXuLy,
+                    'hoan_thanh' => $hoanThanh,
+                    'huy_bo' => $huyBo,
+                    'critical_count' => $criticalCount,
+                    'avg_wait_minutes' => round((float) $avgWaitMinutes, 2)
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi khi lấy dữ liệu dashboard: ' . $e->getMessage()
             ], 500);
         }
     }

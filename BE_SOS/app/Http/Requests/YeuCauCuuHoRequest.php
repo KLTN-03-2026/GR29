@@ -6,6 +6,17 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class YeuCauCuuHoRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        // Parse id_loai_su_co if sent as JSON array string like "[3]" or "[ 2 ]"
+        if ($this->has('id_loai_su_co')) {
+            $raw = $this->input('id_loai_su_co');
+            if (is_string($raw) && preg_match('/^\[\s*(\d+)\s*\]$/', $raw, $matches)) {
+                $this->merge(['id_loai_su_co' => (int) $matches[1]]);
+            }
+        }
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -29,7 +40,7 @@ class YeuCauCuuHoRequest extends FormRequest
             'vi_tri_dia_chi' => 'nullable|string|max:500',
             'chi_tiet' => 'nullable|string',
             'mo_ta' => 'required|string',
-            'hinh_anh' => 'nullable|string',
+            'hinh_anh' => 'nullable|file|image|max:10240', // max 10MB
             'so_nguoi_bi_anh_huong' => 'nullable|integer|min:0',
             'muc_do_khan_cap' => 'nullable|string|max:20',
             'diem_uu_tien' => 'nullable|numeric',

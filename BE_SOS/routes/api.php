@@ -190,6 +190,7 @@ Route::get('thong-ke/yeu-cau-theo-muc-do-khan-cap', [YeuCauCuuHoController::clas
 Route::get('thong-ke/trang-thai-xu-ly', [YeuCauCuuHoController::class, 'getProcessingStatus']);
 Route::get('thong-ke/hieu-suat-doi-cuu-ho', [DoiCuuHoController::class, 'getTeamEfficiency']);
 Route::get('thong-ke/danh-sach-doi-co-san', [DoiCuuHoController::class, 'getAvailableTeams']);
+Route::get('thong-ke/dashboard', [YeuCauCuuHoController::class, 'getDashboardStats']);
 Route::get('thong-ke/heatmap', [YeuCauCuuHoController::class, 'getHeatmapData']);
 
 // =========================================

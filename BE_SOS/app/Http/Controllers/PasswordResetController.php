@@ -21,8 +21,6 @@ class PasswordResetController extends Controller
         ]);
 
         $email = strtolower(trim($request->email));
-
-        // Tìm người dùng với email này
         $user = NguoiDung::where('email', $email)->first();
 
         if (!$user) {
@@ -32,22 +30,21 @@ class PasswordResetController extends Controller
             ], 404);
         }
 
-        // Xóa các OTP cũ trước (nếu có)
+        // Xóa OTP cũ và tạo mới
         DB::table('password_reset_tokens')->where('email', $email)->delete();
 
-        // Tạo mã OTP 6 số ngẫu nhiên
         $maOtp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $token = Str::random(64);
 
-        // Lưu vào database với thời hạn 5 phút
         DB::table('password_reset_tokens')->insert([
             'email' => $email,
+            'token' => $token,
             'ma_otp' => $maOtp,
             'ho_ten' => $user->ho_ten,
             'created_at' => now(),
             'expires_at' => now()->addMinutes(5),
         ]);
 
-        // Gửi email
         try {
             Mail::to($email)->send(new GuiMaOtp($maOtp, $user->ho_ten));
 
@@ -64,7 +61,7 @@ class PasswordResetController extends Controller
     }
 
     /**
-     * Bước 2: Xác minh mã OTP
+     * Bước 2: Xác minh mã OTP và trả về token để đặt lại mật khẩu
      */
     public function xacNhanOtp(Request $request)
     {
@@ -75,7 +72,6 @@ class PasswordResetController extends Controller
 
         $email = strtolower(trim($request->email));
 
-        // Tìm OTP trong database
         $record = DB::table('password_reset_tokens')
             ->where('email', $email)
             ->where('ma_otp', $request->ma_otp)
@@ -88,9 +84,7 @@ class PasswordResetController extends Controller
             ], 400);
         }
 
-        // Kiểm tra đã hết hạn chưa
         if (now()->greaterThan($record->expires_at)) {
-            // Xóa OTP hết hạn
             DB::table('password_reset_tokens')->where('email', $email)->delete();
 
             return response()->json([
@@ -99,21 +93,17 @@ class PasswordResetController extends Controller
             ], 400);
         }
 
-        // Tạo token tạm để đặt lại mật khẩu
-        $resetToken = Str::random(64);
-
-        // Cập nhật record với reset token
+        // Cập nhật expires_at để extend thời gian reset password
         DB::table('password_reset_tokens')
             ->where('email', $email)
             ->update([
-                'ma_otp' => $resetToken,
                 'expires_at' => now()->addMinutes(30),
             ]);
 
         return response()->json([
             'status' => true,
             'message' => 'Mã xác nhận hợp lệ',
-            'reset_token' => $resetToken,
+            'reset_token' => $record->token,
         ]);
     }
 
@@ -128,7 +118,6 @@ class PasswordResetController extends Controller
             'mat_khau_moi' => 'required|string|min:6',
         ]);
 
-        // Kiểm tra mật khẩu xác nhận (frontend đã validate, nhưng vẫn check ở đây)
         if ($request->has('mat_khau_moi_confirmation') && $request->mat_khau_moi !== $request->mat_khau_moi_confirmation) {
             return response()->json([
                 'status' => false,
@@ -138,10 +127,9 @@ class PasswordResetController extends Controller
 
         $email = strtolower(trim($request->email));
 
-        // Tìm record với reset token
         $record = DB::table('password_reset_tokens')
             ->where('email', $email)
-            ->where('ma_otp', $request->reset_token)
+            ->where('token', $request->reset_token)
             ->first();
 
         if (!$record) {
@@ -151,7 +139,6 @@ class PasswordResetController extends Controller
             ], 400);
         }
 
-        // Kiểm tra đã hết hạn chưa
         if (now()->greaterThan($record->expires_at)) {
             DB::table('password_reset_tokens')->where('email', $email)->delete();
 
@@ -161,7 +148,7 @@ class PasswordResetController extends Controller
             ], 400);
         }
 
-        // Cập nhật mật khẩu mới
+        // Cập nhật mật khẩu
         $user = NguoiDung::where('email', $email)->first();
         if ($user) {
             $user->mat_khau = \Illuminate\Support\Facades\Hash::make($request->mat_khau_moi);
@@ -178,7 +165,7 @@ class PasswordResetController extends Controller
     }
 
     /**
-     * Gửi lại mã OTP (nếu người dùng cần)
+     * Gửi lại mã OTP
      */
     public function guiLaiMaOtp(Request $request)
     {
