@@ -24,22 +24,27 @@
 
       <form @submit.prevent="handleTeamLogin" class="auth-form">
         <div class="input-group">
-          <label for="team-id">MÃ ĐỘI / CÁ NHÂN</label>
+          <label for="team-id">EMAIL</label>
           <div class="input-wrapper">
             <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            <input type="text" id="team-id" placeholder="VD: RESCUE-01" required>
+            <input type="email" id="team-id" v-model="loginForm.email" placeholder="nhập email" required>
           </div>
         </div>
 
         <div class="input-group">
-          <label for="password">MẬT KHẨU TỔ CHỨC</label>
+          <label for="password">PASSWORD</label>
           <div class="input-wrapper">
             <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-            <input type="password" id="password" placeholder="Nhập mật khẩu" required>
+            <input type="password" id="password" v-model="loginForm.password" placeholder="Nhập mật khẩu" required>
           </div>
         </div>
 
-        <button type="submit" class="btn-primary">Đăng Nhập Khẩn Cấp</button>
+        <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
+
+        <button type="submit" class="btn-primary" :disabled="loading">
+          <span v-if="loading">Đang đăng nhập...</span>
+          <span v-else>Đăng Nhập</span>
+        </button>
       </form>
 
       <div class="contact-support">
@@ -50,8 +55,52 @@
 </template>
 
 <script setup>
-const handleTeamLogin = () => {
-  // Team SOS Login logic here
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { authAPI } from '../../../services/api.js';
+
+const router = useRouter();
+
+const loginForm = ref({
+  email: '',
+  password: ''
+});
+
+const loading = ref(false);
+const errorMessage = ref('');
+
+const handleTeamLogin = async () => {
+  errorMessage.value = '';
+  loading.value = true;
+
+  try {
+    const response = await authAPI.loginRescuer({
+      email: loginForm.value.email,
+      mat_khau: loginForm.value.password
+    });
+
+    if (response.data.status) {
+      localStorage.setItem('rescuer_token', response.data.token);
+      localStorage.setItem('rescuer_user', JSON.stringify(response.data.data));
+      localStorage.setItem('rescuer_team', JSON.stringify(response.data.data.doi_cuu_ho || response.data.data.doiCuuHo || null));
+
+      router.push('/rescuer/home');
+    }
+  } catch (error) {
+    if (error.response) {
+      if (error.response.status === 422) {
+        errorMessage.value = 'Email hoặc mật khẩu không hợp lệ';
+      } else if (error.response.status === 401) {
+        errorMessage.value = error.response.data.message || 'Email hoặc mật khẩu sai';
+      } else {
+        errorMessage.value = 'Đã xảy ra lỗi. Vui lòng thử lại.';
+      }
+    } else {
+      errorMessage.value = 'Không thể kết nối đến máy chủ';
+    }
+  } finally {
+    loading.value = false;
+  }
 };
 </script>
 
@@ -322,6 +371,22 @@ const handleTeamLogin = () => {
 
 .contact-support a:hover {
   text-decoration: underline;
+}
+
+.error-message {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  margin: 0;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 @media (max-width: 480px) {

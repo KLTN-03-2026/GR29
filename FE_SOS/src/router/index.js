@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import checkAdmin from "./checkAdmin";
+import checkRescuer from "./checkRescuer";
 
 const routes = [
     // client
@@ -149,7 +150,51 @@ const routes = [
         path: "/rescuer/home",
         component: () => import("../components/Rescuer/TrangChu/index.vue"),
         meta: { layout: "rescuer" },
+        beforeEnter: checkRescuer,
     },
+    {
+        path: "/rescuer/dang-xu-ly",
+        component: () => import("../components/Rescuer/DangXuLy/index.vue"),
+        meta: { layout: "rescuer" },
+        beforeEnter: checkRescuer,
+    },
+    {
+        path: "/rescuer/da-xu-ly",
+        component: () => import("../components/Rescuer/DaXuLy/index.vue"),
+        meta: { layout: "rescuer" },
+        beforeEnter: checkRescuer,
+    },
+    {
+        path: "/rescuer/thong-bao-nhiem-vu",
+        component: () => import("../components/Rescuer/ThongBaoNhiemVu/index.vue"),
+        meta: { layout: "rescuer" },
+        beforeEnter: checkRescuer,
+    },
+    {
+        path: "/rescuer/tai-nguyen",
+        component: () => import("../components/Rescuer/TaiNguyen/index.vue"),
+        meta: { layout: "rescuer" },
+        beforeEnter: checkRescuer,
+    },
+    {
+        path: "/rescuer/heatmap",
+        component: () => import("../components/Rescuer/HeatMap/index.vue"),
+        meta: { layout: "rescuer" },
+        beforeEnter: checkRescuer,
+    },
+    {
+        path: "/rescuer/reports",
+        component: () => import("../components/Rescuer/Report/index.vue"),
+        meta: { layout: "rescuer" },
+        beforeEnter: checkRescuer,
+    },
+    {
+        path: "/rescuer/quan-ly-thanh-vien",
+        component: () => import("../components/Rescuer/QuanLy/index.vue"),
+        meta: { layout: "rescuer" },
+        beforeEnter: checkRescuer,
+    },
+
 ];
 
 const router = createRouter({
@@ -160,6 +205,9 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
     if (to.path.startsWith("/admin") && to.path !== "/admin/login") {
         return checkAdmin(to, from, next);
+    }
+    if (to.path.startsWith("/rescuer") && to.path !== "/rescuer/login") {
+        return checkRescuer(to, from, next);
     }
     next();
 });

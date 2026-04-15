@@ -1,7 +1,8 @@
 <template>
-  <component :is="layout">
-
-  </component>
+  <client-layout v-if="layoutName === 'client-layout'" />
+  <admin-layout v-else-if="layoutName === 'admin-layout'" />
+  <rescuer-layout v-else-if="layoutName === 'rescuer-layout'" />
+  <default-layout v-else />
 </template>
 
 <script>
@@ -14,13 +15,13 @@ const default_layout = "default";
 
 export default {
   components: {
-    "client-layout": ClientLayout,
-    "rescuer-layout": RescuerLayout,
-    "admin-layout": AdminLayout,
-    "default-layout": DefaultLayout,
+    ClientLayout,
+    RescuerLayout,
+    AdminLayout,
+    DefaultLayout,
   },
   computed: {
-    layout() {
+    layoutName() {
       return (this.$route.meta.layout || default_layout) + "-layout";
     },
   },

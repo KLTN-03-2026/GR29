@@ -2,6 +2,9 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import Default from './layout/wrapper/index.vue'
+import ClientLayout from './layout/wrapper/client.vue'
+import AdminLayout from './layout/wrapper/admin.vue'
+import RescuerLayout from './layout/wrapper/rescuer.vue'
 
 // import meforma toaster
 import Toaster from "@meforma/vue-toaster"
@@ -17,5 +20,8 @@ app.use(Toaster, {
 
 app.use(router)
 app.component("default-layout", Default)
+app.component("client-layout", ClientLayout)
+app.component("admin-layout", AdminLayout)
+app.component("rescuer-layout", RescuerLayout)
 
 app.mount("#app")

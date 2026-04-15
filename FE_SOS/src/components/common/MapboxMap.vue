@@ -82,6 +82,16 @@ function initMap() {
   map.on("load", () => {
     map.resize();
   });
+
+  map.on("styleimagemissing", (e) => {
+    const id = e.id;
+    if (id && !map.hasImage(id)) {
+      const size = 20;
+      const data = new Uint8Array(size * size * 4);
+      for (let i = 0; i < data.length; i++) data[i] = 200;
+      map.addImage(id, { width: size, height: size, data }, { pixelRatio: 1 });
+    }
+  });
 }
 
 function flyTo(lng, lat, zoom = 15) {
