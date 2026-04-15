@@ -544,8 +544,11 @@ export default {
     async loadTeams() {
       this.loadingTeams = true;
       try {
-        const response = await rescueTeamAPI.getList();
-        this.teams = parseTeams(response?.data || response);
+        // Lấy TẤT CẢ đội cứu hộ (không phân trang)
+        const response = await rescueTeamAPI.getList({ get_all: true });
+        const rawData = response?.data || response;
+        this.teams = parseTeams(rawData);
+        console.log('Loaded teams count:', this.teams.length);
       } catch (error) {
         console.error('Lỗi tải đội cứu hộ:', error);
       } finally {

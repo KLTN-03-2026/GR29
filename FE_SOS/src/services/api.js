@@ -111,7 +111,7 @@ export const rescueRequestAPI = {
 
 // Rescue Teams (Đội Cứu hộ)
 export const rescueTeamAPI = {
-  getList: () => api.get('/doi-cuu-ho'),
+  getList: (params = {}) => api.get('/doi-cuu-ho', { params }),
   getDetail: (id) => api.get(`/doi-cuu-ho/${id}`),
   create: (data) => api.post('/doi-cuu-ho', data),
   update: (id, data) => api.put(`/doi-cuu-ho/${id}`, data),

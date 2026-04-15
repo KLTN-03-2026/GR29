@@ -62,12 +62,24 @@ class DoiCuuHoController extends Controller
     {
         try {
             $perPage = $request->get('per_page', 15);
+            $getAll = $request->get('get_all', false);
             $sortBy = $request->get('sort_by', 'id_doi_cuu_ho');
             $sortOrder = $request->get('sort_order', 'desc');
 
-            $items = DoiCuuHo::with(['thanhViens', 'taiNguyens', 'viTris', 'nangLuc', 'loaiSuCos', 'phanCongs'])
-                ->orderBy($sortBy, $sortOrder)
-                ->paginate($perPage);
+            $query = DoiCuuHo::with(['thanhViens', 'taiNguyens', 'viTris', 'nangLuc', 'loaiSuCos', 'phanCongs'])
+                ->orderBy($sortBy, $sortOrder);
+
+            // Nếu yêu cầu lấy tất cả (get_all=true hoặc per_page >= 100)
+            if ($getAll || $perPage >= 100) {
+                $items = $query->get();
+                return Response::json([
+                    'success' => true,
+                    'message' => 'Danh sách tất cả đội cứu hộ',
+                    'data' => $items
+                ], 200);
+            }
+
+            $items = $query->paginate($perPage);
 
             return Response::json([
                 'success' => true,
