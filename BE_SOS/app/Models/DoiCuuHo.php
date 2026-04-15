@@ -44,8 +44,17 @@ class DoiCuuHo extends Model
         return $this->hasMany(PhanCongCuuHo::class, 'id_doi_cuu_ho', 'id_doi_cuu_ho');
     }
 
-    public function ketQua()
+    // public function ketQua()
+    // {
+    //     return $this->belongsTo(KetQuaCuuHo::class, 'id_ket_qua', 'id_ket_qua');
+    // }
+    public function loaiSuCo()
     {
-        return $this->belongsTo(KetQuaCuuHo::class, 'id_ket_qua', 'id_ket_qua');
+        return $this->belongsToMany(
+            LoaiSuCo::class,
+            'doi_cuu_ho_loai_su_co',
+            'id_doi_cuu_ho',
+            'id_loai_su_co'
+        );
     }
 }

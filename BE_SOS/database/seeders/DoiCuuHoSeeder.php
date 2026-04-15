@@ -3,38 +3,57 @@
 namespace Database\Seeders;
 
 use App\Models\DoiCuuHo;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\LoaiSuCo;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class DoiCuuHoSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     public function run(): void
     {
-        $teams = [
-    ['ten' => 'Đội Cứu Hộ Lũ Lụt ', 'khu_vuc' => 'Hải Châu', 'lat' => 16.0600, 'lng' => 108.2200, 'sdt' => '0901111111'],
-    ['ten' => 'Đội Cứu Nạn Sạt Lở ', 'khu_vuc' => 'Liên Chiểu', 'lat' => 16.0900, 'lng' => 108.1500, 'sdt' => '0902222222'],
-    ['ten' => 'Đội Sơ Cứu Y Tế ', 'khu_vuc' => 'Thanh Khê', 'lat' => 16.0700, 'lng' => 108.2000, 'sdt' => '0903333333'],
-    ['ten' => 'Đội Ứng Phó Bão ', 'khu_vuc' => 'Sơn Trà', 'lat' => 16.1000, 'lng' => 108.2500, 'sdt' => '0904444444'],
-    ['ten' => 'Đội Hỗ Trợ Di Dời Sơn', 'khu_vuc' => 'Ngũ Hành Sơn', 'lat' => 16.0000, 'lng' => 108.2600, 'sdt' => '0905555555']
-];
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        DoiCuuHo::truncate();
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
-        foreach ($teams as $team) {
-            DoiCuuHo::updateOrCreate(
-                ['ten_co' => $team['ten']],
-                [
-                    'ten_co' => $team['ten'],
-                    'khu_vuc_quan_ly' => $team['khu_vuc'],
-                    'so_dien_thoai_hotline' => $team['sdt'],
-                    'vi_tri_lat' => $team['lat'],
-                    'vi_tri_lng' => $team['lng'],
+        $districts = [
+            'Hải Châu' => [16.0600, 108.2200],
+            'Thanh Khê' => [16.0700, 108.2000],
+            'Liên Chiểu' => [16.0900, 108.1500],
+            'Sơn Trà' => [16.1000, 108.2500],
+            'Ngũ Hành Sơn' => [16.0000, 108.2600],
+            'Hòa Vang' => [15.9800, 108.1200],
+        ];
+
+        $types = LoaiSuCo::all();
+
+        $count = 0;
+
+        foreach ($districts as $quan => $baseLocation) {
+
+            foreach ($types as $type) {
+
+                // random vị trí quanh trung tâm quận
+                $lat = $baseLocation[0] + rand(-10, 10) / 1000;
+                $lng = $baseLocation[1] + rand(-10, 10) / 1000;
+
+                // 👉 tạo team
+                $team = DoiCuuHo::create([
+                    'ten_co' => "Đội {$type->ten} {$quan}",
+                    'khu_vuc_quan_ly' => $quan,
+                    'so_dien_thoai_hotline' => '09' . rand(100000000, 999999999),
+                    'vi_tri_lat' => $lat,
+                    'vi_tri_lng' => $lng,
                     'trang_thai' => 'SAN_SANG',
-                    'mo_ta' => "Đội cứu hộ khu vực {$team['khu_vuc']}"
-                ]
-            );
+                    'mo_ta' => "Đội cứu hộ {$type->ten} tại {$quan}"
+                ]);
+
+                // 👉 gán đúng 1 loại sự cố
+                $team->loaiSuCos()->syncWithoutDetaching([$type->id_loai_su_co]);
+
+                $count++;
+            }
         }
 
-        echo "✅ Đội Cứu Hộ Seeding: 5 đội cứu hộ\n";
+        echo "✅ Seeding {$count} đội cứu hộ\n";
     }
 }

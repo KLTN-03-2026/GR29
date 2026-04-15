@@ -24,7 +24,8 @@ class NguoiDungSeeder extends Seeder
             ['ho_ten' => 'Dương Văn Hậu', 'sdt' => '0908888888', 'email' => 'hau1@example.com'],
             ['ho_ten' => 'Tô Thị Hiểu', 'sdt' => '0909999999', 'email' => 'hieu1@example.com'],
             ['ho_ten' => 'Đặng Văn Hịu', 'sdt' => '0910000000', 'email' => 'hiu1@example.com'],
-            ['ho_ten' => 'Nguyễn Thành Đạt', 'sdt' => '0910000001', 'email' => 'datphiit@gmail.com']
+            ['ho_ten' => 'Nguyễn Thành Đạt', 'sdt' => '0910000001', 'email' => 'datphiit@gmail.com'],
+            ['ho_ten' => 'Nguyễn Tấn Cao trí', 'sdt' => '0922332232', 'email' => 'ctris0201@gmail.com'],
         ];
 
         foreach ($users as $user) {

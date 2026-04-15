@@ -46,7 +46,7 @@ class LoaiSuCoController extends Controller
     public function show($id): JsonResponse
     {
         try {
-            $item = LoaiSuCo::with(['chiTiets', 'yeuCauCuuHos', 'doiCuuHos'])->findOrFail($id);
+            $item = LoaiSuCo::with(['chiTiets', 'yeuCauCuuHos', 'doiCuuHo'])->findOrFail($id);
             return response()->json($item);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Incident type not found'], 404);
