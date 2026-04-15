@@ -12,11 +12,12 @@ const api = axios.create({
   },
 });
 
-// Bearer: ưu tiên admin_token (trang /admin), sau đó token người dùng
+// Bearer: ưu tiên admin_token (trang /admin), sau đó rescuer_token, rồi token người dùng
 api.interceptors.request.use((config) => {
   const adminToken = localStorage.getItem("admin_token");
+  const rescuerToken = localStorage.getItem("rescuer_token");
   const userToken = localStorage.getItem("token");
-  const t = adminToken || userToken;
+  const t = adminToken || rescuerToken || userToken;
   if (t) {
     config.headers.Authorization = `Bearer ${t}`;
   }
@@ -28,6 +29,7 @@ export const authAPI = {
   loginAdmin: (data) => api.post('/admin/login', data),
   loginUser: (data) => api.post('/nguoi-dung/login', data),
   registerUser: (data) => api.post('/nguoi-dung/register', data),
+  loginRescuer: (data) => api.post('/rescuer/login', data),
 };
 
 // Password Reset
@@ -65,7 +67,7 @@ export const userAPI = {
 // Incident Types (Loại Sự Cố)
 export const incidentTypeAPI = {
   getList: () => api.get('/loai-su-co'),
-  getDetail: (id) => api.get(`/loai-su-co/${id}`),
+  getDetail: (id) => api.get(`/loai-su-co/${id}/chi-tiet`),
   create: (data) => api.post('/loai-su-co', data),
   update: (id, data) => api.put(`/loai-su-co/${id}`, data),
   changeStatus: (id) => api.put(`/loai-su-co/cap-nhat-trang-thai/${id}`),
@@ -171,6 +173,59 @@ export const rescueResultAPI = {
   update: (id, data) => api.put(`/ket-qua-cuu-ho/${id}`, data),
   search: (query) => api.get('/ket-qua-cuu-ho/tim-kiem', { params: { noi_dung_tim: query } }),
   delete: (id) => api.delete(`/ket-qua-cuu-ho/${id}`),
+};
+
+// ============ RESCUER DEDICATED APIs ============
+export const rescuerAPI = {
+  // Xác thực
+  checkToken: () => api.get('/doi-cuu-ho/check-token'),
+
+  // Nhiệm vụ được phân công cho đội
+  getAssignments: (params = {}) => api.get('/phan-cong-cuu-ho', { params }),
+  getAssignmentByTeam: (teamId, params = {}) =>
+    api.get('/phan-cong-cuu-ho/theo-doi/' + teamId, { params }),
+  getAssignmentByStatus: (status) =>
+    api.get('/phan-cong-cuu-ho/theo-trang-thai/' + status),
+  updateAssignmentStatus: (id, data) =>
+    api.put('/phan-cong-cuu-ho/' + id + '/trang-thai', data),
+
+  // Yêu cầu cứu hộ liên quan
+  getYeuCauDetail: (id) => api.get('/yeu-cau-cuu-ho/' + id),
+  updateYeuCauStatus: (id, data) =>
+    api.put('/yeu-cau-cuu-ho/' + id + '/trang-thai', data),
+
+  // Đội cứu hộ
+  getTeamMembers: (id) => api.get('/get-doi-cuu-ho/' + id + '/thanh-vien'),
+  getTeamResources: (id) => api.get('/get-doi-cuu-ho/' + id + '/tai-nguyen'),
+  addTeamResource: (id, data) =>
+    api.post('/post-doi-cuu-ho/' + id + '/tai-nguyen', data),
+  updateTeamResource: (id, resourceId, data) =>
+    api.put('/put-doi-cuu-ho/' + id + '/tai-nguyen/' + resourceId, data),
+  getTeamLocations: (id) => api.get('/get-doi-cuu-ho/' + id + '/vi-tri'),
+  addTeamLocation: (id, data) =>
+    api.post('/post-doi-cuu-ho/' + id + '/vi-tri', data),
+  getTeamCapabilities: (id) => api.get('/get-doi-cuu-ho/' + id + '/nang-luc'),
+  updateTeamCapabilities: (id, data) =>
+    api.put('/put-doi-cuu-ho/' + id + '/nang-luc', data),
+
+  // Kết quả cứu hộ
+  createResult: (phanCongId, data) =>
+    api.post('/post-ket-qua-cuu-ho/phan-cong/' + phanCongId, data),
+  getResult: (phanCongId) =>
+    api.get('/get-ket-qua-cuu-ho/phan-cong/' + phanCongId),
+
+  // Đánh giá cứu hộ
+  getRatings: (yeuCauId) => api.get('/get-danh-gia-cuu-ho/yeu-cau/' + yeuCauId),
+
+  // Thành viên đội (quản lý)
+  getMembers: () => api.get('/thanh-vien-doi/list'),
+  addMember: (data) => api.post('/thanh-vien-doi/create', data),
+  updateMember: (id, data) => api.put('/thanh-vien-doi/update/' + id, data),
+  toggleMemberStatus: (id) => api.put('/thanh-vien-doi/change-status/' + id),
+  removeMember: (id) => api.delete('/thanh-vien-doi/delete/' + id),
+
+  // Thống kê heatmap
+  getHeatmap: () => api.get('/thong-ke/heatmap'),
 };
 
 export default api;

@@ -83,6 +83,28 @@ class DoiCuuHoController extends Controller
     }
 
     /**
+     * Get simple list for dropdown (no pagination)
+     */
+    public function getAllForDropdown()
+    {
+        try {
+            $items = DoiCuuHo::where('trang_thai', 1)
+                ->orderBy('ten_doi', 'asc')
+                ->get(['id_doi_cuu_ho', 'ten_doi']);
+
+            return Response::json([
+                'success' => true,
+                'data' => $items
+            ], 200);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Store a newly created rescue team
      */
     public function store(Request $request)

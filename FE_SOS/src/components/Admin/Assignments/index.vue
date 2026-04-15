@@ -8,17 +8,20 @@
       </div>
       <div class="col-md-6 text-md-end">
         <div class="d-flex justify-content-md-end gap-3">
-          <div class="bg-white px-3 py-2 rounded shadow-sm border border-warning" style="border-left-width: 4px !important;">
-            <span class="text-muted small">Đang chờ</span>
-            <div class="fw-bold fs-5 text-warning">{{ pendingRequests.length }}</div>
+          <div class="bg-gradient-warning px-4 py-3 rounded-4 shadow-lg border-0 position-relative overflow-hidden">
+            <div class="position-absolute top-0 end-0 w-100 h-100 bg-gradient-warning-shine"></div>
+            <span class="text-warning-dark small fw-bold z-1 position-relative"><i class="fa-solid fa-clock me-1"></i>Đang chờ</span>
+            <div class="fw-bold fs-5 text-warning-dark z-1 position-relative">{{ pendingRequests.length }}</div>
           </div>
-          <div class="bg-white px-3 py-2 rounded shadow-sm border border-success" style="border-left-width: 4px !important;">
-            <span class="text-muted small">Sẵn sàng</span>
-            <div class="fw-bold fs-5 text-success">{{ availableTeamsCount }}</div>
+          <div class="bg-gradient-success px-4 py-3 rounded-4 shadow-lg border-0 position-relative overflow-hidden">
+            <div class="position-absolute top-0 end-0 w-100 h-100 bg-gradient-success-shine"></div>
+            <span class="text-success-dark small fw-bold z-1 position-relative"><i class="fa-solid fa-check-circle me-1"></i>Sẵn sàng</span>
+            <div class="fw-bold fs-5 text-success-dark z-1 position-relative">{{ availableTeamsCount }}</div>
           </div>
-          <div class="bg-white px-3 py-2 rounded shadow-sm border border-primary" style="border-left-width: 4px !important;">
-            <span class="text-muted small">Đang nhiệm vụ</span>
-            <div class="fw-bold fs-5 text-primary">{{ busyTeamsCount }}</div>
+          <div class="bg-gradient-primary px-4 py-3 rounded-4 shadow-lg border-0 position-relative overflow-hidden">
+            <div class="position-absolute top-0 end-0 w-100 h-100 bg-gradient-primary-shine"></div>
+            <span class="text-primary-dark small fw-bold z-1 position-relative"><i class="fa-solid fa-location-crosshairs me-1"></i>Đang nhiệm vụ</span>
+            <div class="fw-bold fs-5 text-primary-dark z-1 position-relative">{{ busyTeamsCount }}</div>
           </div>
         </div>
       </div>
@@ -141,7 +144,31 @@
               </div>
 
               <!-- Recommendation / Team Selection -->
-              <h6 class="fw-bold mb-3 border-bottom pb-2">Đề xuất đội cứu hộ</h6>
+              <h6 class="fw-bold mb-3 border-bottom pb-2 d-flex align-items-center gap-2">
+                <i class="fa-solid fa-users-gear text-primary"></i>
+                Đề xuất đội cứu hộ
+                <span class="badge bg-primary rounded-pill ms-2">{{ sortedAvailableTeams.length }}</span>
+                <span v-if="sameDistrictCount > 0" class="badge bg-success rounded-pill ms-1">
+                  <i class="fa-solid fa-map-pin me-1"></i>{{ sameDistrictCount }} cùng quận
+                </span>
+              </h6>
+
+              <!-- Select All / Deselect All Buttons -->
+              <div v-if="!loadingTeams && availableTeams.length > 0 && selectedTeams.length > 0" class="mb-3 d-flex gap-2 justify-content-end">
+                <button
+                  v-if="selectedTeams.length < sortedAvailableTeams.length"
+                  class="btn btn-sm btn-outline-primary"
+                  @click="selectAllTeams"
+                >
+                  <i class="fa-solid fa-check-double me-1"></i>Chọn tất cả ({{ sortedAvailableTeams.length }})
+                </button>
+                <button
+                  class="btn btn-sm btn-outline-secondary"
+                  @click="deselectAllTeams"
+                >
+                  <i class="fa-solid fa-xmark me-1"></i>Bỏ chọn tất cả
+                </button>
+              </div>
 
               <!-- Loading teams -->
               <div v-if="loadingTeams" class="text-center py-4 text-muted">
@@ -153,16 +180,17 @@
                 <i class="fa-solid fa-triangle-exclamation me-2"></i>Hiện không có đội cứu hộ nào sẵn sàng. Vui lòng chờ một lát.
               </div>
 
-              <div class="row g-3" v-else>
+              <!-- Danh sách đội cứu hộ - LUÔN hiển thị khi có dữ liệu -->
+              <div v-else class="row g-3">
                 <div
                   class="col-md-6"
                   v-for="team in sortedAvailableTeams"
                   :key="team.id"
                 >
                   <div
-                    class="card team-card h-100 border transition-all cursor-pointer"
+                    class="card team-card h-100 border-2 transition-all cursor-pointer bg-white"
                     :class="{
-                      'border-primary ring-focus shadow' : selectedTeam && selectedTeam.id === team.id,
+                      'border-primary ring-focus shadow-lg' : isTeamSelected(team.id),
                       'border-light bg-light opacity-75' : team.trang_thai && team.trang_thai !== 'SanSang' && team.trang_thai !== 'Sẵn sàng'
                     }"
                     @click="selectTeam(team)"
@@ -170,33 +198,45 @@
                     <div class="card-body p-3">
                       <div class="d-flex justify-content-between align-items-start mb-2">
                         <div class="d-flex align-items-center gap-2">
-                          <div class="avatar bg-primary-subtle text-primary rounded-circle d-flex justify-content-center align-items-center" style="width: 32px; height: 32px; font-weight: bold;">
+                          <div class="avatar bg-gradient-primary text-white rounded-circle d-flex justify-content-center align-items-center shadow-sm" style="width: 40px; height: 40px; font-weight: bold; font-size: 14px;">
                             {{ getTeamInitial(team) }}
                           </div>
-                          <h6 class="fw-bold mb-0 text-truncate" style="max-width: 150px;" :title="team.ten_co">{{ team.ten_co }}</h6>
+                          <div>
+                            <h6 class="fw-bold mb-0 text-truncate" style="max-width: 150px;" :title="team.ten_co">{{ team.ten_co }}</h6>
+                            <small class="text-muted"><i class="fa-solid fa-map me-1"></i>{{ team.khu_vuc_quan_ly || 'Chưa phân khu' }}</small>
+                          </div>
                         </div>
-                        <span
-                          class="badge rounded-pill"
-                          :class="getTeamStatusBadge(team.trang_thai)"
-                        >
-                          {{ getTeamStatusLabel(team.trang_thai) }}
-                        </span>
+                        <div class="d-flex flex-column align-items-end gap-1">
+                          <span
+                            class="badge rounded-pill px-3 py-2"
+                            :class="getTeamStatusBadge(team.trang_thai)"
+                          >
+                            <i class="fa-solid fa-circle me-1" style="font-size: 6px;"></i>
+                            {{ getTeamStatusLabel(team.trang_thai) }}
+                          </span>
+                          <span v-if="getDistrictMatch(team)" class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 small">
+                            <i class="fa-solid fa-location-dot me-1"></i>Cùng quận
+                          </span>
+                        </div>
                       </div>
 
-                      <div class="mt-3 small text-muted d-flex flex-wrap gap-2">
-                        <span class="d-inline-flex align-items-center" v-if="team.thanh_viens"><i class="fa-solid fa-users me-1"></i>{{ team.thanh_viens.length }} TV</span>
-                        <span class="d-inline-flex align-items-center" v-if="team.tai_nguyens && team.tai_nguyens.length">
-                          <i class="fa-solid fa-car me-1"></i>{{ team.tai_nguyens.map(t => t.ten_tai_nguyen).join(', ') }}
-                        </span>
-                        <span class="d-inline-flex align-items-center" v-if="team.khu_vuc_quan_ly">
-                          <i class="fa-solid fa-map me-1 text-info"></i>{{ team.khu_vuc_quan_ly }}
-                        </span>
+                      <div class="mt-3 small">
+                        <div class="d-flex flex-wrap gap-2">
+                          <span class="badge bg-light text-dark border px-2 py-1" v-if="team.thanh_viens">
+                            <i class="fa-solid fa-users me-1 text-primary"></i>{{ team.thanh_viens.length }} thành viên
+                          </span>
+                          <span class="badge bg-light text-dark border px-2 py-1" v-if="team.tai_nguyens && team.tai_nguyens.length">
+                            <i class="fa-solid fa-truck me-1 text-success"></i>{{ team.tai_nguyens.map(t => t.ten_tai_nguyen).join(', ') }}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     <!-- Indicator selected -->
-                    <div class="position-absolute top-0 end-0 p-2" v-if="selectedTeam && selectedTeam.id === team.id">
+                    <div class="position-absolute top-0 end-0 p-2" v-if="isTeamSelected(team.id)">
                       <i class="fa-solid fa-circle-check text-primary fs-5 bg-white rounded-circle"></i>
                     </div>
+                    <!-- Selection indicator line -->
+                    <div class="position-absolute bottom-0 start-0 end-0" v-if="isTeamSelected(team.id)" style="height: 3px; background: linear-gradient(90deg, #3b82f6, #60a5fa);"></div>
                   </div>
                 </div>
               </div>
@@ -204,16 +244,18 @@
             </div>
 
             <div class="card-footer bg-white border-top p-3 d-flex justify-content-end gap-2 align-items-center">
-              <span class="text-muted small me-auto" v-if="selectedTeam">Đã chọn: <strong class="text-dark">{{ selectedTeam.ten_co }}</strong></span>
-              <span class="text-warning small me-auto" v-else><i class="fa-solid fa-triangle-exclamation me-1"></i>Vui lòng chọn 1 đội cứu hộ sẵn sàng</span>
+              <span class="text-muted small me-auto" v-if="selectedTeams.length > 0">
+                Đã chọn: <strong class="text-primary">{{ selectedTeams.length }} đội</strong>
+              </span>
+              <span class="text-warning small me-auto" v-else><i class="fa-solid fa-triangle-exclamation me-1"></i>Vui lòng chọn ít nhất 1 đội cứu hộ sẵn sàng</span>
 
               <button class="btn btn-light" @click="selectedReq = null">Hủy</button>
-              <button class="btn btn-primary px-4 fw-bold shadow-sm" :disabled="!selectedTeam || assigning" @click="assignTask">
+              <button class="btn btn-primary px-4 fw-bold shadow-sm" :disabled="selectedTeams.length === 0 || assigning" @click="assignTask">
                 <span v-if="assigning">
                   <span class="spinner-border spinner-border-sm me-2" role="status"></span>Đang phân công...
                 </span>
                 <span v-else>
-                  <i class="fa-solid fa-paper-plane me-2"></i>Chốt Phân Công
+                  <i class="fa-solid fa-paper-plane me-2"></i>Chốt Phân Công ({{ selectedTeams.length }})
                 </span>
               </button>
             </div>
@@ -360,7 +402,7 @@ export default {
     return {
       searchQuery: '',
       selectedReq: null,
-      selectedTeam: null,
+      selectedTeams: [], // Multiple selection
       selectedSeverityFilter: 'all',
 
       pendingRequests: [],
@@ -417,15 +459,64 @@ export default {
       return this.busyTeams.length;
     },
     sortedAvailableTeams() {
-      return [...this.availableTeams];
+      if (!this.selectedReq) return [...this.availableTeams];
+      
+      // Extract district from request location
+      const reqDistrict = this.extractDistrict(this.selectedReq.location);
+      
+      return [...this.availableTeams].sort((a, b) => {
+        const teamADistrict = this.normalizeDistrict(a.khu_vuc_quan_ly);
+        const teamBDistrict = this.normalizeDistrict(b.khu_vuc_quan_ly);
+        
+        const aMatch = reqDistrict && teamADistrict === reqDistrict;
+        const bMatch = reqDistrict && teamBDistrict === reqDistrict;
+        
+        if (aMatch && !bMatch) return -1;
+        if (!aMatch && bMatch) return 1;
+        return 0;
+      });
+    },
+    sameDistrictCount() {
+      if (!this.selectedReq) return 0;
+      const reqDistrict = this.extractDistrict(this.selectedReq.location);
+      if (!reqDistrict) return 0;
+      
+      return this.availableTeams.filter(team => {
+        const teamDistrict = this.normalizeDistrict(team.khu_vuc_quan_ly);
+        return teamDistrict === reqDistrict;
+      }).length;
     },
   },
   async created() {
     await this.initData();
   },
+  mounted() {
+    const queryId = this.$route.query.id;
+    if (queryId) {
+      const found = this.pendingRequests.find(r => String(r.id) === String(queryId));
+      if (found) {
+        this.selectedReq = found;
+      } else {
+        this.$nextTick(() => {
+          const retry = this.pendingRequests.find(r => String(r.id) === String(queryId));
+          if (retry) this.selectedReq = retry;
+        });
+      }
+    }
+  },
   watch: {
     selectedReq() {
-      this.selectedTeam = null;
+      this.selectedTeams = [];
+    },
+    pendingRequests: {
+      handler(val) {
+        const queryId = this.$route.query.id;
+        if (queryId && !this.selectedReq) {
+          const found = val.find(r => String(r.id) === String(queryId));
+          if (found) this.selectedReq = found;
+        }
+      },
+      immediate: false,
     },
   },
   methods: {
@@ -465,9 +556,14 @@ export default {
       this.selectedReq = req;
     },
     selectTeam(team) {
-      const st = (team.trang_thai || '').toUpperCase().replace(/\s+/g, '_');
-      if (st === 'SAN_SANG' || st === 'SẵN_SÀNG' || team.trang_thai === 'Sẵn sàng') {
-        this.selectedTeam = team;
+      const index = this.selectedTeams.findIndex(t => t.id === team.id);
+      if (index > -1) {
+        this.selectedTeams.splice(index, 1);
+      } else {
+        const st = (team.trang_thai || '').toUpperCase().replace(/\s+/g, '_');
+        if (st === 'SAN_SANG' || st === 'SẴN_SÀNG' || team.trang_thai === 'Sẵn sàng') {
+          this.selectedTeams.push(team);
+        }
       }
     },
     getTeamInitial(team) {
@@ -489,6 +585,9 @@ export default {
       if (st === 'DANG_XU_LY' || st === 'ĐANG_XỬ_LÝ') return 'Đang xử lý';
       return normalizeText(status, 'Không rõ');
     },
+    isTeamSelected(teamId) {
+      return this.selectedTeams.some(t => t.id === teamId);
+    },
     getSeverityBadge(sev) {
       const info = getSeverityInfo(sev);
       return info.badge;
@@ -500,44 +599,90 @@ export default {
     toggleSeverityFilter(value) {
       this.selectedSeverityFilter = value;
     },
+    selectAllTeams() {
+      this.selectedTeams = [...this.sortedAvailableTeams];
+    },
+    deselectAllTeams() {
+      this.selectedTeams = [];
+    },
+    normalizeDistrict(value) {
+      if (!value) return '';
+      // Normalize: "Quận 1", "Q.1", "Quận Bình Thạnh" -> "quận 1", "quận bình thạnh"
+      let normalized = String(value).toLowerCase().trim();
+      // Handle common variations
+      normalized = normalized.replace(/^q\.\s*/i, 'quận ');
+      normalized = normalized.replace(/^quận\s+/i, 'quận ');
+      return normalized;
+    },
+    extractDistrict(location) {
+      if (!location) return null;
+      const loc = String(location).toLowerCase();
+      // Try to match "quận X" pattern
+      const match = loc.match(/quận\s+([a-z0-9\sđêêôưàảãáạầẩẫấậằẳẵắặẻẽéẹềểễếệỉĩíịòỏóọồổỗốộờỡớợùủúụừửữứựỳỷỹỵ]+)/i);
+      if (match && match[1]) {
+        return 'quận ' + match[1].trim();
+      }
+      // Try to match "Q.X" pattern
+      const match2 = loc.match(/(?:q\.|q)\s*([a-z0-9\sđêêôưàảãáạầẩẫấậằẳẵắặẻẽéẹềểễếệỉĩíịòỏóọồổỗốộờỡớợùủúụừửữứựỳỷỹỵ]+)/i);
+      if (match2 && match2[1]) {
+        return 'quận ' + match2[1].trim();
+      }
+      // Try "Quận" followed by number (with or without space)
+      const match3 = loc.match(/quận\s*([0-9]+)/i);
+      if (match3 && match3[1]) {
+        return 'quận ' + match3[1];
+      }
+      return null;
+    },
+    getDistrictMatch(team) {
+      if (!this.selectedReq) return false;
+      const reqDistrict = this.extractDistrict(this.selectedReq.location);
+      if (!reqDistrict) return false;
+      const teamDistrict = this.normalizeDistrict(team.khu_vuc_quan_ly);
+      return teamDistrict === reqDistrict;
+    },
     async assignTask() {
-      if (!this.selectedReq || !this.selectedTeam) return;
+      if (!this.selectedReq || this.selectedTeams.length === 0) return;
 
       this.assigning = true;
       try {
         const reqId = this.selectedReq.id;
-        const teamId = this.selectedTeam.id;
 
-        // 1. Tạo phân công
-        await assignmentAPI.create({
-          id_yeu_cau: reqId,
-          id_doi_cuu_ho: teamId,
-          mo_ta: `Phân công đội ${this.selectedTeam.ten_co} xử lý yêu cầu #${reqId}`,
-          trang_thai_nhiem_vu: 'DANG_XU_LY',
-        });
+        // Assign to all selected teams
+        for (const team of this.selectedTeams) {
+          // 1. Tạo phân công
+          await assignmentAPI.create({
+            id_yeu_cau: reqId,
+            id_doi_cuu_ho: team.id,
+            mo_ta: `Phân công đội ${team.ten_co} xử lý yêu cầu #${reqId}`,
+            trang_thai_nhiem_vu: 'DANG_XU_LY',
+          });
 
-        // 2. Cập nhật trạng thái yêu cầu → DANG_XU_LY
+          // 2. Cập nhật trạng thái đội → Đang bận
+          await rescueTeamAPI.update(team.id, { trang_thai: 'DANG_BAN' });
+
+          // 3. Cập nhật UI
+          const teamIdx = this.teams.findIndex(t => t.id === team.id);
+          if (teamIdx !== -1) {
+            this.teams[teamIdx].trang_thai = 'Đang bận';
+          }
+        }
+
+        // 4. Cập nhật trạng thái yêu cầu → DANG_XU_LY
         await rescueRequestAPI.changeStatus(reqId, { trang_thai: 'DANG_XU_LY' });
 
-        // 3. Cập nhật trạng thái đội → Đang bận
-        await rescueTeamAPI.update(teamId, { trang_thai: 'DANG_BAN' });
-
-        // 4. Toast thành công
-        this.$toast?.success?.(`Đã phân công thành công đội ${this.selectedTeam.ten_co} cho yêu cầu #${reqId}`, {
+        // 5. Toast thành công
+        const teamNames = this.selectedTeams.map(t => t.ten_co).join(', ');
+        this.$toast?.success?.(`Đã phân công thành công ${this.selectedTeams.length} đội (${teamNames}) cho yêu cầu #${reqId}`, {
           position: 'top-right',
           duration: 3000,
         });
 
-        // 5. Cập nhật UI
+        // 6. Cập nhật UI - xóa request khỏi danh sách
         this.pendingRequests = this.pendingRequests.filter(r => r.id !== reqId);
 
-        const teamIdx = this.teams.findIndex(t => t.id === teamId);
-        if (teamIdx !== -1) {
-          this.teams[teamIdx].trang_thai = 'Đang bận';
-        }
-
         this.selectedReq = null;
-        this.selectedTeam = null;
+        this.selectedTeams = [];
       } catch (error) {
         console.error('Lỗi phân công:', error);
         this.$toast?.error?.('Phân công thất bại. Vui lòng thử lại.', {
@@ -554,8 +699,22 @@ export default {
 
 <style scoped>
 .assignments-page {
-  background-color: #f4f6f9;
+  background: linear-gradient(135deg, #e0f2fe 0%, #fef3c7 50%, #fce7f3 100%);
   min-height: calc(100vh - 60px);
+  position: relative;
+}
+
+.assignments-page::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(circle at 20% 80%, rgba(14, 165, 233, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.1) 0%, transparent 50%);
+  pointer-events: none;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -577,22 +736,25 @@ export default {
 }
 
 .request-item:hover {
-  background-color: #f8fafc;
+  background-color: #fef3c7;
   cursor: pointer;
 }
 
 .selected-req {
-  background-color: #f0fdf4 !important;
-  border-left: 4px solid #0d6efd !important;
+  background: linear-gradient(90deg, #dbeafe 0%, #bfdbfe 100%) !important;
+  border-left: 4px solid #0284c7 !important;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.15);
 }
 
 .team-card {
   border-radius: 12px;
+  border-width: 2px !important;
 }
 .team-card:hover:not(.opacity-75) {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
-  transform: translateY(-2px);
-  border-color: #0d6efd !important;
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.15) !important;
+  transform: translateY(-3px);
+  border-color: #3b82f6 !important;
+  background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%) !important;
 }
 
 .ring-focus {
@@ -608,7 +770,7 @@ export default {
 }
 
 .bg-primary-subtle {
-  background-color: #cfe2ff !important;
+  background-color: #dbeafe !important;
 }
 
 @keyframes bounce {
@@ -638,4 +800,28 @@ export default {
   color: #991b1b;
   border-left: 5px solid #ef4444 !important;
 }
+
+/* Gradient Stats Cards */
+.bg-gradient-warning {
+  background: linear-gradient(135deg, #fcd34d 0%, #f59e0b 50%, #ea580c 100%);
+}
+.bg-gradient-success {
+  background: linear-gradient(135deg, #86efac 0%, #22c55e 50%, #16a34a 100%);
+}
+.bg-gradient-primary {
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #1d4ed8 100%);
+}
+.bg-gradient-warning-shine {
+  background: linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.2) 100%);
+}
+.bg-gradient-success-shine {
+  background: linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.2) 100%);
+}
+.bg-gradient-primary-shine {
+  background: linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.2) 100%);
+}
+.text-warning-dark { color: #78350f !important; }
+.text-success-dark { color: #14532d !important; }
+.text-primary-dark { color: #1e3a5f !important; }
+.z-1 { z-index: 1; }
 </style>

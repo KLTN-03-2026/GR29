@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ThanhVienDoi;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -41,7 +42,7 @@ class ThanhVienDoiController extends Controller
         return response()->json($thanhVien);
     }
 
-    public function store(Request $request)
+    public function createThanhVien(Request $request)
     {
         $request->validate([
             'ho_ten' => 'required',
@@ -101,5 +102,20 @@ class ThanhVienDoiController extends Controller
             'message' => 'Cập nhật trạng thái thành công',
             'data' => $thanhVien
         ]);
+    }
+
+    public function checkToken()
+    {
+        $user = Auth::guard('thanh-vien-doi')->user();
+        if ($user) {
+            return response()->json([
+                'status' => true,
+                'ho_ten' => $user->ho_ten,
+            ]);
+        }
+        return response()->json([
+            'status' => false,
+            'message' => 'Token không hợp lệ hoặc đã hết hạn.',
+        ], 401);
     }
 }

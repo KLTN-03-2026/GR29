@@ -285,7 +285,6 @@ function layGiaTriDauTien(source, keys) {
 function chuanHoaDanhSach(payload) {
     if (Array.isArray(payload)) return payload;
     if (Array.isArray(payload?.data)) return payload.data;
-    if (Array.isArray(payload?.data?.data)) return payload.data.data;
     if (Array.isArray(payload?.result)) return payload.result;
     return [];
 }

@@ -82,14 +82,15 @@ Route::middleware(['auth:sanctum', 'check.admin'])->group(function () {
     Route::put('nguoi-dung/change-status/{id}', [NguoiDungController::class, 'changeStatus']);
 });
 
-// =========================================
-// THANH VIÊN ĐỘI CỨU HỘ (RESCUE TEAM MEMBERS)
-// =========================================
+// ========== THANH VIÊN ĐỘI CỨU HỘ (RESCUE TEAM MEMBERS)
+// ===========================================
 Route::post('thanh-vien-doi/login', [ThanhVienDoiController::class, 'login']);
+Route::post('rescuer/login', [ThanhVienDoiController::class, 'login']);
+Route::get('rescuer/check-token', [ThanhVienDoiController::class, 'checkToken']);
 
 Route::middleware(['auth:sanctum', 'check.admin'])->group(function () {
     Route::get('thanh-vien-doi/list', [ThanhVienDoiController::class, 'index']);
-    Route::post('thanh-vien-doi/create', [ThanhVienDoiController::class, 'store']);
+    Route::post('thanh-vien-doi/create', [ThanhVienDoiController::class, 'createThanhVien']);
     Route::put('thanh-vien-doi/update/{id}', [ThanhVienDoiController::class, 'update']);
     Route::delete('thanh-vien-doi/delete/{id}', [ThanhVienDoiController::class, 'destroy']);
     Route::put('thanh-vien-doi/change-status/{id}', [ThanhVienDoiController::class, 'updateStatus']);

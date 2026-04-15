@@ -20,8 +20,17 @@ class LoaiSuCo extends Model
         return $this->hasMany(YeuCauCuuHo::class, 'id_loai_su_co', 'id_loai_su_co');
     }
 
-    public function doiCuuHos()
+    // public function doiCuuHos()
+    // {
+    //     return $this->belongsToMany(DoiCuuHo::class, 'doi_cuu_ho_loai_su_co', 'id_loai_su_co', 'id_doi_cuu_ho');
+    // }
+    public function doiCuuHo()
     {
-        return $this->belongsToMany(DoiCuuHo::class, 'doi_cuu_ho_loai_su_co', 'id_loai_su_co', 'id_doi_cuu_ho');
+        return $this->belongsToMany(
+            DoiCuuHo::class,
+            'doi_cuu_ho_loai_su_co',
+            'id_loai_su_co',
+            'id_doi_cuu_ho'
+        );
     }
 }

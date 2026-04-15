@@ -13,12 +13,12 @@ return new class extends Migration
     {
         Schema::create('thanh_vien_doi', function (Blueprint $table) {
             $table->id('id_thanh_vien_doi');
-            $table->unsignedBigInteger('id_doi_cuu_ho');
+            $table->unsignedBigInteger('id_doi_cuu_ho')->nullable();
             $table->string('ho_ten', 255);
             $table->string('so_dien_thoai', 20)->nullable();
             $table->string('email', 255)->nullable();
             $table->string('mat_khau', 255)->nullable();
-            $table->string('vai_tro_trong_doi', 100)->nullable();
+            $table->integer('vai_tro_trong_doi')->nullable();
             $table->tinyInteger('trang_thai')->default(1);
             $table->timestamps();
 
