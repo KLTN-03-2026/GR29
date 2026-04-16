@@ -3,13 +3,79 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\YeuCauCuuHoRequest;
-use App\Models\{YeuCauCuuHo, HangDoiXuLy, PhanLoaiAis, DuLieuHeatmap, PhanCongCuuHo};
+use App\Models\{DoiCuuHo, YeuCauCuuHo, HangDoiXuLy, PhanLoaiAis, DuLieuHeatmap, PhanCongCuuHo};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\DB;
 
 class YeuCauCuuHoController extends Controller
 {
+    public function timDoiGanNhat(Request $request)
+    {
+        $khuVuc = $request->khu_vuc;
+
+        $allTeams = DoiCuuHo::with(['thanhViens', 'taiNguyens'])
+            ->whereIn('trang_thai', ['SAN_SANG', 'SanSang', 'Sẵn sàng'])
+            ->get();
+
+        // Tách đội cùng quận và không cùng quận
+        $cungQuan = [];
+        $khacQuan = [];
+
+        foreach ($allTeams as $team) {
+            $trangThai = $this->normalizeTrangThaiDoi($team->trang_thai);
+
+            $teamData = [
+                'id'                => $team->id_doi_cuu_ho,
+                'ten_co'            => $team->ten_co,
+                'khu_vuc_quan_ly'   => $team->khu_vuc_quan_ly,
+                'so_dien_thoai_hotline' => $team->so_dien_thoai_hotline,
+                'trang_thai'        => $trangThai,
+                'trang_thai_goc'    => $team->trang_thai,
+                'thanh_viens'       => $team->thanhViens,
+                'tai_nguyens'       => $team->taiNguyens->map(fn($t) => [
+                    'ten_tai_nguyen' => $t->ten_tai_nguyen,
+                ]),
+                'cung_quan'         => false,
+            ];
+
+            $cungQuanFlag = mb_strtolower(trim($team->khu_vuc_quan_ly ?? '')) === mb_strtolower(trim($khuVuc ?? ''));
+
+            if ($cungQuanFlag) {
+                $teamData['cung_quan'] = true;
+                $cungQuan[] = $teamData;
+            } else {
+                $khacQuan[] = $teamData;
+            }
+        }
+
+        // Ưu tiên đội cùng quận lên đầu, sau đó đến đội khác quận
+        $teams = collect($cungQuan)->merge($khacQuan);
+
+        if ($teams->isEmpty()) {
+            return response()->json([
+                'message' => 'Không có đội cứu hộ nào sẵn sàng'
+            ], 404);
+        }
+
+        return response()->json([
+            'teams' => $teams,
+        ]);
+    }
+
+    private function normalizeTrangThaiDoi($trangThai): string
+    {
+        $v = strtoupper(trim((string) ($trangThai ?? '')));
+        return match ($v) {
+            'SAN_SANG', 'SANSANG'   => 'SanSang',
+            'DANG_CUU_HO', 'SANGSANG' => 'DangCuuHo',
+            'BAN_CHI_DINH'          => 'BanChiDinh',
+            'TAM_NGUNG'             => 'TamNgung',
+            default                  => $trangThai ?? '',
+        };
+    }
+
+
     private function urgencyToNumber($value): float
     {
         if ($value === null || $value === '') {
@@ -102,8 +168,8 @@ class YeuCauCuuHoController extends Controller
                 'phanCongs',
                 'danhGias'
             ])
-            ->orderBy($sortBy, $sortOrder)
-            ->paginate($perPage);
+                ->orderBy($sortBy, $sortOrder)
+                ->paginate($perPage);
 
             return Response::json([
                 'success' => true,
@@ -390,8 +456,8 @@ class YeuCauCuuHoController extends Controller
                 'loaiSuCo',
                 'hangDoiXuLy'
             ])
-            ->where('trang_thai', $normalized)
-            ->paginate($perPage);
+                ->where('trang_thai', $normalized)
+                ->paginate($perPage);
 
             return Response::json([
                 'success' => true,
@@ -496,9 +562,9 @@ class YeuCauCuuHoController extends Controller
                 'loaiSuCo',
                 'hangDoiXuLy'
             ])
-            ->where('muc_do_khan_cap', $normalized)
-            ->orderBy('diem_uu_tien', 'desc')
-            ->paginate($perPage);
+                ->where('muc_do_khan_cap', $normalized)
+                ->orderBy('diem_uu_tien', 'desc')
+                ->paginate($perPage);
 
             return Response::json([
                 'success' => true,
@@ -530,8 +596,8 @@ class YeuCauCuuHoController extends Controller
                 'yeuCau.nguoiDung',
                 'yeuCau.loaiSuCo'
             ])
-            ->orderBy($sortBy, $sortOrder)
-            ->paginate($perPage);
+                ->orderBy($sortBy, $sortOrder)
+                ->paginate($perPage);
 
             return Response::json([
                 'success' => true,
@@ -571,9 +637,9 @@ class YeuCauCuuHoController extends Controller
                 'yeuCau.nguoiDung',
                 'yeuCau.loaiSuCo'
             ])
-            ->where('trang_thai', $normalized)
-            ->orderBy('diem_uu_tien', 'desc')
-            ->paginate($perPage);
+                ->where('trang_thai', $normalized)
+                ->orderBy('diem_uu_tien', 'desc')
+                ->paginate($perPage);
 
             return Response::json([
                 'success' => true,
@@ -1031,7 +1097,7 @@ class YeuCauCuuHoController extends Controller
 
             $urgencies = (clone $baseQuery)->pluck('muc_do_khan_cap');
             $urgencyAvg = $urgencies->count() > 0
-                ? $urgencies->map(fn ($v) => $this->urgencyToNumber($v))->avg()
+                ? $urgencies->map(fn($v) => $this->urgencyToNumber($v))->avg()
                 : 0;
             $avgAffectedPeople = (clone $baseQuery)->avg('so_nguoi_bi_anh_huong') ?? 0;
             $totalAffectedPeople = (clone $baseQuery)->sum('so_nguoi_bi_anh_huong') ?? 0;

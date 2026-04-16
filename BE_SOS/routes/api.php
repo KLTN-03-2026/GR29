@@ -122,6 +122,9 @@ Route::get('yeu-cau-cuu-ho/{id}/hang-doi', [YeuCauCuuHoController::class, 'getHa
 Route::put('yeu-cau-cuu-ho/{id}/trang-thai', [YeuCauCuuHoController::class, 'updateStatus']);
 Route::get('yeu-cau-cuu-ho/theo-trang-thai/{trang_thai}', [YeuCauCuuHoController::class, 'getByStatus']);
 Route::get('yeu-cau-cuu-ho/theo-muc-do-khan-cap/{muc_do}', [YeuCauCuuHoController::class, 'getByUrgency']);
+Route::post('yeu-cau-cuu-ho/tim-doi-gan-nhat', [YeuCauCuuHoController::class, 'timDoiGanNhat']);
+
+
 
 // Hàng đợi xử lý (Processing Queue)
 Route::get('hang-doi-xu-ly', [YeuCauCuuHoController::class, 'getHangDoiXuLy']);
