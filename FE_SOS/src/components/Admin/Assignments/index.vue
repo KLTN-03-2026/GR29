@@ -409,6 +409,7 @@ export default {
       teams: [],
       loadingRequests: false,
       loadingTeams: false,
+      suggestedTeamIds: [],
       assigning: false,
       error: '',
 
@@ -461,23 +462,32 @@ export default {
     sortedAvailableTeams() {
       if (!this.selectedReq) return [...this.availableTeams];
       
-      // Extract district from request location
       const reqDistrict = this.extractDistrict(this.selectedReq.location);
       
       return [...this.availableTeams].sort((a, b) => {
-        const teamADistrict = this.normalizeDistrict(a.khu_vuc_quan_ly);
-        const teamBDistrict = this.normalizeDistrict(b.khu_vuc_quan_ly);
-        
-        const aMatch = reqDistrict && teamADistrict === reqDistrict;
-        const bMatch = reqDistrict && teamBDistrict === reqDistrict;
-        
-        if (aMatch && !bMatch) return -1;
-        if (!aMatch && bMatch) return 1;
+        if (this.suggestedTeamIds && this.suggestedTeamIds.length > 0) {
+          const aMatch = this.suggestedTeamIds.includes(Number(a.id));
+          const bMatch = this.suggestedTeamIds.includes(Number(b.id));
+          if (aMatch && !bMatch) return -1;
+          if (!aMatch && bMatch) return 1;
+        } else {
+          const teamADistrict = this.normalizeDistrict(a.khu_vuc_quan_ly);
+          const teamBDistrict = this.normalizeDistrict(b.khu_vuc_quan_ly);
+          
+          const aMatch = reqDistrict && teamADistrict === reqDistrict;
+          const bMatch = reqDistrict && teamBDistrict === reqDistrict;
+          
+          if (aMatch && !bMatch) return -1;
+          if (!aMatch && bMatch) return 1;
+        }
         return 0;
       });
     },
     sameDistrictCount() {
       if (!this.selectedReq) return 0;
+      if (this.suggestedTeamIds && this.suggestedTeamIds.length > 0) {
+        return this.suggestedTeamIds.filter(id => this.isTeamAvailable(id)).length;
+      }
       const reqDistrict = this.extractDistrict(this.selectedReq.location);
       if (!reqDistrict) return 0;
       
@@ -505,8 +515,9 @@ export default {
     }
   },
   watch: {
-    selectedReq() {
+    selectedReq(newReq) {
       this.selectedTeams = [];
+      this.fetchNearestTeams(newReq);
     },
     pendingRequests: {
       handler(val) {
@@ -520,6 +531,24 @@ export default {
     },
   },
   methods: {
+    isTeamAvailable(id) {
+      return this.availableTeams.some(t => Number(t.id) === Number(id));
+    },
+    async fetchNearestTeams(req) {
+      if (!req) {
+        this.suggestedTeamIds = [];
+        return;
+      }
+      try {
+        const payload = { id_yeu_cau: req.id };
+        const res = await rescueRequestAPI.findNearestTeams(payload);
+        const nearestTeams = res?.data?.teams || [];
+        this.suggestedTeamIds = nearestTeams.map(t => Number(t.id || t.id_doi_cuu_ho));
+      } catch (error) {
+        console.error('Lỗi tìm đội gần nhất:', error);
+        this.suggestedTeamIds = [];
+      }
+    },
     async initData() {
       this.error = '';
       await Promise.all([this.loadRequests(), this.loadTeams()]);
@@ -639,6 +668,9 @@ export default {
     },
     getDistrictMatch(team) {
       if (!this.selectedReq) return false;
+      if (this.suggestedTeamIds && this.suggestedTeamIds.length > 0) {
+        return this.suggestedTeamIds.includes(Number(team.id));
+      }
       const reqDistrict = this.extractDistrict(this.selectedReq.location);
       if (!reqDistrict) return false;
       const teamDistrict = this.normalizeDistrict(team.khu_vuc_quan_ly);

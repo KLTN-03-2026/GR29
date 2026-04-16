@@ -107,6 +107,7 @@ export const rescueRequestAPI = {
   getQueue: () => api.get('/yeu-cau-cuu-ho/hang-doi'),
   search: (query) => api.get('/yeu-cau-cuu-ho/tim-kiem', { params: { noi_dung_tim: query } }),
   delete: (id) => api.delete(`/yeu-cau-cuu-ho/${id}`),
+  findNearestTeams: (data) => api.post('/yeu-cau-cuu-ho/tim-doi-gan-nhat', data),
 };
 
 // Rescue Teams (Đội Cứu hộ)
