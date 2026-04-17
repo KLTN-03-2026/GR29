@@ -3,13 +3,166 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\YeuCauCuuHoRequest;
-use App\Models\{YeuCauCuuHo, HangDoiXuLy, PhanLoaiAis, DuLieuHeatmap, PhanCongCuuHo};
+use App\Models\{DoiCuuHo, YeuCauCuuHo, HangDoiXuLy, PhanLoaiAis, DuLieuHeatmap, PhanCongCuuHo, NguoiDung, LoaiSuCo};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\DB;
 
 class YeuCauCuuHoController extends Controller
 {
+    /**
+     * Tính khoảng cách Haversine giữa 2 điểm (lat/lng) theo km
+     */
+    private function haversineDistance(?float $lat1, ?float $lng1, ?float $lat2, ?float $lng2): ?float
+    {
+        if ($lat1 === null || $lng1 === null || $lat2 === null || $lng2 === null) {
+            return null;
+        }
+        $R = 6371; // Bán kính trái đất km
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+        $a = sin($dLat / 2) ** 2
+           + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
+        $c = 2 * asin(sqrt($a));
+        return round($R * $c, 2);
+    }
+
+    public function timDoiGanNhat(Request $request)
+    {
+        $idYeuCau = $request->id_yeu_cau;
+        $idLoaiSuCo = $request->id_loai_su_co;
+
+        // Lấy thông tin sự cố để biết khu vực
+        $yeuCau = null;
+        $khuVucSuCo = null;
+        if ($idYeuCau) {
+            $yeuCau = YeuCauCuuHo::find($idYeuCau);
+            if ($yeuCau) {
+                $khuVucSuCo = $yeuCau->vi_tri_dia_chi ?? '';
+                if (!$idLoaiSuCo) {
+                    $idLoaiSuCo = $yeuCau->id_loai_su_co;
+                }
+            }
+        }
+
+        // Lấy tọa độ sự cố
+        $reqLat = $yeuCau ? floatval($yeuCau->vi_tri_lat ?? 0) : null;
+        $reqLng = $yeuCau ? floatval($yeuCau->vi_tri_lng ?? 0) : null;
+
+        $allTeams = DoiCuuHo::with(['thanhViens', 'taiNguyens', 'loaiSuCos', 'viTris'])
+            ->whereIn('trang_thai', ['SAN_SANG', 'SanSang', 'Sẵn sàng'])
+            ->get();
+
+        // Hàm normalize quận
+        $normalizeDistrict = function($value) {
+            if (!$value) return '';
+            $normalized = mb_strtolower(trim((string) $value));
+            $normalized = preg_replace('/^q\.\s*/iu', '', $normalized);
+            $normalized = preg_replace('/^quận\s+/iu', '', $normalized);
+            $normalized = preg_replace('/\s+/', ' ', $normalized);
+            return $normalized;
+        };
+
+        $reqDistrict = $normalizeDistrict($khuVucSuCo);
+
+        // Ưu tiên type + quận, sort theo score rồi đến khoảng cách
+        $allTeamsList = [];
+
+        foreach ($allTeams as $team) {
+            $trangThai = $this->normalizeTrangThaiDoi($team->trang_thai);
+
+            $loaiSuCoList = $team->loaiSuCos ?? collect();
+            $loaiSuCoNames = $loaiSuCoList->map(fn($lsc) => $lsc->ten_danh_muc ?? $lsc->ten_loai_su_co ?? $lsc->ten_loai ?? '')->filter()->values()->toArray();
+            $loaiSuCoIds = $loaiSuCoList->map(fn($lsc) => $lsc->id_loai_su_co ?? $lsc->id ?? null)->filter()->values()->toArray();
+
+            $cungLoaiSuCo = false;
+            if ($idLoaiSuCo) {
+                $idNum = is_numeric($idLoaiSuCo) ? (int) $idLoaiSuCo : null;
+                $cungLoaiSuCo = $idNum !== null && in_array($idNum, $loaiSuCoIds);
+            }
+
+            // Tính cung_quan: so sánh quận của đội với quận của sự cố
+            $cungQuan = false;
+            if ($reqDistrict) {
+                $teamDistrict = $normalizeDistrict($team->khu_vuc_quan_ly ?? '');
+                $cungQuan = $teamDistrict === $reqDistrict;
+            }
+
+            $teamLat = floatval($team->vi_tri_lat ?? null);
+            $teamLng = floatval($team->vi_tri_lng ?? null);
+
+            // Ưu tiên vị trí mới nhất từ bảng vi_tri_doi_cuu_ho (đội di chuyển)
+            if ($team->viTris && $team->viTris->count() > 0) {
+                $latestViTri = $team->viTris->sortByDesc('id')->first();
+                $teamLat = floatval($latestViTri->vi_tri_lat ?? $teamLat);
+                $teamLng = floatval($latestViTri->vi_tri_lng ?? $teamLng);
+            }
+
+            $teamData = [
+                'id'                     => $team->id_doi_cuu_ho,
+                'ten_doi'               => $team->ten_co,
+                'khu_vuc_quan_ly'       => $team->khu_vuc_quan_ly,
+                'so_dien_thoai_hotline' => $team->so_dien_thoai_hotline,
+                'trang_thai'            => $trangThai,
+                'trang_thai_goc'        => $team->trang_thai,
+                'thanh_viens'           => $team->thanhViens,
+                'tai_nguyens'           => $team->taiNguyens->map(fn($t) => [
+                    'ten_tai_nguyen' => $t->ten_tai_nguyen,
+                ]),
+                'loai_su_co'      => $loaiSuCoNames,
+                'cung_loai_su_co' => $cungLoaiSuCo,
+                'cung_quan'       => $cungQuan,
+                'khoang_cach_km'  => $this->haversineDistance($reqLat, $reqLng, $teamLat ?: null, $teamLng ?: null),
+            ];
+
+            $allTeamsList[] = $teamData;
+        }
+
+        // Sort ưu tiên thống nhất:
+        // 1. Cùng type + cùng quận  (score 3)
+        // 2. Cùng type + khác quận  (score 2)
+        // 3. Khác type + cùng quận  (score 1)
+        // 4. Khác type + khác quận  (score 0)
+        // Trong cùng score: gần nhất trước
+        usort($allTeamsList, function($a, $b) {
+            $scoreA = ($a['cung_loai_su_co'] ? 2 : 0) + ($a['cung_quan'] ? 1 : 0);
+            $scoreB = ($b['cung_loai_su_co'] ? 2 : 0) + ($b['cung_quan'] ? 1 : 0);
+
+            if ($scoreA !== $scoreB) {
+                return $scoreB - $scoreA; // cao hơn lên trước
+            }
+
+            $distA = $a['khoang_cach_km'] ?? PHP_FLOAT_MAX;
+            $distB = $b['khoang_cach_km'] ?? PHP_FLOAT_MAX;
+            return $distA <=> $distB; // gần hơn lên trước
+        });
+
+        $teams = collect($allTeamsList);
+
+        if ($teams->isEmpty()) {
+            return response()->json([
+                'message' => 'Không có đội cứu hộ nào sẵn sàng'
+            ], 404);
+        }
+
+        return response()->json([
+            'teams' => $teams,
+        ]);
+    }
+
+    private function normalizeTrangThaiDoi($trangThai): string
+    {
+        $v = strtoupper(trim((string) ($trangThai ?? '')));
+        return match ($v) {
+            'SAN_SANG', 'SANSANG'   => 'SanSang',
+            'DANG_CUU_HO', 'SANGSANG' => 'DangCuuHo',
+            'BAN_CHI_DINH'          => 'BanChiDinh',
+            'TAM_NGUNG'             => 'TamNgung',
+            default                  => $trangThai ?? '',
+        };
+    }
+
+
     private function urgencyToNumber($value): float
     {
         if ($value === null || $value === '') {
@@ -46,9 +199,13 @@ class YeuCauCuuHoController extends Controller
             'DA_HUY' => 'HUY_BO',
             'HUY' => 'HUY_BO',
 
-            // Already-canonical
+            // Canonical statuses
             'CHO_XU_LY' => 'CHO_XU_LY',
+            'DA_PHAN_CONG' => 'DA_PHAN_CONG',
+            'DANG_XU_LY' => 'DANG_XU_LY',
+            'DA_DEN_HIEN_TRUONG' => 'DA_DEN_HIEN_TRUONG',
             'HOAN_THANH' => 'HOAN_THANH',
+            'THAT_BAI' => 'THAT_BAI',
             'HUY_BO' => 'HUY_BO',
         ];
 
@@ -96,14 +253,14 @@ class YeuCauCuuHoController extends Controller
 
             $items = YeuCauCuuHo::with([
                 'nguoiDung',
-                'loaiSuCo',
+                'loaiSuCo.chiTiets',
                 'hangDoiXuLy',
                 'phanLoaiAis',
                 'phanCongs',
                 'danhGias'
             ])
-            ->orderBy($sortBy, $sortOrder)
-            ->paginate($perPage);
+                ->orderBy($sortBy, $sortOrder)
+                ->paginate($perPage);
 
             return Response::json([
                 'success' => true,
@@ -200,7 +357,7 @@ class YeuCauCuuHoController extends Controller
                 'trang_thai' => 'WAITING'
             ]);
 
-            $item->load('nguoiDung', 'loaiSuCo', 'hangDoiXuLy');
+            $item->load('nguoiDung', 'loaiSuCo.chiTiets', 'hangDoiXuLy');
 
             return Response::json([
                 'success' => true,
@@ -232,7 +389,7 @@ class YeuCauCuuHoController extends Controller
         try {
             $item = YeuCauCuuHo::with([
                 'nguoiDung',
-                'loaiSuCo',
+                'loaiSuCo.chiTiets',
                 'hangDoiXuLy',
                 'phanLoaiAis',
                 'phanCongs.doiCuuHo',
@@ -302,7 +459,7 @@ class YeuCauCuuHoController extends Controller
                 ]);
             }
 
-            $item->load('nguoiDung', 'loaiSuCo', 'hangDoiXuLy');
+            $item->load('nguoiDung', 'loaiSuCo.chiTiets', 'hangDoiXuLy');
 
             return Response::json([
                 'success' => true,
@@ -376,7 +533,7 @@ class YeuCauCuuHoController extends Controller
         try {
             $perPage = $request->get('per_page', 15);
             $normalized = $this->normalizeTrangThaiYeuCau($status);
-            $validStatuses = ['CHO_XU_LY', 'DANG_XU_LY', 'HOAN_THANH', 'HUY_BO'];
+            $validStatuses = ['CHO_XU_LY', 'DA_PHAN_CONG', 'DANG_XU_LY', 'DA_DEN_HIEN_TRUONG', 'HOAN_THANH', 'THAT_BAI', 'HUY_BO'];
 
             if (!in_array($normalized, $validStatuses, true)) {
                 return Response::json([
@@ -390,8 +547,8 @@ class YeuCauCuuHoController extends Controller
                 'loaiSuCo',
                 'hangDoiXuLy'
             ])
-            ->where('trang_thai', $normalized)
-            ->paginate($perPage);
+                ->where('trang_thai', $normalized)
+                ->paginate($perPage);
 
             return Response::json([
                 'success' => true,
@@ -416,19 +573,32 @@ class YeuCauCuuHoController extends Controller
     public function updateStatus(Request $request, $id)
     {
         try {
-            $item = YeuCauCuuHo::findOrFail($id);
+            $item = YeuCauCuuHo::with('phanCongs')->findOrFail($id);
 
             $validated = $request->validate([
                 'trang_thai' => 'required|string'
             ]);
 
             $normalized = $this->normalizeTrangThaiYeuCau($validated['trang_thai']);
-            $allowed = ['CHO_XU_LY', 'DANG_XU_LY', 'HOAN_THANH', 'HUY_BO'];
+            $allowed = ['CHO_XU_LY', 'DA_PHAN_CONG', 'DANG_XU_LY', 'DA_DEN_HIEN_TRUONG', 'HOAN_THANH', 'THAT_BAI', 'HUY_BO'];
             if (!in_array($normalized, $allowed, true)) {
                 return Response::json([
                     'success' => false,
                     'message' => 'Trạng thái không hợp lệ'
                 ], 422);
+            }
+
+            // Cannot cancel if assignment has already been made
+            if ($normalized === 'HUY_BO') {
+                $hasAssignment = $item->phanCongs()
+                    ->whereIn('trang_thai_nhiem_vu', ['MOI', 'DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'])
+                    ->exists();
+                if ($hasAssignment) {
+                    return Response::json([
+                        'success' => false,
+                        'message' => 'Đội cứu hộ đã được phân công, không thể hủy'
+                    ], 422);
+                }
             }
 
             $item->update(['trang_thai' => $normalized]);
@@ -439,12 +609,13 @@ class YeuCauCuuHoController extends Controller
                     // When cancelled, remove from queue entirely
                     $item->hangDoiXuLy->delete();
                 } else {
-                    $queueStatus = $normalized === 'CHO_XU_LY' ? 'WAITING' : ($normalized === 'DANG_XU_LY' ? 'PROCESSING' : 'DONE');
+                    $queueStatus = $normalized === 'CHO_XU_LY' ? 'WAITING'
+                        : ($normalized === 'DA_PHAN_CONG' || $normalized === 'DANG_XU_LY' || $normalized === 'DA_DEN_HIEN_TRUONG' ? 'PROCESSING' : 'DONE');
                     $item->hangDoiXuLy->update(['trang_thai' => $queueStatus]);
                 }
             }
 
-            $item->load('nguoiDung', 'loaiSuCo', 'hangDoiXuLy');
+            $item->load('nguoiDung', 'loaiSuCo.chiTiets', 'hangDoiXuLy');
 
             return Response::json([
                 'success' => true,
@@ -496,9 +667,9 @@ class YeuCauCuuHoController extends Controller
                 'loaiSuCo',
                 'hangDoiXuLy'
             ])
-            ->where('muc_do_khan_cap', $normalized)
-            ->orderBy('diem_uu_tien', 'desc')
-            ->paginate($perPage);
+                ->where('muc_do_khan_cap', $normalized)
+                ->orderBy('diem_uu_tien', 'desc')
+                ->paginate($perPage);
 
             return Response::json([
                 'success' => true,
@@ -530,8 +701,8 @@ class YeuCauCuuHoController extends Controller
                 'yeuCau.nguoiDung',
                 'yeuCau.loaiSuCo'
             ])
-            ->orderBy($sortBy, $sortOrder)
-            ->paginate($perPage);
+                ->orderBy($sortBy, $sortOrder)
+                ->paginate($perPage);
 
             return Response::json([
                 'success' => true,
@@ -571,9 +742,9 @@ class YeuCauCuuHoController extends Controller
                 'yeuCau.nguoiDung',
                 'yeuCau.loaiSuCo'
             ])
-            ->where('trang_thai', $normalized)
-            ->orderBy('diem_uu_tien', 'desc')
-            ->paginate($perPage);
+                ->where('trang_thai', $normalized)
+                ->orderBy('diem_uu_tien', 'desc')
+                ->paginate($perPage);
 
             return Response::json([
                 'success' => true,
@@ -739,6 +910,80 @@ class YeuCauCuuHoController extends Controller
             return Response::json([
                 'success' => false,
                 'message' => 'Lỗi khi lấy dữ liệu: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Rescue team receives a request (TIẾP NHẬN)
+     * Route: POST yeu-cau-cuu-ho/rescuer-nhan-yeu-cau
+     */
+    public function resNhanYeuCau(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'id_phan_cong' => 'required|integer|exists:phan_cong_cuu_ho,id_phan_cong',
+            ]);
+
+            $phanCong = PhanCongCuuHo::with('yeuCau')->findOrFail($validated['id_phan_cong']);
+
+            // Verify assignment belongs to this rescuer team
+            $teamId = $request->get('id_doi_cuu_ho');
+            if ($teamId && $phanCong->id_doi_cuu_ho != $teamId) {
+                return Response::json([
+                    'success' => false,
+                    'message' => 'Phân công không thuộc về đội của bạn'
+                ], 403);
+            }
+
+            // Only accept if status is MOI/CHUA_TIEP_NHAN
+            $currentStatus = strtoupper(trim($phanCong->trang_thai_nhiem_vu ?? ''));
+            if (!in_array($currentStatus, ['MOI', 'CHUA_TIEP_NHAN'])) {
+                return Response::json([
+                    'success' => false,
+                    'message' => 'Nhiệm vụ đã được tiếp nhận hoặc không còn khả dụng'
+                ], 422);
+            }
+
+            // Update assignment status to DANG_XU_LY
+            $phanCong->update(['trang_thai_nhiem_vu' => 'DANG_XU_LY']);
+
+            // Update the rescue request status to DANG_XU_LY (if not already)
+            $yeuCau = $phanCong->yeuCau;
+            if ($yeuCau && $yeuCau->trang_thai !== 'DA_PHAN_CONG') {
+                $yeuCau->update(['trang_thai' => 'DA_PHAN_CONG']);
+            } elseif ($yeuCau) {
+                $yeuCau->update(['trang_thai' => 'DANG_XU_LY']);
+            }
+
+            // Load relationships for response
+            $phanCong->load([
+                'yeuCau.nguoiDung',
+                'yeuCau.loaiSuCo',
+                'doiCuuHo',
+                'ketQua'
+            ]);
+
+            return Response::json([
+                'success' => true,
+                'message' => 'Đã tiếp nhận nhiệm vụ',
+                'data' => $phanCong
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Phân công không tồn tại'
+            ], 404);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi xác thực dữ liệu',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi khi tiếp nhận: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -1031,7 +1276,7 @@ class YeuCauCuuHoController extends Controller
 
             $urgencies = (clone $baseQuery)->pluck('muc_do_khan_cap');
             $urgencyAvg = $urgencies->count() > 0
-                ? $urgencies->map(fn ($v) => $this->urgencyToNumber($v))->avg()
+                ? $urgencies->map(fn($v) => $this->urgencyToNumber($v))->avg()
                 : 0;
             $avgAffectedPeople = (clone $baseQuery)->avg('so_nguoi_bi_anh_huong') ?? 0;
             $totalAffectedPeople = (clone $baseQuery)->sum('so_nguoi_bi_anh_huong') ?? 0;

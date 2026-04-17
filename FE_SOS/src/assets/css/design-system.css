@@ -1,0 +1,183 @@
+:root {
+  /* 🎨 Primary Colors */
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --bg-app: #f8fafc;
+  --bg-card: #ffffff;
+  
+  /* 🚨 Emergency Level System */
+  --level-low: #16a34a;
+  --level-low-bg: #dcfce7;
+  --level-low-text: #166534;
+  
+  --level-medium: #f59e0b;
+  --level-medium-bg: #fef3c7;
+  --level-medium-text: #b45309;
+  
+  --level-high: #dc2626;
+  --level-high-bg: #fee2e2;
+  --level-high-text: #991b1b;
+  
+  --level-critical: #7f1d1d;
+  --level-critical-bg: #7f1d1d; /* Solid fill for impact */
+  --level-critical-text: #ffffff;
+  
+  /* 🖋 Typography */
+  --font-family: 'Inter', 'Roboto', sans-serif;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  
+  /* 📏 Spacing Base: 8 / 16 / 24 / 32 px */
+  --space-8: 8px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-32: 32px;
+  
+  /* 🔲 Shapes */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+  
+  /* 🌤 Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  
+  /* Animations */
+  --transition-fast: 0.15s ease-in-out;
+  --transition-normal: 0.3s ease-in-out;
+}
+
+/* =========================================
+   RESET & BASE TYPOGRAPHY
+   ========================================= */
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* =========================================
+   COMPONENTS
+   ========================================= */
+
+/* 📦 Cards */
+.sos-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-24);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all var(--transition-normal);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.sos-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* 🏷 Badges */
+.sos-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.sos-badge.level-low { background: var(--level-low-bg); color: var(--level-low-text); border: 1px solid rgba(22, 163, 74, 0.2); }
+.sos-badge.level-medium { background: var(--level-medium-bg); color: var(--level-medium-text); border: 1px solid rgba(245, 158, 11, 0.2); }
+.sos-badge.level-high { background: var(--level-high-bg); color: var(--level-high-text); border: 1px solid rgba(220, 38, 38, 0.2); }
+
+/* 🔥 CRITICAL requires special standout! */
+.sos-badge.level-critical {
+  background: var(--level-critical);
+  color: var(--level-critical-text);
+  box-shadow: 0 0 0 4px rgba(127, 29, 29, 0.2);
+  animation: pulse-critical 1.5s infinite;
+}
+
+@keyframes pulse-critical {
+  0% { box-shadow: 0 0 0 0 rgba(127, 29, 29, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(127, 29, 29, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(127, 29, 29, 0); }
+}
+
+/* 🔘 Buttons */
+.sos-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: none;
+  gap: 8px;
+}
+
+.sos-btn-primary {
+  background-color: var(--primary);
+  color: white;
+}
+.sos-btn-primary:hover {
+  background-color: var(--primary-hover);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.sos-btn-outline {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--text-muted);
+}
+.sos-btn-outline:hover {
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  border-color: var(--text-primary);
+}
+
+/* 📸 Image System */
+.sos-image-container {
+  position: relative;
+  width: 100%;
+  height: 180px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: var(--space-16);
+  background-color: #e2e8f0;
+}
+.sos-image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--transition-normal);
+}
+.sos-card:hover .sos-image-container img {
+  transform: scale(1.05); /* Slight zoom on card hover */
+}
+.sos-image-container .sos-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+}
+
+/* 🖋 Typo utilities */
+.text-h1 { font-size: 24px; font-weight: 700; color: var(--text-primary); margin: 0; }
+.text-h2 { font-size: 18px; font-weight: 600; color: var(--text-primary); margin: 0; line-height: 1.4; }
+.text-body { font-size: 14px; font-weight: 400; color: var(--text-secondary); margin: 0; line-height: 1.5; }
+.text-small { font-size: 12px; font-weight: 500; color: var(--text-muted); margin: 0; }

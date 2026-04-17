@@ -11,7 +11,7 @@ class NguoiDung extends Authenticatable
 
     protected $table = 'nguoi_dung';
     protected $primaryKey = 'id_nguoi_dung';
-    protected $fillable = ['ho_ten', 'so_dien_thoai', 'email', 'mat_khau', 'api_token', 'trang_thai'];
+    protected $fillable = ['ho_ten', 'so_dien_thoai', 'email', 'mat_khau', 'api_token', 'trang_thai', 'khu_vuc', 'dia_chi'];
     protected $hidden = ['mat_khau', 'api_token'];
 
     public function yeuCauCuuHos()
