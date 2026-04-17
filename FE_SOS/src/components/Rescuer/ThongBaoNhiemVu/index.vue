@@ -1,159 +1,208 @@
 <template>
-  <div class="emergency-dashboard-wrapper">
-    <!-- Header -->
-    <div class="dashboard-header d-flex justify-content-between align-items-center">
+  <div class="premium-notification-wrapper d-flex flex-column h-100 position-relative">
+    <!-- Animated Background Map/Mesh -->
+    <div class="bg-radar position-absolute w-100 h-100 pe-none">
+      <div class="radar-circle rc-1"></div>
+      <div class="radar-circle rc-2"></div>
+      <div class="radar-circle rc-3"></div>
+      <div class="radar-sweep"></div>
+    </div>
+
+    <!-- Premium Header -->
+    <div class="premium-header position-relative z-2 px-4 py-4 d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center gap-4">
+        <div class="glow-icon-container position-relative">
+          <div class="bg-pulse-glow"></div>
+          <div class="icon-glass d-flex align-items-center justify-content-center text-white shadow-lg">
+            <i class="fa-solid fa-satellite-dish fs-3 bell-wiggle"></i>
+          </div>
+        </div>
+        <div>
+          <h2 class="fw-bolder mb-1 text-gradient-primary" style="letter-spacing: -1px;">Trung Tâm Nhiệm Vụ</h2>
+          <p class="text-secondary fw-semibold mb-0 d-flex align-items-center gap-2">
+            <span class="live-dot pulse-danger"></span>
+            Hệ thống vệ tinh & điều phối trực tiếp đang hoạt động
+          </p>
+        </div>
+      </div>
       <div>
-        <h1 class="dashboard-title">Hệ Thống Nhiệm Vụ</h1>
-        <p class="dashboard-subtitle">Trung tâm điều phối & phản ứng nhanh trực tuyến</p>
+        <button class="btn btn-glassmorphism rounded-pill px-4 fw-bold shadow-hover text-dark d-flex align-items-center gap-2 hover-scale">
+          <i class="fa-solid fa-check-double text-primary"></i> Đánh dấu tất cả đã đọc
+        </button>
       </div>
     </div>
 
-    <!-- 1. SUMMARY SECTION (TOP) -->
-    <div class="summary-grid">
-      <!-- Total -->
-      <div class="summary-card">
-        <div class="s-label">TỔNG NHIỆM VỤ</div>
-        <div class="s-val">{{ notifications.length }}</div>
+    <!-- Floating Filter Tabs -->
+    <div class="filter-glass-dock mx-4 mb-4 z-2 position-relative d-flex justify-content-between align-items-center rounded-pill px-2 py-2 shadow-sm">
+      <div class="d-flex gap-1" style="overflow-x: auto; scrollbar-width: none;">
+        <button
+          v-for="tab in tabs"
+          :key="tab.key"
+          class="btn tab-btn rounded-pill px-4 py-2 fw-bold transition-all d-flex align-items-center border-0 flex-nowrap"
+          :class="activeTab === tab.key ? 'active-tab shadow text-white' : 'inactive-tab text-secondary'"
+          @click="activeTab = tab.key"
+        >
+          <i :class="[tab.icon, 'me-2']" :style="{ color: activeTab === tab.key ? 'white' : 'inherit' }"></i> 
+          {{ tab.label }}
+          <div
+            v-if="tab.count >= 0"
+            class="tab-badge ms-2 rounded-pill shadow-sm d-flex align-items-center justify-content-center fw-bolder"
+            :class="activeTab === tab.key ? 'bg-white text-' + (tab.key==='pending'?'danger':'primary') : 'bg-light text-dark'"
+          >
+            {{ tab.count }}
+          </div>
+        </button>
       </div>
-      <!-- CRITICAL -->
-      <div class="summary-card s-critical">
-        <div class="s-label">YÊU CẦU KHẨN CẤP / ĐỎ</div>
-        <div class="s-val">{{ notifications.filter(n => (n.yeu_cau?.muc_do_khan_cap || 'THUONG').toUpperCase() === 'KHA_CAP').length }}</div>
-      </div>
-      <!-- Active -->
-      <div class="summary-card s-active">
-        <div class="s-label">ĐANG THỰC THI</div>
-        <div class="s-val" style="color: #1d4ed8;">{{ notifications.filter(n => n.trang_thai_nhiem_vu === 'DANG_XU_LY').length }}</div>
+      <div class="text-muted small fw-bold me-3 text-uppercase letter-spacing-1 d-none d-md-block">
+        <i class="fa-solid fa-list-check me-1"></i> {{ filteredNotifications.length }} Kết quả
       </div>
     </div>
 
-    <!-- Filter Tabs -->
-    <div class="tabs-nav">
-      <button 
-        v-for="tab in tabs" :key="tab.key"
-        class="tab-btn" :class="{ 'active': activeTab === tab.key }"
-        @click="activeTab = tab.key"
-      >
-        <i :class="tab.icon"></i> {{ tab.label }}
-        <span class="badge-count" v-if="tab.count >= 0">{{ tab.count }}</span>
-      </button>
-    </div>
-
-    <!-- 2. INCIDENT LIST (MAIN) -->
-    <div class="incident-list-container">
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
-        <h5 class="mt-3 text-muted fw-bold">Đang đồng bộ dữ liệu hệ thống...</h5>
+    <!-- Notification List Area -->
+    <div class="list-container px-4 pb-4 flex-grow-1 overflow-auto z-2">
+      <!-- Loading State -->
+      <div v-if="loading" class="d-flex flex-column align-items-center justify-content-center h-100">
+        <div class="cyber-spinner mb-4"></div>
+        <h5 class="fw-bolder text-muted tracking-widest text-uppercase">Đang mã hóa dữ liệu...</h5>
       </div>
       
-      <div v-else-if="filteredNotifications.length === 0" class="empty-state text-center py-5">
-        <div class="empty-icon text-muted mb-3">
-          <i class="fa-solid fa-bed-pulse fa-4x opacity-50"></i>
+      <!-- Empty State -->
+      <div v-else-if="filteredNotifications.length === 0" class="empty-glass h-100 d-flex flex-column align-items-center justify-content-center p-5 text-center">
+        <div class="empty-icon-hexagon mb-4 d-flex align-items-center justify-content-center">
+          <i class="fa-solid fa-mug-hot fs-1 text-primary"></i>
         </div>
-        <h3 class="fw-bold text-dark mb-2">Chưa có nhiệm vụ</h3>
-        <p class="text-secondary fw-medium fs-5">Hệ thống sẽ tự động phát tín hiệu khi có yêu cầu cấp cứu.</p>
+        <h3 class="fw-bolder text-dark mb-2">Chưa có nhiệm vụ</h3>
+        <p class="text-muted fw-medium fs-5" style="max-width: 500px;">
+          Đội của bạn hiện đang không có nhiệm vụ nào. Hệ thống sẽ tự động cập nhật khi có tín hiệu cấp cứu mới.
+        </p>
       </div>
 
-      <div v-else class="incident-list">
-        <!-- Flexbox order ensures critical is on top -->
-        <div 
-          v-for="item in filteredNotifications" 
+      <!-- Missions Grid -->
+      <div v-else class="row g-4 pb-4">
+        <div
+          v-for="(item, index) in filteredNotifications"
           :key="item.id_phan_cong"
-          class="incident-card"
-          :class="{ 'is-critical': getSeverity(item) === 'urgent' }"
-          :style="{ order: getSeverity(item) === 'urgent' ? -1 : 0 }"
+          class="col-12 col-xxl-6"
         >
-          <!-- 1. Emergency level (MOST PROMINENT) -->
-          <div class="level-banner d-flex align-items-center justify-content-between" :class="'level-' + getSeverity(item)">
-            <span class="d-flex align-items-center gap-2">
-              <i :class="getSeverityIcon(item)"></i>
-              {{ getSeverityText(item) }}
-            </span>
-            <span class="time-stamp">
-              <i class="fa-regular fa-clock me-1"></i> {{ item.created_at || 'Vừa xong' }}
-            </span>
-          </div>
-
-          <!-- Card Content Body -->
-          <div class="card-content">
-             <!-- 2. Title -->
-             <h2 class="event-title mb-2">
-               {{ item.yeu_cau?.loai_su_co?.ten_loai_su_co || 'YÊU CẦU CỨU HỘ KHẨN' }}
-             </h2>
-             
-             <!-- 3. Status -->
-             <div class="mb-3">
-               <span class="status-pill" :class="'status-' + item.trang_thai_nhiem_vu.toLowerCase()">
-                 <i v-if="item.trang_thai_nhiem_vu === 'CHUA_TIEP_NHAN'" class="fa-solid fa-radar fa-spin me-1"></i>
-                 <i v-if="item.trang_thai_nhiem_vu === 'DANG_XU_LY'" class="fa-solid fa-truck-fast me-1"></i>
-                 <i v-if="item.trang_thai_nhiem_vu === 'TU_CHOI'" class="fa-solid fa-xmark me-1"></i>
-                 {{ item.trang_thai_nhiem_vu === 'CHUA_TIEP_NHAN' ? 'Đang Chờ Tiếp Nhận' : (item.trang_thai_nhiem_vu === 'DANG_XU_LY' ? 'Đang Xử Lý' : 'Đã Từ Chối') }}
-               </span>
-             </div>
-
-             <!-- 4. Details -->
-             <div class="details-layout">
-                <!-- Thumbnail -->
-                <div class="thumbnail-col d-none d-md-block">
-                   <div class="image-box">
-                      <img v-if="item.yeu_cau?.hinh_anh" :src="item.yeu_cau.hinh_anh" alt="Tham chiếu sự cố" />
-                      <div v-else class="image-placeholder">
-                         <i class="fa-solid fa-image fa-2x"></i>
-                      </div>
+          <div 
+            class="mission-card h-100 d-flex flex-column position-relative overflow-hidden fade-in-up" 
+            :style="{ animationDelay: `${index * 0.08}s` }"
+            :class="[getMissionBorderClass(item), item.trang_thai_nhiem_vu === 'CHUA_TIEP_NHAN' ? 'urgent-pulse-bg' : '']"
+          >
+            <!-- Severity Indicator Line -->
+            <div class="severity-line" :class="getSeverityBg(item)"></div>
+            
+            <!-- Card Body -->
+            <div class="card-body p-4 d-flex flex-column h-100 position-relative z-1">
+              
+              <!-- Top Row: Badge & Time -->
+              <div class="d-flex justify-content-between align-items-start mb-4">
+                <div class="d-flex flex-column gap-2">
+                   <div class="d-flex align-items-center gap-2">
+                      <span class="premium-badge fw-bolder px-3 py-1 text-uppercase" :class="getSeverityBg(item)">
+                        <i class="me-1" :class="getSeverityIcon(item)"></i> {{ getSeverityText(item) }}
+                      </span>
+                      <span v-if="!item.is_read && item.trang_thai_nhiem_vu === 'CHUA_TIEP_NHAN'" class="badge new-badge bg-danger rounded-pill shadow-danger">MỚI TỚI</span>
                    </div>
+                   <h4 class="fw-black text-dark mb-0 mt-2 d-flex align-items-center gap-2" style="font-size: 1.35rem;">
+                      {{ item.yeu_cau?.loai_su_co?.ten_danh_muc || item.yeu_cau?.ten_loai_su_co || 'YÊU CẦU CỨU HỘ KHẨN' }}
+                   </h4>
+                </div>
+                <div class="time-glass px-3 py-1 rounded-pill fw-bold text-muted small d-flex align-items-center gap-1 shadow-sm">
+                  <i class="fa-regular fa-clock text-primary"></i> <span class="time-text">{{ item.created_at || 'Vừa xong' }}</span>
+                </div>
+              </div>
+
+              <!-- Context Box (Quote) -->
+              <div class="context-box p-3 rounded-4 mb-4 position-relative">
+                <div class="quote-mark position-absolute top-0 start-0 opacity-10 ms-2 mt-1">
+                  <i class="fa-solid fa-quote-left fs-1 text-dark"></i>
+                </div>
+                <p class="mb-0 text-dark fw-medium position-relative z-1 ps-2" style="font-size: 0.95rem; line-height: 1.5;">
+                  {{ item.yeu_cau?.chi_tiet || item.mo_ta || 'Không có mô tả chi tiết, vui lòng liên hệ trực tiếp người báo nạn ngay lập tức.' }}
+                </p>
+              </div>
+
+              <!-- Info Grid -->
+              <div class="row g-3 mb-4 mt-auto">
+                <div class="col-sm-6">
+                  <div class="info-block d-flex align-items-center p-3 rounded-4 h-100">
+                    <div class="icon-blob blob-blue me-3 d-flex justify-content-center align-items-center">
+                       <i class="fa-solid fa-user-injured fs-5 text-primary"></i>
+                    </div>
+                    <div class="w-100 overflow-hidden">
+                      <div class="label-tiny">NẠN NHÂN</div>
+                      <div class="fw-bold text-dark text-truncate fs-6">{{ item.yeu_cau?.ho_ten_nguoi_dung || 'Không rõ lai lịch' }}</div>
+                      <div class="mt-1">
+                        <a v-if="item.yeu_cau?.so_dien_thoai_nguoi_dung || (item.yeu_cau?.nguoi_dung && item.yeu_cau.nguoi_dung.so_dien_thoai)" :href="'tel:' + (item.yeu_cau.so_dien_thoai_nguoi_dung || item.yeu_cau.nguoi_dung.so_dien_thoai)" class="phone-chip text-decoration-none fw-bold small">
+                          <i class="fa-solid fa-phone me-1"></i> GỌI NGAY
+                        </a>
+                        <span v-else class="text-muted small fw-medium">Không có SĐT</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 
-                <!-- Info content -->
-                <div class="info-col">
-                   <div class="description-box mb-3">
-                      <i class="fa-solid fa-quote-left text-black-50 me-2"></i>
-                      {{ item.yeu_cau?.chi_tiet || item.mo_ta || 'Không có mô tả chi tiết, vui lòng liên hệ trực tiếp người báo nạn ngay lập tức.' }}
-                   </div>
-
-                   <div class="meta-data-grid">
-                      <!-- GPS -->
-                      <div class="meta-item">
-                         <div class="meta-label">VỊ TRÍ (TỌA ĐỘ GPS)</div>
-                         <div class="meta-value text-dark fw-bold">
-                            <i class="fa-solid fa-location-crosshairs text-danger me-1"></i> 
-                            {{ item.yeu_cau?.dia_chi || 'Chưa cập nhật tọa độ' }}
-                         </div>
+                <div class="col-sm-6">
+                  <div class="info-block d-flex align-items-center p-3 rounded-4 h-100">
+                    <div class="icon-blob blob-red me-3 d-flex justify-content-center align-items-center">
+                       <i class="fa-solid fa-location-crosshairs fs-5 text-danger"></i>
+                    </div>
+                    <div class="w-100 overflow-hidden">
+                      <div class="label-tiny">ĐỊA ĐIỂM (GPS CAO)</div>
+                      <div class="fw-bold text-dark small text-truncate-2 mt-1" :title="item.yeu_cau?.dia_chi" style="line-height: 1.4;">
+                        {{ item.yeu_cau?.dia_chi || 'Chưa cập nhật tọa độ' }}
                       </div>
-                      <!-- Caller -->
-                      <div class="meta-item">
-                         <div class="meta-label">THÔNG TIN NẠN NHÂN</div>
-                         <div class="meta-value text-dark fw-bold d-flex flex-wrap align-items-center gap-2">
-                            <i class="fa-solid fa-user-injured text-primary"></i>
-                            <span>{{ item.yeu_cau?.ho_ten_nguoi_dung || 'Không rõ lai lịch' }}</span>
-                            <a v-if="item.yeu_cau?.so_dien_thoai_nguoi_dung" :href="'tel:' + item.yeu_cau.so_dien_thoai_nguoi_dung" class="action-link outline ms-auto">
-                               <i class="fa-solid fa-phone me-1"></i> GỌI NGAY
-                            </a>
-                         </div>
-                      </div>
-                   </div>
+                    </div>
+                  </div>
                 </div>
-             </div>
+              </div>
 
-             <!-- 5. Action Bar -->
-             <div class="action-footer mt-4" v-if="item.trang_thai_nhiem_vu === 'CHUA_TIEP_NHAN'">
-                <button class="btn btn-primary-action w-100" @click="acceptMission(item)">
-                   <i class="fa-solid fa-bolt me-2"></i> XỬ LÝ NGAY
-                </button>
-                <div class="text-center">
-                  <button class="btn btn-decline w-100 mt-2" @click="declineMission(item)">
-                     Bỏ qua nhiệm vụ này
-                  </button>
+              <!-- Bottom Actions -->
+              <div class="action-dock p-2 rounded-4" v-if="item.trang_thai_nhiem_vu === 'CHUA_TIEP_NHAN'">
+                <div class="row g-2">
+                  <div class="col-7">
+                    <button class="btn btn-accept-ultimate w-100 h-100 rounded-3 fw-bold d-flex flex-column justify-content-center align-items-center position-relative overflow-hidden group-hover" @click="acceptMission(item)">
+                      <div class="sweep-bg"></div>
+                      <span class="z-1 d-flex align-items-center gap-2 fs-5"><i class="fa-solid fa-truck-fast"></i> TIẾP NHẬN</span>
+                      <small class="z-1 fw-medium opacity-75" style="font-size: 10px;">KHỞI HÀNH NGAY</small>
+                    </button>
+                  </div>
+                  <div class="col-5">
+                    <button class="btn btn-decline-ultimate w-100 h-100 rounded-3 fw-bold d-flex flex-column justify-content-center align-items-center" @click="declineMission(item)">
+                      <span class="d-flex align-items-center gap-2"><i class="fa-solid fa-ban"></i> BỎ QUA</span>
+                      <small class="fw-medium text-muted" style="font-size: 10px;">TỪ CHỐI NHIỆM VỤ</small>
+                    </button>
+                  </div>
                 </div>
-             </div>
-             
-             <div class="action-footer mt-4 active-state" v-else-if="item.trang_thai_nhiem_vu === 'DANG_XU_LY'">
-                <div class="text-success fw-bolder fs-5 d-flex align-items-center gap-2">
-                  <span class="pulse-indicator"></span> Đội đang xử lý nhiệm vụ
+              </div>
+
+              <div v-else-if="item.trang_thai_nhiem_vu === 'DANG_XU_LY'" class="status-dock accepted-bg p-3 rounded-4 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="status-icon bg-success text-white d-flex justify-content-center align-items-center shadow-success">
+                    <i class="fa-solid fa-shield-check fs-5"></i>
+                  </div>
+                  <div>
+                    <h6 class="mb-0 fw-bolder text-success fs-5">Đội Đang Xử Lý</h6>
+                    <small class="text-success text-opacity-75 fw-semibold">Đảm bảo an toàn tuyệt đối</small>
+                  </div>
                 </div>
-                <router-link to="/rescuer/dang-xu-ly" class="btn btn-track">
-                  Live Tracking <i class="fa-solid fa-arrow-right ms-2"></i>
+                <router-link :to="'/rescuer/dang-xu-ly'" class="btn btn-success-glass fw-bold rounded-pill px-4 py-2 hover-scale">
+                  Xem live <i class="fa-solid fa-arrow-right ms-1"></i>
                 </router-link>
-             </div>
+              </div>
+
+              <div v-else-if="item.trang_thai_nhiem_vu === 'TU_CHOI'" class="status-dock declined-bg p-3 rounded-4 d-flex justify-content-center align-items-center gap-3">
+                <div class="status-icon bg-secondary text-white d-flex justify-content-center align-items-center">
+                  <i class="fa-solid fa-xmark fs-5"></i>
+                </div>
+                <div class="text-center text-md-start">
+                  <h6 class="mb-0 fw-bolder text-secondary fs-5">Nhiệm Vụ Đã Từ Chối</h6>
+                  <small class="text-muted fw-medium">Hệ thống đã điều phối cho đội khác.</small>
+                </div>
+              </div>
+
+            </div>
           </div>
         </div>
       </div>
@@ -281,406 +330,337 @@ export default {
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 
-.emergency-dashboard-wrapper {
-  background-color: #e2e8f0;
-  min-height: calc(100vh - 60px);
-  padding: 2rem;
-  box-sizing: border-box;
-  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-  overflow-x: hidden;
-}
-
-.dashboard-header {
-  margin-bottom: 2rem;
-}
-.dashboard-title {
-  font-size: 2.25rem;
-  font-weight: 900;
-  color: #0f172a;
-  margin: 0;
-  letter-spacing: -0.5px;
-}
-.dashboard-subtitle {
-  font-size: 1.05rem;
-  color: #64748b;
-  font-weight: 600;
-  margin-top: 0.25rem;
-}
-
-/* 1. Summary Section */
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-@media (max-width: 991px) {
-  .summary-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.summary-card {
-  background-color: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 12px;
-  padding: 1.5rem 2rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-}
-.summary-card .s-label {
-  font-size: 0.85rem;
-  font-weight: 800;
-  color: #64748b;
-  letter-spacing: 1px;
-  margin-bottom: 0.5rem;
-}
-.summary-card .s-val {
-  font-size: 3rem;
-  font-weight: 900;
-  color: #0f172a;
-  line-height: 1;
-}
-
-.summary-card.s-critical {
-  background-color: #dc2626;
-  border-color: #b91c1c;
-  box-shadow: 0 10px 20px -5px rgba(220, 38, 38, 0.35);
-}
-.summary-card.s-critical .s-label { color: rgba(255,255,255,0.9); }
-.summary-card.s-critical .s-val { color: #ffffff; }
-
-.summary-card.s-active {
-  background-color: #f1f5f9;
-  border-bottom: 4px solid #1d4ed8;
-}
-
-/* Tabs */
-.tabs-nav {
-  display: flex;
-  gap: 0.5rem;
-  background-color: #f1f5f9;
-  padding: 0.5rem;
-  border-radius: 10px;
-  border: 1px solid #cbd5e1;
-  margin-bottom: 2.5rem;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.tab-btn {
-  background: transparent;
-  color: #475569;
-  border: none;
-  font-weight: 700;
-  padding: 0.75rem 1.25rem;
-  border-radius: 6px;
-  white-space: nowrap;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-}
-.tab-btn:hover {
-  background-color: #e2e8f0;
-  color: #0f172a;
-}
-.tab-btn.active {
-  background-color: #ffffff;
-  color: #1d4ed8;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-  border: 1px solid #cbd5e1;
-}
-.badge-count {
-  background-color: #1d4ed8;
-  color: #fff;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  margin-left: 8px;
-  font-weight: 800;
-}
-
-/* 2. Incident List & Cards */
-.incident-list-container {
-  display: flex;
-  flex-direction: column;
-}
-
-.incident-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  padding-bottom: 3rem;
-}
-
-.incident-card {
-  background-color: #ffffff;
-  border-radius: 16px;
-  border: 1px solid #cbd5e1;
-  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+.premium-notification-wrapper {
+  margin: -0.5rem -0.5rem;
+  height: calc(100vh - 80px);
+  font-family: 'Outfit', sans-serif;
+  background: #f8fafc;
   overflow: hidden;
-}
-.incident-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 15px 30px -5px rgba(0,0,0,0.1), 0 8px 10px -5px rgba(0,0,0,0.05);
+  border-radius: 1.5rem;
+  box-shadow: inset 0 0 50px rgba(0,0,0,0.02);
 }
 
-.incident-card.is-critical {
-  border: 2px solid #dc2626;
-  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.1);
-}
-.incident-card.is-critical:hover {
-  box-shadow: 0 20px 40px -10px rgba(220, 38, 38, 0.3);
-}
-
-/* Hierarchy 1: Emergency Banner */
-.level-banner {
-  padding: 1.25rem 2rem;
-  font-size: 1.15rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  color: #fff;
-  letter-spacing: 0.5px;
-}
-.level-urgent {
-  background-color: #dc2626;
-  font-size: 1.4rem;
-}
-.level-medium { background-color: #f59e0b; }
-.level-low { background-color: #22c55e; }
-
-.time-stamp {
-  font-size: 0.85rem;
-  font-weight: 700;
-  background-color: rgba(0,0,0,0.25);
-  padding: 6px 12px;
-  border-radius: 6px;
-  letter-spacing: 0;
-}
-
-/* Hierarchy 2-4: Content */
-.card-content {
-  padding: 2rem;
-}
-
-.event-title {
-  font-size: 1.75rem;
-  font-weight: 900;
-  color: #0f172a;
-  margin-top: 0;
-  margin-bottom: 0.75rem;
-  letter-spacing: -0.5px;
-}
-.is-critical .event-title { color: #b91c1c; }
-
-.status-pill {
-  display: inline-block;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  border: 1px solid #cbd5e1;
-}
-.status-chua_tiep_nhan {
-  background-color: #fef08a;
-  color: #854d0e;
-  border-color: #fde047;
-}
-.status-dang_xu_ly {
-  background-color: #dcfce7;
-  color: #166534;
-  border-color: #86efac;
-}
-.status-tu_choi {
-  background-color: #f1f5f9;
-  color: #64748b;
-  text-decoration: line-through;
-}
-
-.details-layout {
-  display: flex;
-  gap: 2rem;
-  margin-top: 1.5rem;
-}
-@media (max-width: 768px) {
-  .details-layout {
-    flex-direction: column;
-  }
-}
-
-.thumbnail-col {
-  width: 160px;
-  height: 160px;
-  flex-shrink: 0;
-}
-.image-box {
-  width: 100%;
-  height: 100%;
-  border-radius: 8px;
+/* Background Radar Effect */
+.bg-radar {
+  top: 0; left: 0;
   overflow: hidden;
-  border: 1px solid #cbd5e1;
-  background-color: #f1f5f9;
-}
-.image-box img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.image-placeholder {
-  width: 100%;
-  height: 100%;
   display: flex;
-  align-items: center;
   justify-content: center;
-  color: #94a3b8;
-}
-
-.info-col {
-  flex-grow: 1;
-}
-.description-box {
-  padding: 1.25rem;
-  background-color: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 1.05rem;
-  color: #334155;
-  line-height: 1.6;
-  font-weight: 600;
-}
-
-.meta-data-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  margin-top: 1.5rem;
-}
-@media (max-width: 991px) {
-  .meta-data-grid { grid-template-columns: 1fr; }
-}
-
-.meta-item {
-  padding: 1.25rem;
-  border-radius: 8px;
-  background-color: #f1f5f9;
-  border: 1px solid #e2e8f0;
-}
-.meta-label {
-  font-size: 0.75rem;
-  font-weight: 800;
-  color: #64748b;
-  margin-bottom: 0.5rem;
-  letter-spacing: 0.5px;
-}
-.meta-value {
-  font-size: 1.05rem;
-  color: #0f172a;
-}
-.action-link.outline {
-  font-size: 0.8rem;
-  font-weight: 800;
-  color: #1d4ed8;
-  border: 2px solid #1d4ed8;
-  padding: 4px 10px;
-  border-radius: 6px;
-  text-decoration: none;
-  background-color: transparent;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-.action-link.outline:hover {
-  background-color: #1d4ed8;
-  color: #ffffff;
-}
-
-/* Hierarchy 5: Action Button */
-.action-footer {
-  border-top: 1px solid #e2e8f0;
-  padding-top: 2rem;
-  margin-top: 2rem;
-}
-
-.btn-primary-action {
-  background-color: #1d4ed8;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  font-size: 1.2rem;
-  font-weight: 800;
-  padding: 1.25rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  box-shadow: 0 10px 15px -3px rgba(29, 78, 216, 0.3);
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-.btn-primary-action:hover {
-  background-color: #1e40af;
-  box-shadow: 0 15px 25px -4px rgba(30, 64, 175, 0.4);
-  transform: translateY(-2px);
-  color: #ffffff;
-}
-
-.btn-decline {
-  background-color: transparent;
-  color: #64748b;
-  border: 2px solid transparent;
-  font-weight: 700;
-  font-size: 0.95rem;
-  padding: 0.75rem;
-  border-radius: 8px;
-  transition: all 0.2s;
-}
-.btn-decline:hover {
-  background-color: #f1f5f9;
-  color: #334155;
-}
-
-.active-state {
-  background-color: #f0fdf4;
-  border-radius: 8px;
-  padding: 1.5rem;
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  border: 1px solid #bbf7d0;
+  opacity: 0.4;
 }
 
-.pulse-indicator {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
+.radar-circle {
+  position: absolute;
   border-radius: 50%;
-  background-color: #22c55e;
-  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
-  animation: pulse-green 2s infinite;
+  border: 1px solid rgba(14, 165, 233, 0.1);
+  box-shadow: inset 0 0 40px rgba(14, 165, 233, 0.05);
 }
-@keyframes pulse-green {
-  0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
-  70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+.rc-1 { width: 300px; height: 300px; }
+.rc-2 { width: 600px; height: 600px; }
+.rc-3 { width: 900px; height: 900px; }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-.btn-track {
+.radar-sweep {
+  position: absolute;
+  width: 450px; height: 450px;
+  border-radius: 50% 0 50% 0;
+  background: conic-gradient(from 0deg, transparent 70%, rgba(14, 165, 233, 0.2) 100%);
+  transform-origin: center;
+  animation: spin 8s linear infinite;
+}
+
+/* Header */
+.text-gradient-primary {
+  background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.bg-pulse-glow {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%; height: 100%;
+  background: #0ea5e9;
+  border-radius: 50%;
+  filter: blur(15px);
+  opacity: 0.5;
+  animation: pulse-op 3s infinite;
+}
+
+.icon-glass {
+  width: 65px; height: 65px;
+  background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+  border-radius: 1.2rem;
+  border: 1px solid rgba(255,255,255,0.4);
+  backdrop-filter: blur(10px);
+  position: relative;
+  z-index: 1;
+}
+
+.live-dot {
+  width: 10px; height: 10px;
+  background: #ef4444;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.pulse-danger {
+  box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  animation: pulse-danger-anim 2s infinite;
+}
+
+@keyframes pulse-danger-anim {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+@keyframes wiggle {
+  0%, 10%, 100% { transform: rotate(0); }
+  2%, 6% { transform: rotate(-15deg) scale(1.1); }
+  4%, 8% { transform: rotate(15deg) scale(1.1); }
+}
+.bell-wiggle {
+  animation: wiggle 4s infinite;
+}
+
+/* Glass Buttons */
+.btn-glassmorphism {
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,1);
+}
+.hover-scale { transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.hover-scale:hover { transform: scale(1.05); }
+
+/* Filter Tabs Dock */
+.filter-glass-dock {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+.tab-btn {
+  font-size: 0.95rem;
+}
+.active-tab {
+  background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+}
+.inactive-tab:hover {
+  background: rgba(255,255,255,0.8);
+}
+.tab-badge {
+  min-width: 24px;
+  height: 24px;
+  font-size: 0.75rem;
+}
+.letter-spacing-1 { letter-spacing: 1px; }
+
+/* Mission Cards */
+.mission-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  border-radius: 1.5rem;
+  border-width: 2px;
+  border-style: solid;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+}
+.mission-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+}
+
+/* Glow Borders */
+.glow-border-danger { box-shadow: 0 0 25px rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.5) !important; }
+.glow-border-warning { box-shadow: 0 0 25px rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.5) !important; }
+.glow-border-info    { box-shadow: 0 0 25px rgba(14, 165, 233, 0.15); border-color: rgba(14, 165, 233, 0.5) !important; }
+
+.urgent-pulse-bg {
+  animation: urgent-bg 3s infinite alternate;
+}
+@keyframes urgent-bg {
+  from { background: rgba(255, 255, 255, 0.85); }
+  to { background: rgba(255, 241, 242, 0.95); }
+}
+
+.severity-line {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 6px;
+  z-index: 2;
+}
+
+/* Badges & Text */
+.premium-badge {
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.5px;
+}
+.time-glass {
+  background: rgba(255,255,255,0.6);
+  border: 1px solid rgba(255,255,255,0.8);
+}
+.time-text { font-family: monospace; font-size: 0.9rem; }
+
+.fw-black { font-weight: 900; }
+
+.context-box {
+  background: rgba(241, 245, 249, 0.5);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+/* Info Blocks */
+.info-block {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(0,0,0,0.03);
+  transition: all 0.2s;
+}
+.info-block:hover {
+  background: white;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.03);
+}
+
+.label-tiny {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 1px;
+}
+
+.icon-blob {
+  width: 45px; height: 45px;
+  border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+  animation: morph 3s ease-in-out infinite;
+}
+.blob-blue { background: rgba(14, 165, 233, 0.1); border: 1px solid rgba(14, 165, 233, 0.2); }
+.blob-red { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); }
+
+@keyframes morph {
+  0%, 100% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; }
+  34% { border-radius: 70% 30% 50% 50% / 30% 30% 70% 70%; }
+  67% { border-radius: 100% 60% 60% 100% / 100% 100% 60% 60%; }
+}
+
+.phone-chip {
   display: inline-flex;
   align-items: center;
-  background-color: #ffffff;
-  color: #16a34a;
-  border: 2px solid #16a34a;
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  font-weight: 800;
-  text-decoration: none;
+  padding: 0.2rem 0.6rem;
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border-radius: 1rem;
+}
+
+.text-truncate-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Actions */
+.action-dock {
+  background: rgba(241, 245, 249, 0.6);
+  border: 1px solid rgba(255,255,255,0.7);
+}
+
+.btn-accept-ultimate {
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+  color: white;
+  border: none;
+  padding: 0.8rem;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  box-shadow: 0 10px 20px rgba(239, 68, 68, 0.25);
+  transition: all 0.3s;
+}
+.btn-accept-ultimate:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 25px rgba(239, 68, 68, 0.4);
+}
+
+.sweep-bg {
+  position: absolute;
+  top: 0; left: -100%;
+  width: 50%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transform: skewX(-20deg);
+  transition: all 0.5s;
+}
+.btn-accept-ultimate:hover .sweep-bg { left: 200%; }
+
+.btn-decline-ultimate {
+  background: white;
+  color: #64748b;
+  border: 2px solid #e2e8f0;
+  padding: 0.8rem;
   transition: all 0.2s;
 }
-.btn-track:hover {
-  background-color: #16a34a;
-  color: #ffffff;
-  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.2);
+.btn-decline-ultimate:hover {
+  background: #f8fafc;
+  color: #475569;
+  border-color: #cbd5e1;
 }
+
+/* Status Dock */
+.status-dock {
+  border: 1px solid rgba(255,255,255,0.8);
+}
+.accepted-bg { background: rgba(220, 252, 231, 0.6); border-color: rgba(134, 239, 172, 0.5) !important;}
+.declined-bg { background: rgba(241, 245, 249, 0.8); }
+
+.status-icon {
+  width: 48px; height: 48px;
+  border-radius: 1rem;
+}
+.shadow-success { box-shadow: 0 8px 15px rgba(34, 197, 94, 0.25); }
+
+.btn-success-glass {
+  background: white;
+  color: #16a34a;
+  border: 1px solid #16a34a;
+  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.1);
+}
+
+/* Utilities & Animations */
+.shadow-danger { box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3); }
+.shadow-warning { box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3); }
+.shadow-info { box-shadow: 0 4px 10px rgba(14, 165, 233, 0.3); }
+
+.fade-in-up {
+  opacity: 0;
+  animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.grayscale-sm { filter: grayscale(40%); }
+
+/* Spinner */
+.cyber-spinner {
+  width: 60px; height: 60px;
+  border: 4px solid rgba(14, 165, 233, 0.2);
+  border-top-color: #0ea5e9;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  box-shadow: 0 0 20px rgba(14, 165, 233, 0.3);
+}
+
+/* Scrollbar */
+.list-container::-webkit-scrollbar { width: 6px; }
+.list-container::-webkit-scrollbar-track { background: transparent; }
+.list-container::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+.list-container::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
 </style>
+

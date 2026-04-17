@@ -200,7 +200,8 @@
                     <h5 class="fw-bolder text-dark d-flex align-items-center gap-2 mb-1">
                       <i class="fa-solid fa-users-gear text-primary"></i> Phân Bổ Lực Lượng
                     </h5>
-                    <span class="text-muted small"><strong>{{ sortedAvailableTeams.length }}</strong> đơn vị sẵn sàng ·
+                    <span class="text-muted small"><strong>{{ sortedAvailableTeams.length }}</strong> đơn vị hiển thị ·
+                      <strong>{{ availableTeamsCount }}</strong> sẵn sàng ·
                       ưu tiên: cùng loại + cùng quận &gt; cùng loại &gt; cùng quận &gt; khoảng cách</span>
                   </div>
                   <div class="d-flex gap-2" v-if="availableTeams.length > 0">
@@ -217,16 +218,15 @@
                   <div class="text-muted fw-medium">Đang tìm đơn vị phù hợp...</div>
                 </div>
 
-                <div v-else-if="availableTeams.length === 0"
+                <div v-else-if="availableTeamsCount === 0"
                   class="alert custom-alert-warning fw-medium d-flex align-items-center">
-                  <i class="fa-solid fa-circle-exclamation fs-5 me-3"></i> Hiện không có đội cứu hộ nào nhàn rỗi. Vui
-                  lòng đợi hoặc sử dụng lực lượng dự phòng.
+                  <i class="fa-solid fa-circle-exclamation fs-5 me-3"></i> Tất cả đội cứu hộ đều đang bận. Vui lòng đợi một đội hoàn thành nhiệm vụ hoặc sử dụng lực lượng dự phòng.
                 </div>
 
                 <div class="row g-3" v-else>
                   <div class="col-md-6 col-lg-6 col-xl-6" v-for="team in sortedAvailableTeams" :key="team.id">
                     <div class="team-card h-100"
-                      :class="{ 'selected': isTeamSelected(team.id), 'busy': team.trang_thai !== 'SanSang' && team.trang_thai !== 'Sẵn sàng' }"
+                      :class="{ 'selected': isTeamSelected(team.id), 'busy': isTeamBusy(team.id) }"
                       @click="selectTeam(team)">
                       <div class="d-flex gap-3">
                         <div class="team-avatar fw-bold icon-box"
@@ -494,28 +494,53 @@ export default {
       return reqs;
     },
     availableTeams() {
-      return this.teams.filter(t => {
-        const st = (t.trang_thai || '').toUpperCase().replace(/\s+/g, '_');
-        return st === 'SAN_SANG' || st === 'SẴN_SÀNG' || st === 'SAN_SANG' || t.trang_thai === 'Sẵn sàng';
-      });
+      // Always return ALL teams - never filter them out of the list.
+      // Teams with full capacity will be marked as disabled (busy) in the template.
+      // Issue #1+2 fix: teams must ALWAYS remain visible in the list.
+      return this.teams;
     },
     busyTeams() {
+      // Determine which teams are fully occupied (all members busy with active assignments).
+      // A team is considered "busy" (cannot select) when ALL of its members
+      // are currently assigned to active requests (DANG_XU_LY or DA_DEN_HIEN_TRUONG).
       return this.teams.filter(t => {
-        const st = (t.trang_thai || '').toUpperCase().replace(/\s+/g, '_');
-        return st === 'DANG_BAN' || st === 'ĐANG_BẬN' || st === 'DANG_XU_LY' || st === 'ĐANG_XỬ_LÝ';
+        const totalMembers = t.thanh_viens ? t.thanh_viens.length : 0;
+        if (totalMembers === 0) {
+          // No members = cannot take assignments, treat as busy
+          return true;
+        }
+        // Count how many of this team's assignments are still active
+        const activeAssignments = t.raw && t.raw.phan_congs
+          ? t.raw.phan_congs.filter(pc => {
+              const st = (pc.trang_thai_nhiem_vu || '').toUpperCase().replace(/\s+/g, '_');
+              return st === 'DANG_XU_LY' || st === 'DA_DEN_HIEN_TRUONG';
+            }).length
+          : 0;
+        // If active assignments >= total members, team is fully occupied
+        return activeAssignments >= totalMembers;
       });
     },
     availableTeamsCount() {
-      return this.availableTeams.length;
+      return this.teams.length - this.busyTeams.length;
     },
     busyTeamsCount() {
       return this.busyTeams.length;
     },
     sortedAvailableTeams() {
-      if (!this.selectedReq) return [...this.availableTeams];
+      // Always sort ALL available (non-busy) teams by priority score + distance.
+      // Teams that are fully occupied (busy) are shown but not selectable.
+      if (!this.selectedReq) {
+        return [...this.availableTeams].sort((a, b) => {
+          const aScore = (a.cung_loai_su_co ? 2 : 0) + (a.cung_quan ? 1 : 0);
+          const bScore = (b.cung_loai_su_co ? 2 : 0) + (b.cung_quan ? 1 : 0);
+          if (aScore !== bScore) return bScore - aScore;
+          const aDist = a.khoang_cach_km ?? Infinity;
+          const bDist = b.khoang_cach_km ?? Infinity;
+          return aDist - bDist;
+        });
+      }
 
       return [...this.availableTeams].sort((a, b) => {
-        // Score: cùng type=2, cùng quận=1
         const aScore = (a.cung_loai_su_co ? 2 : 0) + (a.cung_quan ? 1 : 0);
         const bScore = (b.cung_loai_su_co ? 2 : 0) + (b.cung_quan ? 1 : 0);
 
@@ -523,7 +548,6 @@ export default {
           return bScore - aScore;
         }
 
-        // Cùng score: ưu tiên gần nhất
         const aDist = a.khoang_cach_km ?? Infinity;
         const bDist = b.khoang_cach_km ?? Infinity;
         return aDist - bDist;
@@ -573,6 +597,9 @@ export default {
   methods: {
     isTeamAvailable(id) {
       return this.availableTeams.some(t => Number(t.id) === Number(id));
+    },
+    isTeamBusy(id) {
+      return this.busyTeams.some(t => Number(t.id) === Number(id));
     },
     async fetchNearestTeams(req) {
       if (!req) {
@@ -643,8 +670,9 @@ export default {
       if (index > -1) {
         this.selectedTeams.splice(index, 1);
       } else {
-        const st = (team.trang_thai || '').toUpperCase().replace(/\s+/g, '_');
-        if (st === 'SAN_SANG' || st === 'SẴN_SÀNG' || team.trang_thai === 'Sẵn sàng') {
+        // Only allow selecting teams that are not fully occupied
+        const isBusy = this.busyTeams.some(t => t.id === team.id);
+        if (!isBusy) {
           this.selectedTeams.push(team);
         }
       }

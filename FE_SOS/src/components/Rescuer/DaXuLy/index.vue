@@ -147,24 +147,24 @@
               </div>
             </div>
 
-            <!-- Result Details -->
-            <div v-if="item.ket_qua" class="result-section mb-3 p-3 bg-light rounded-3 border border-light">
+            <!-- Result Details (inline card view) -->
+            <!-- <div v-if="item.bao_cao" class="result-section mb-3 p-3 bg-light rounded-3 border border-light">
               <div class="d-flex align-items-center gap-2 mb-2">
                 <i class="fa-solid fa-clipboard-check text-primary"></i>
                 <span class="fw-bold text-dark small" style="letter-spacing: 0.5px;">KẾT QUẢ</span>
               </div>
-              <div v-if="item.ket_qua.bao_cao_hien_truong" class="text-secondary small mb-2">
-                {{ item.ket_qua.bao_cao_hien_truong }}
+              <div v-if="item.bao_cao.mo_ta_hien_truong" class="text-secondary small mb-2">
+                {{ item.bao_cao.mo_ta_hien_truong }}
               </div>
               <div v-if="item.trang_thai_nhiem_vu === 'THAT_BAI'" class="alert alert-danger py-2 px-3 mb-0 small" role="alert">
                 <i class="fa-solid fa-exclamation-circle me-1"></i>
-                <strong>Lý do:</strong> {{ item.ket_qua.bao_cao_hien_truong || 'Không có thông tin' }}
+                <strong>Lý do:</strong> {{ item.bao_cao.ly_do_that_bai || 'Không có thông tin' }}
               </div>
-              <div v-if="item.ket_qua.hinh_anh_minh_chung" class="mt-2">
+              <div v-if="item.bao_cao.hinh_anh" class="mt-2">
                 <div class="text-muted fw-bold mb-1" style="font-size: 9px; letter-spacing: 0.5px;">HÌNH ẢNH MINH CHỨNG</div>
-                <img :src="getImageUrl(item.ket_qua.hinh_anh_minh_chung)" class="rounded-3" style="max-height: 150px; max-width: 100%; cursor: pointer;" @click="openImageModal(item.ket_qua.hinh_anh_minh_chung)">
+                <img :src="getImageUrl(item.bao_cao.hinh_anh)" class="rounded-3" style="max-height: 150px; max-width: 100%; cursor: pointer;" @click="openImageModal(item.bao_cao.hinh_anh)">
               </div>
-            </div>
+            </div> -->
 
             <!-- Actions -->
             <div class="rating-row d-flex align-items-center justify-content-between bg-light rounded-3 p-3 border border-light">
@@ -200,45 +200,96 @@
 
     <!-- Detail Modal -->
     <div class="modal fade" id="detailModal" tabindex="-1" ref="detailModalEl">
-      <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title fw-bold"><i class="fa-solid fa-info-circle me-2"></i>Chi Tiết Nhiệm Vụ</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body" v-if="detailItem">
-            <div class="mb-3">
-              <div class="text-muted fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">LOẠI SỰ CỐ</div>
-              <div class="fw-bold text-dark">{{ getIncidentTypeName(detailItem) }}</div>
-            </div>
-            <div class="mb-3">
-              <div class="text-muted fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">MỨC ĐỘ</div>
-              <div class="fw-bold text-dark">{{ detailItem.yeu_cau && detailItem.yeu_cau.muc_do_khan_cap ? detailItem.yeu_cau.muc_do_khan_cap : '-' }}</div>
-            </div>
-            <div class="mb-3">
-              <div class="text-muted fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">ĐỊA ĐIỂM</div>
-              <div class="fw-bold text-dark">{{ getRequestAddress(detailItem) }}</div>
-            </div>
-            <div class="mb-3">
-              <div class="text-muted fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">NGƯỜI GẶP NẠN</div>
-              <div class="fw-bold text-dark">{{ getReporterName(detailItem) }}</div>
-            </div>
-            <div class="mb-3" v-if="detailItem.doi_cuu_ho">
-              <div class="text-muted fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">ĐỘI THỰC HIỆN</div>
-              <div class="fw-bold text-dark">{{ detailItem.doi_cuu_ho.ten_co }}</div>
-            </div>
-            <div class="mb-3">
-              <div class="text-muted fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">THỜI GIAN HOÀN THÀNH</div>
-              <div class="fw-bold text-dark">{{ formatTime(detailItem.updated_at || detailItem.created_at) }}</div>
-            </div>
-            <div v-if="detailItem.ket_qua">
-              <div class="mb-3">
-                <div class="text-muted fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">BÁO CÁO</div>
-                <div class="text-secondary small">{{ detailItem.ket_qua.bao_cao_hien_truong || 'Không có' }}</div>
+            <div class="detail-layout">
+              <!-- LEFT COLUMN: Request Info -->
+              <div class="detail-left">
+                <div class="detail-section mb-3">
+                  <div class="text-muted fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">LOẠI SỰ CỐ</div>
+                  <div class="fw-bold text-dark">{{ getIncidentTypeName(detailItem) }}</div>
+                </div>
+                <div class="detail-section mb-3">
+                  <div class="text-muted fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">MỨC ĐỘ</div>
+                  <div class="fw-bold text-dark">{{ detailItem.yeu_cau && detailItem.yeu_cau.muc_do_khan_cap ? detailItem.yeu_cau.muc_do_khan_cap : '-' }}</div>
+                </div>
+                <div class="detail-section mb-3">
+                  <div class="text-muted fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">ĐỊA ĐIỂM</div>
+                  <div class="fw-bold text-dark">{{ getRequestAddress(detailItem) }}</div>
+                </div>
+                <div class="detail-section mb-3">
+                  <div class="text-muted fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">NGƯỜI GẶP NẠN</div>
+                  <div class="fw-bold text-dark">{{ getReporterName(detailItem) }}</div>
+                </div>
+                <div class="detail-section mb-3">
+                  <div class="text-muted fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">SỐ ĐIỆN THOẠI</div>
+                  <div class="fw-bold text-dark">
+                    <span v-if="getReporterPhone(detailItem)">
+                      <i class="fa-solid fa-phone text-success me-1"></i>{{ getReporterPhone(detailItem) }}
+                    </span>
+                    <span v-else class="text-muted">-</span>
+                  </div>
+                </div>
+                <div class="detail-section mb-3" v-if="detailItem.doi_cuu_ho">
+                  <div class="text-muted fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">ĐỘI THỰC HIỆN</div>
+                  <div class="fw-bold text-dark">{{ detailItem.doi_cuu_ho.ten_co }}</div>
+                </div>
+                <div class="detail-section">
+                  <div class="text-muted fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">THỜI GIAN HOÀN THÀNH</div>
+                  <div class="fw-bold text-dark">{{ formatTime(detailItem.updated_at || detailItem.created_at) }}</div>
+                </div>
               </div>
-              <div v-if="detailItem.ket_qua.hinh_anh_minh_chung">
-                <div class="text-muted fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">HÌNH ẢNH</div>
-                <img :src="getImageUrl(detailItem.ket_qua.hinh_anh_minh_chung)" class="rounded-3" style="max-height: 200px; max-width: 100%;">
+
+              <!-- RIGHT COLUMN: Report Info -->
+              <div class="detail-right">
+                <!-- Baocao Report Section -->
+                <div v-if="detailItem.bao_cao">
+                  <!-- Report Title -->
+                  <div class="report-title mb-3">
+                    <i class="fa-solid fa-clipboard-check me-2"></i>BÁO CÁO HIỆN TRƯỜNG
+                  </div>
+
+                  <!-- Mo ta hien truong -->
+                  <div class="detail-section mb-3" v-if="detailItem.bao_cao.mo_ta_hien_truong">
+                    <div class="text-muted fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">MÔ TẢ HIỆN TRƯỜNG</div>
+                    <div class="text-secondary small" style="background:#f8f9fa;padding:10px;border-radius:8px;border:1px solid #e9ecef;">
+                      {{ detailItem.bao_cao.mo_ta_hien_truong }}
+                    </div>
+                  </div>
+
+                  <!-- Failure Reason (THAT_BAI) -->
+                  <div v-if="detailItem.trang_thai_nhiem_vu === 'THAT_BAI' && detailItem.bao_cao.ly_do_that_bai" class="detail-section mb-3">
+                    <div class="failure-reason-title mb-2">
+                      <i class="fa-solid fa-exclamation-circle me-1"></i>LÝ DO THẤT BẠI
+                    </div>
+                    <div class="failure-reason-box">
+                      {{ detailItem.bao_cao.ly_do_that_bai }}
+                    </div>
+                  </div>
+
+                  <!-- Image Evidence -->
+                  <div class="detail-section">
+                    <div class="text-muted fw-bold mb-2" style="font-size: 10px; letter-spacing: 0.5px;">HÌNH ẢNH MINH CHỨNG</div>
+                    <div v-if="detailItem.bao_cao.hinh_anh">
+                      <img :src="getImageUrl(detailItem.bao_cao.hinh_anh)" class="rounded-3 w-100" style="max-height: 220px; object-fit: cover; cursor: pointer;" @click="openImageModal(detailItem.bao_cao.hinh_anh)">
+                    </div>
+                    <div v-else class="no-image-placeholder">
+                      <i class="fa-solid fa-image text-secondary opacity-25"></i>
+                      <span class="text-secondary small">Không có hình ảnh</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- No Report Yet -->
+                <div v-else class="no-report-placeholder">
+                  <i class="fa-solid fa-clipboard text-secondary opacity-25 fs-3 mb-2"></i>
+                  <p class="text-secondary small mb-0">Chưa có báo cáo</p>
+                </div>
               </div>
             </div>
           </div>
@@ -427,7 +478,19 @@ export default {
           return item.yeu_cau.nguoi_dung.ho_ten || item.yeu_cau.nguoi_dung.hoTen || 'Không rõ';
         }
       }
+      if (item && item.nguoi_dung) {
+        return item.nguoi_dung.ho_ten || item.nguoi_dung.hoTen || 'Không rõ';
+      }
       return 'Không rõ';
+    },
+    getReporterPhone(item) {
+      if (item && item.yeu_cau && item.yeu_cau.nguoi_dung) {
+        return item.yeu_cau.nguoi_dung.so_dien_thoai || '';
+      }
+      if (item && item.nguoi_dung) {
+        return item.nguoi_dung.so_dien_thoai || '';
+      }
+      return '';
     },
   },
 };
@@ -473,4 +536,104 @@ export default {
     grid-template-columns: 1fr;
   }
 }
+
+/* Detail Modal: 2-column layout */
+.detail-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.detail-left {
+  border-right: 1px solid #e9ecef;
+  padding-right: 24px;
+}
+
+.detail-right {
+  padding-left: 4px;
+}
+
+.detail-section {
+  margin-bottom: 16px;
+}
+
+.detail-section:last-child {
+  margin-bottom: 0;
+}
+
+/* Report title */
+.report-title {
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  color: #0d6efd;
+  background: #e7f1ff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #b6d4fe;
+}
+
+/* Failure reason */
+.failure-reason-title {
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  color: #dc3545;
+  display: flex;
+  align-items: center;
+}
+
+.failure-reason-box {
+  background: #fff5f5;
+  border: 1px solid #fcc2c3;
+  border-left: 4px solid #dc3545;
+  color: #c92a2a;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Placeholder states */
+.no-image-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #f8f9fa;
+  border: 2px dashed #dee2e6;
+  border-radius: 8px;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.no-report-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  background: #f8f9fa;
+  border: 1px dashed #dee2e6;
+  border-radius: 8px;
+  text-align: center;
+}
+
+@media (max-width: 576px) {
+  .detail-layout {
+    grid-template-columns: 1fr;
+  }
+  .detail-left {
+    border-right: none;
+    padding-right: 0;
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 16px;
+    margin-bottom: 16px;
+  }
+  .detail-right {
+    padding-left: 0;
+  }
+}
+
 </style>

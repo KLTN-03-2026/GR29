@@ -20,9 +20,9 @@
                     <i class="fa-solid fa-house me-2"></i>Trang chủ
                 </a>
             </router-link>
-            <router-link class="nav-item-link" to="/rescuer/thong-bao-nhiem-vu">
+            <!-- <router-link class="nav-item-link" to="/rescuer/thong-bao-nhiem-vu">
                 <i class="fa-solid fa-circle-check me-2"></i>Thông Báo Nhiệm Vụ
-            </router-link>
+            </router-link> -->
             <router-link class="nav-item-link" to="/rescuer/dang-xu-ly">
                 <i class="fa-solid fa-spinner me-2"></i>Đang Xử Lý
             </router-link>

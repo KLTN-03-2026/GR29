@@ -436,7 +436,7 @@ export default {
       }
     },
     async submitReport() {
-      if (this.reportResult === 'failure' && !this.reportReason.trim()) {
+      if (this.reportResult === 'failure' && !this.reportReason.trim() && !this.reportNotes.trim()) {
         toaster.error("Vui lòng nhập lý do thất bại");
         return;
       }
@@ -444,14 +444,18 @@ export default {
       this.submittingReport = true;
       try {
         const formData = new FormData();
-        formData.append('bao_cao_hien_truong', this.reportNotes || this.reportReason || '');
-        formData.append('trang_thai_ket_qua', this.reportResult === 'success' ? 'HOAN_THANH' : 'THAT_BAI');
-        if (this.reportImage) {
-          formData.append('hinh_anh_minh_chung', this.reportImage);
+        formData.append('id_phan_cong', this.currentMission.id_phan_cong);
+        formData.append('ket_qua', this.reportResult === 'success' ? 'HOAN_THANH' : 'THAT_BAI');
+        if (this.reportResult === 'failure') {
+          formData.append('ly_do_that_bai', this.reportReason || this.reportNotes);
         }
-        formData.append('thoi_gian_ket_thuc', new Date().toISOString());
+        formData.append('bao_cao_hien_truong', this.reportNotes || '');
+        if (this.reportImage) {
+          formData.append('hinh_anh', this.reportImage);
+        }
 
-        await rescuerAPI.createResult(this.currentMission.id_phan_cong, formData);
+        // Use new guiBaoCao API (Issue #4)
+        await rescuerAPI.guiBaoCao(formData);
 
         if (this.reportModalEl && typeof bootstrap !== 'undefined') {
           const modal = bootstrap.Modal.getInstance(this.reportModalEl);

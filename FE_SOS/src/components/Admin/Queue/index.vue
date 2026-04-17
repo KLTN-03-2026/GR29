@@ -162,8 +162,12 @@ function getImageUrl(image) {
   const raw = normalizeText(image);
   if (!raw) return null;
   if (/^(https?:|data:)/i.test(raw)) return raw;
-  if (raw.startsWith('uploads/') || raw.startsWith('/uploads/')) {
-    return BASE_URL + (raw.startsWith('/') ? '' : '/') + raw;
+  // Issue #7 fix: handle paths starting with "uploads/" (backend stores in public/uploads/hinh_anh/)
+  if (raw.startsWith('uploads/')) {
+    return BASE_URL + '/' + raw;
+  }
+  if (raw.startsWith('/uploads/')) {
+    return BASE_URL + raw;
   }
   return null;
 }

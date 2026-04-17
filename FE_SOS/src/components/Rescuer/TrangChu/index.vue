@@ -13,7 +13,7 @@
             </div>
             <div>
               <h5 class="fw-bolder mb-1 text-dark">Radar Cứu Hộ</h5>
-              <span class="text-muted small fw-medium">Có {{ pendingAssignments.length }} nhiệm vụ chờ tiếp nhận</span>
+                <span class="text-muted small fw-medium">Có {{ radarAssignments.length }} nhiệm vụ chờ tiếp nhận</span>
             </div>
           </div>
 
@@ -196,20 +196,44 @@ export default {
     };
   },
   computed: {
-    pendingAssignments() {
-      return this.assignments.filter(a => {
-        const status = a.trang_thai_nhiem_vu || '';
-        return status === 'MOI' || status === 'CHUA_TIEP_NHAN';
+    // Issue #5 fix: filter assignments by current team + status DA_PHAN_CONG
+    radarAssignments() {
+      const urgencyOrder = { 'CRITICAL': 4, 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1 };
+      const teamId = this.teamId;
+
+      let filtered = this.assignments.filter(a => {
+        // Filter: must be assigned to current team
+        if (teamId && Number(a.id_doi_cuu_ho) !== Number(teamId)) return false;
+        // Filter: status must be DA_PHAN_CONG (dispatched, awaiting acceptance)
+        const st = (a.trang_thai_nhiem_vu || '').toUpperCase().replace(/\s+/g, '_');
+        return st === 'DA_PHAN_CONG' || st === 'MOI';
       });
+
+      // Issue #6 fix: sort by emergency level first (CRITICAL > HIGH > MEDIUM > LOW),
+      // then by created time ascending (older first)
+      filtered.sort((a, b) => {
+        const sevA = (a.yeu_cau?.muc_do_khan_cap || 'LOW').toUpperCase();
+        const sevB = (b.yeu_cau?.muc_do_khan_cap || 'LOW').toUpperCase();
+        const urgA = urgencyOrder[sevA] ?? 0;
+        const urgB = urgencyOrder[sevB] ?? 0;
+        if (urgA !== urgB) return urgB - urgA;
+
+        // Same urgency: older first (ascending by created_at)
+        const timeA = new Date(a.created_at || 0).getTime();
+        const timeB = new Date(b.created_at || 0).getTime();
+        return timeA - timeB;
+      });
+
+      return filtered;
     },
     displayAssignments() {
       if (this.activeTab === 'critical') {
-        return this.assignments.filter(a => {
+        return this.radarAssignments.filter(a => {
           const sev = a.yeu_cau && a.yeu_cau.muc_do_khan_cap ? a.yeu_cau.muc_do_khan_cap.toUpperCase() : '';
           return sev === 'CRITICAL' || sev === 'HIGH';
         });
       }
-      return this.assignments;
+      return this.radarAssignments;
     },
     activeAssignments() {
       return this.assignments.filter(a => {
@@ -245,14 +269,20 @@ export default {
     async fetchAssignments() {
       this.loading = true;
       try {
-        const res = await rescuerAPI.getAssignments({ per_page: 100 });
+        // Issue #5 fix: Only fetch assignments assigned to current team
+        // and only those with status DA_PHAN_CONG (dispatched, awaiting acceptance)
         let all = [];
-        if (res.data && res.data.data) {
-          all = res.data.data.data || res.data.data;
-        }
-        if (!Array.isArray(all) || all.length === 0) {
-          if (res.data && res.data.data && typeof res.data.data === 'object' && !Array.isArray(res.data.data)) {
-            all = [res.data.data];
+        if (this.teamId) {
+          const res = await rescuerAPI.getAssignmentByTeam(this.teamId, { per_page: 100 });
+          if (res.data && res.data.data) {
+            const rawItems = res.data.data.data || res.data.data;
+            all = Array.isArray(rawItems) ? rawItems : [];
+          }
+        } else {
+          const res = await rescuerAPI.getAssignments({ per_page: 100 });
+          if (res.data && res.data.data) {
+            const rawItems = res.data.data.data || res.data.data;
+            all = Array.isArray(rawItems) ? rawItems : [];
           }
         }
         this.assignments = all;
@@ -323,7 +353,8 @@ export default {
       this.requestMarkers.forEach(m => this.map.removeLayer(m));
       this.requestMarkers = [];
 
-      this.assignments.forEach(item => {
+      // Issue #5 fix: only show markers for current team's radar assignments on the map
+      this.radarAssignments.forEach(item => {
         if (item.yeu_cau && item.yeu_cau.vi_tri_lat && item.yeu_cau.vi_tri_lng) {
           const sev = item.yeu_cau.muc_do_khan_cap ? item.yeu_cau.muc_do_khan_cap.toUpperCase() : '';
           let color = '#16a34a';

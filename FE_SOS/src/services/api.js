@@ -223,6 +223,16 @@ export const rescuerAPI = {
   getResult: (phanCongId) =>
     api.get('/get-ket-qua-cuu-ho/phan-cong/' + phanCongId),
 
+  // Báo cáo cứu hộ (Issue #4 - rescue_reports table)
+  guiBaoCao: (data) => {
+    if (data instanceof FormData) {
+      return api.post('/rescuer/gui-bao-cao', data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
+    return api.post('/rescuer/gui-bao-cao', data);
+  },
+
   // Đánh giá cứu hộ
   getRatings: (yeuCauId) => api.get('/get-danh-gia-cuu-ho/yeu-cau/' + yeuCauId),
 
