@@ -38,13 +38,14 @@ class DoiCuuHoSeeder extends Seeder
 
                 // 👉 tạo team
                 $team = DoiCuuHo::create([
-                    'ten_co' => "Đội {$type->ten} {$quan}",
+                    'ten_co' => "Đội {$type->ten_danh_muc} {$quan}",
                     'khu_vuc_quan_ly' => $quan,
                     'so_dien_thoai_hotline' => '09' . rand(100000000, 999999999),
                     'vi_tri_lat' => $lat,
                     'vi_tri_lng' => $lng,
                     'trang_thai' => 'SAN_SANG',
-                    'mo_ta' => "Đội cứu hộ {$type->ten} tại {$quan}"
+                    'mo_ta' => "Đội cứu hộ {$type->ten_danh_muc} tại {$quan}",
+                    'email' => "doi_{$type->id_loai_su_co}_{$count}@sos.vn",
                 ]);
 
                 // 👉 gán đúng 1 loại sự cố

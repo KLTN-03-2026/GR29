@@ -10,7 +10,12 @@ class PhanCongCuuHoController extends Controller
     public function index(Request $request)
     {
         $perPage = $request->get('per_page', 15);
-        $items = PhanCongCuuHo::with(['yeuCau', 'doiCuuHo', 'ketQua'])->paginate($perPage);
+        $items = PhanCongCuuHo::with([
+            'yeuCau.nguoiDung',
+            'yeuCau.loaiSuCo',
+            'doiCuuHo',
+            'ketQua'
+        ])->paginate($perPage);
         return response()->json($items);
     }
 
@@ -24,14 +29,26 @@ class PhanCongCuuHoController extends Controller
             'thoi_gian_phan_cong' => 'nullable|date',
             'trang_thai_nhiem_vu' => 'nullable|string|max:20'
         ]);
+
+        $validated['trang_thai_nhiem_vu'] = $validated['trang_thai_nhiem_vu'] ?? 'MOI';
         $item = PhanCongCuuHo::create($validated);
-        $item->load(['yeuCau', 'doiCuuHo', 'ketQua']);
+        $item->load([
+            'yeuCau.nguoiDung',
+            'yeuCau.loaiSuCo',
+            'doiCuuHo',
+            'ketQua'
+        ]);
         return response()->json($item, 201);
     }
 
     public function show($id)
     {
-        $item = PhanCongCuuHo::with(['yeuCau', 'doiCuuHo', 'ketQua'])->findOrFail($id);
+        $item = PhanCongCuuHo::with([
+            'yeuCau.nguoiDung',
+            'yeuCau.loaiSuCo',
+            'doiCuuHo',
+            'ketQua'
+        ])->findOrFail($id);
         return response()->json($item);
     }
 
@@ -47,7 +64,12 @@ class PhanCongCuuHoController extends Controller
             'trang_thai_nhiem_vu' => 'nullable|string|max:20'
         ]);
         $item->update($validated);
-        $item->load(['yeuCau', 'doiCuuHo', 'ketQua']);
+        $item->load([
+            'yeuCau.nguoiDung',
+            'yeuCau.loaiSuCo',
+            'doiCuuHo',
+            'ketQua'
+        ]);
         return response()->json($item);
     }
 
@@ -64,13 +86,34 @@ class PhanCongCuuHoController extends Controller
      */
     public function updateStatus(Request $request, $id)
     {
-        $item = PhanCongCuuHo::findOrFail($id);
+        $item = PhanCongCuuHo::with('yeuCau')->findOrFail($id);
         $validated = $request->validate([
             'trang_thai_nhiem_vu' => 'required|string|max:20'
         ]);
 
-        $item->update(['trang_thai_nhiem_vu' => strtoupper(trim($validated['trang_thai_nhiem_vu']))]);
-        $item->load(['yeuCau', 'doiCuuHo', 'ketQua']);
+        $newStatus = strtoupper(trim($validated['trang_thai_nhiem_vu']));
+        $item->update(['trang_thai_nhiem_vu' => $newStatus]);
+
+        // Sync yeu_cau status based on assignment status transitions
+        $yeuCau = $item->yeuCau;
+        if ($yeuCau) {
+            $statusMap = [
+                'DANG_XU_LY' => 'DANG_XU_LY',
+                'DA_DEN_HIEN_TRUONG' => 'DA_DEN_HIEN_TRUONG',
+                'HOAN_THANH' => 'HOAN_THANH',
+                'THAT_BAI' => 'THAT_BAI',
+            ];
+            if (isset($statusMap[$newStatus])) {
+                $yeuCau->update(['trang_thai' => $statusMap[$newStatus]]);
+            }
+        }
+
+        $item->load([
+            'yeuCau.nguoiDung',
+            'yeuCau.loaiSuCo',
+            'doiCuuHo',
+            'ketQua'
+        ]);
         return response()->json($item);
     }
 
@@ -81,7 +124,12 @@ class PhanCongCuuHoController extends Controller
     public function getByYeuCau(Request $request, $id_yeu_cau)
     {
         $perPage = $request->get('per_page', 15);
-        $items = PhanCongCuuHo::with(['yeuCau', 'doiCuuHo', 'ketQua'])
+        $items = PhanCongCuuHo::with([
+            'yeuCau.nguoiDung',
+            'yeuCau.loaiSuCo',
+            'doiCuuHo',
+            'ketQua'
+        ])
             ->where('id_yeu_cau', $id_yeu_cau)
             ->paginate($perPage);
         return response()->json($items);
@@ -94,7 +142,12 @@ class PhanCongCuuHoController extends Controller
     public function getByDoi(Request $request, $id_doi_cuu_ho)
     {
         $perPage = $request->get('per_page', 15);
-        $items = PhanCongCuuHo::with(['yeuCau', 'doiCuuHo', 'ketQua'])
+        $items = PhanCongCuuHo::with([
+            'yeuCau.nguoiDung',
+            'yeuCau.loaiSuCo',
+            'doiCuuHo',
+            'ketQua'
+        ])
             ->where('id_doi_cuu_ho', $id_doi_cuu_ho)
             ->paginate($perPage);
         return response()->json($items);
@@ -108,7 +161,12 @@ class PhanCongCuuHoController extends Controller
     {
         $perPage = $request->get('per_page', 15);
         $normalized = strtoupper(trim((string) $trang_thai));
-        $items = PhanCongCuuHo::with(['yeuCau', 'doiCuuHo', 'ketQua'])
+        $items = PhanCongCuuHo::with([
+            'yeuCau.nguoiDung',
+            'yeuCau.loaiSuCo',
+            'doiCuuHo',
+            'ketQua'
+        ])
             ->where('trang_thai_nhiem_vu', $normalized)
             ->paginate($perPage);
         return response()->json($items);

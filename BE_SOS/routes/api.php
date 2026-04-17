@@ -124,6 +124,8 @@ Route::get('yeu-cau-cuu-ho/theo-trang-thai/{trang_thai}', [YeuCauCuuHoController
 Route::get('yeu-cau-cuu-ho/theo-muc-do-khan-cap/{muc_do}', [YeuCauCuuHoController::class, 'getByUrgency']);
 Route::post('yeu-cau-cuu-ho/tim-doi-gan-nhat', [YeuCauCuuHoController::class, 'timDoiGanNhat']);
 
+Route::post('yeu-cau-cuu-ho/rescuer-nhan-yeu-cau', [YeuCauCuuHoController::class, 'resNhanYeuCau']);
+
 
 
 // Hàng đợi xử lý (Processing Queue)

@@ -65,4 +65,27 @@ class YeuCauCuuHo extends Model
     {
         return $this->hasMany(DanhGiaCuuHo::class, 'id_yeu_cau', 'id_yeu_cau');
     }
+
+    /**
+     * Accessors: map snake_case DB columns to camelCase for frontend compatibility
+     */
+    public function getHoTenNguoiDungAttribute()
+    {
+        return $this->nguoiDung ? $this->nguoiDung->ho_ten : null;
+    }
+
+    public function getSoDienThoaiNguoiDungAttribute()
+    {
+        return $this->nguoiDung ? $this->nguoiDung->so_dien_thoai : null;
+    }
+
+    public function getTenLoaiSuCoAttribute()
+    {
+        return $this->loaiSuCo ? ($this->loaiSuCo->ten_danh_muc ?? $this->loaiSuCo->ten_loai_su_co ?? null) : null;
+    }
+
+    public function getDiaChiAttribute()
+    {
+        return $this->vi_tri_dia_chi;
+    }
 }
