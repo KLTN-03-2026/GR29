@@ -47,56 +47,7 @@
                 </div>
             </div>
 
-            <!-- <div
-                class="bg-light rounded-3 p-3 mb-3 border border-secondary border-opacity-10 shadow-sm position-relative">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <label class="fw-bold small text-uppercase mb-0 text-secondary">Vị Trí của bạn</label>
-                    <button type="button" class="btn btn-dark btn-sm rounded-pill px-3 fw-bold shadow-sm"
-                        style="font-size: 10px;" :disabled="locating" @click="layGps">
-                        <i class="fa-solid fa-location-crosshairs me-1"></i>
-                        {{ locating ? 'Dang lay...' : 'Xác định GPS' }}
-                    </button>
-                </div>
-                <div class="input-group bg-white rounded-2 overflow-hidden shadow-sm">
-                    <span class="input-group-text bg-white border-0 py-1">
-                        <i class="fa-solid fa-magnifying-glass text-muted"></i>
-                    </span>
-                    <input v-model="addressSearch" type="text" class="form-control border-0 py-1 shadow-none small"
-                        placeholder="Tim dia chi..." @input="timDiaChi">
-                    <button class="btn btn-secondary border-0 rounded-0 py-1" type="button" @click="timDiaChi"
-                        :disabled="!addressSearch.trim()">
-                        <i class="fa-solid fa-search"></i>
-                    </button>
-                </div>
-                <div v-if="addressSuggestions.length > 0" class="list-group shadow-sm mt-1 rounded-2 overflow-hidden"
-                    style="position: absolute; left: 12px; right: 12px; z-index: 1050; max-height: 120px; overflow-y: auto;">
-                    <button v-for="(suggestion, index) in addressSuggestions" :key="index" type="button"
-                        class="list-group-item list-group-item-action py-1 px-2 small text-start"
-                        style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
-                        @click="chonDiaChi(suggestion)">
-                        <i class="fa-solid fa-location-dot text-danger me-1"></i>
-                        {{ suggestion.display_name }}
-                    </button>
-                </div>
-                <div class="input-group bg-white rounded-2 overflow-hidden shadow-sm mt-2">
-                    <span class="input-group-text bg-white border-0 py-1">
-                        <i class="fa-solid fa-location-dot text-danger"></i>
-                    </span>
-                    <input v-model="address" type="text" class="form-control border-0 py-1 shadow-none small bg-light"
-                        readonly placeholder="Dia chi se hien thi sau khi chon vi tri...">
-                </div>
-                <div v-if="coordsText" class="small text-muted mt-1 mb-0 d-flex align-items-center">
-                    <i class="fa-solid fa-check-circle text-success me-1"></i>
-                    {{ coordsText }}
-                    <span v-if="coordsSource" class="ms-2 badge bg-success-subtle text-success" style="font-size: 9px;">
-                        {{ coordsSource }}
-                    </span>
-                </div>
-                <div v-if="!selectedCoords" class="small text-muted mt-1 mb-0 fst-italic">
-                    <i class="fa-solid fa-hand-pointer me-1"></i>
-                    Click len ban do hoac tim dia chi
-                </div>
-            </div> -->
+           
 
             <div class="ns-location-picker p-4 mb-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -124,9 +75,7 @@
                         <i class="fa-solid fa-magnifying-glass text-muted ms-3 fs-6"></i>
                         <input v-model="addressSearch" type="text"
                             class="form-control ns-search-input border-0 shadow-none ps-3 pe-5"
-                            placeholder="Nhập địa chỉ, tên đường hoặc khu vực..."
-                            @input="timDiaChi"
-                            @keydown.enter.prevent="chonDiaChiDauTien">
+                            placeholder="Nhập địa chỉ, tên đường hoặc khu vực..." @input="timDiaChi">
                         <button v-if="addressSearch" @click="addressSearch = ''; addressSuggestions = []"
                             class="btn-ns-clear btn btn-link text-muted position-absolute end-0 me-3" type="button">
                             <i class="fa-solid fa-xmark fs-6"></i>
@@ -285,6 +234,7 @@ function layGiaTriDauTien(source, keys) {
 function chuanHoaDanhSach(payload) {
     if (Array.isArray(payload)) return payload;
     if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.data?.data)) return payload.data.data;
     if (Array.isArray(payload?.result)) return payload.result;
     return [];
 }
@@ -478,7 +428,6 @@ export default {
                     this.selectedCoords = { lng, lat };
                     this.coordsText = `GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
                     this.coordsSource = "GPS";
-                    await this.diaChiTuCoords(lat, lng);
                 }
             } catch (e) {
                 this.coordsText = "Khong lay duoc vi tri (cap quyen trinh duyet hoac dung HTTPS).";
@@ -543,13 +492,6 @@ export default {
             const map = this.$refs.mapRef;
             if (map?.flyTo) {
                 map.flyTo(lng, lat, 16);
-            }
-        },
-        chonDiaChiDauTien() {
-            if (this.addressSuggestions.length > 0) {
-                this.chonDiaChi(this.addressSuggestions[0]);
-            } else if (this.addressSearch.trim()) {
-                this.timDiaChi();
             }
         },         handleFileSelect(event) {
             const file = event.target.files?.[0];

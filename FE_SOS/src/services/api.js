@@ -194,6 +194,8 @@ export const rescuerAPI = {
   getYeuCauDetail: (id) => api.get('/yeu-cau-cuu-ho/' + id),
   updateYeuCauStatus: (id, data) =>
     api.put('/yeu-cau-cuu-ho/' + id + '/trang-thai', data),
+  resNhanYeuCau: (data) =>
+    api.post('/yeu-cau-cuu-ho/rescuer-nhan-yeu-cau', data),
 
   // Đội cứu hộ
   getTeamMembers: (id) => api.get('/get-doi-cuu-ho/' + id + '/thanh-vien'),
@@ -210,8 +212,14 @@ export const rescuerAPI = {
     api.put('/put-doi-cuu-ho/' + id + '/nang-luc', data),
 
   // Kết quả cứu hộ
-  createResult: (phanCongId, data) =>
-    api.post('/post-ket-qua-cuu-ho/phan-cong/' + phanCongId, data),
+  createResult: (phanCongId, data) => {
+    if (data instanceof FormData) {
+      return api.post('/post-ket-qua-cuu-ho/phan-cong/' + phanCongId, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
+    return api.post('/post-ket-qua-cuu-ho/phan-cong/' + phanCongId, data);
+  },
   getResult: (phanCongId) =>
     api.get('/get-ket-qua-cuu-ho/phan-cong/' + phanCongId),
 
