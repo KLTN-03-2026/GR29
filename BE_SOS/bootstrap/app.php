@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'check.admin' => \App\Http\Middleware\CheckAdmin::class,
             'check.role' => \App\Http\Middleware\CheckRole::class,
             'auth.guard' => \App\Http\Middleware\AuthGuard::class,
+            'check.rescuer' => \App\Http\Middleware\CheckRescuerOrAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

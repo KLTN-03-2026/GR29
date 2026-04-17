@@ -33,4 +33,12 @@ class LoaiSuCo extends Model
             'id_doi_cuu_ho'
         );
     }
+
+    /**
+     * Accessor: map ten_danh_muc to ten_loai_su_co for frontend compatibility
+     */
+    public function getTenLoaiSuCoAttribute()
+    {
+        return $this->ten_danh_muc;
+    }
 }

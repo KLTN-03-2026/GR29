@@ -67,6 +67,14 @@ class YeuCauCuuHo extends Model
     }
 
     /**
+     * Relationship with RescueReport
+     */
+    public function baoCao()
+    {
+        return $this->hasOne(RescueReport::class, 'id_yeu_cau', 'id_yeu_cau');
+    }
+
+    /**
      * Accessors: map snake_case DB columns to camelCase for frontend compatibility
      */
     public function getHoTenNguoiDungAttribute()

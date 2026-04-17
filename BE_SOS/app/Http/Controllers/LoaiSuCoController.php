@@ -137,7 +137,7 @@ class LoaiSuCoController extends Controller
     {
         try {
             $item = LoaiSuCo::findOrFail($id);
-            $dois = $item->doiCuuHos()->paginate(15);
+            $dois = $item->doiCuuHo()->paginate(15);
             return response()->json($dois);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Error retrieving rescue teams', 'error' => $e->getMessage()], 400);
