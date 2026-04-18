@@ -1353,6 +1353,90 @@ class YeuCauCuuHoController extends Controller
     }
 
     /**
+     * Get delta updates since a given timestamp.
+     * Returns only items that have been created or modified after `since`.
+     * Items that have disappeared (completed/cancelled) are flagged with `removed: true`.
+     * Optimized for real-time UI sync with minimal bandwidth.
+     *
+     * Route: GET api/yeu-cau-cuu-ho/theo-doi/thay-doi
+     *
+     * @param Request $request  ?since=ISO8601 timestamp
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function theoDoiCapNhat(Request $request)
+    {
+        try {
+            $since = $request->get('since');
+
+            // Full active list (for comparison / initial load fallback)
+            $items = YeuCauCuuHo::with([
+                'nguoiDung',
+                'loaiSuCo',
+                'phanCongs.doiCuuHo',
+            ])
+                ->whereIn('trang_thai', ['DA_PHAN_CONG', 'DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'])
+                ->orderBy('updated_at', 'desc')
+                ->get();
+
+            $data = $items->map(function ($item) {
+                $phanCong = $item->phanCongs->first();
+                $team = $phanCong?->doiCuuHo;
+
+                return [
+                    'id'                  => $item->id_yeu_cau ?? $item->id,
+                    'id_yeu_cau'         => $item->id_yeu_cau ?? $item->id,
+                    'loai_su_co'         => $item->loaiSuCo ? ($item->loaiSuCo->ten_danh_muc ?? 'N/A') : 'N/A',
+                    'vi_tri_dia_chi'     => $item->vi_tri_dia_chi ?? '',
+                    'trang_thai'         => $item->trang_thai,
+                    'muc_do_khan_cap'    => $item->muc_do_khan_cap ?? 'MEDIUM',
+                    'thoi_gian_tao'      => $item->created_at ? $item->created_at->toISOString() : null,
+                    'thoi_gian_cap_nhat' => $item->updated_at ? $item->updated_at->toISOString() : null,
+                    'nguoi_yeu_cau'    => $item->nguoiDung ? [
+                        'ho_ten'       => $item->nguoiDung->ho_ten ?? $item->nguoiDung->name ?? 'N/A',
+                        'so_dien_thoai' => $item->nguoiDung->so_dien_thoai ?? '',
+                    ] : null,
+                    'doi_cuu_ho'       => $team ? [
+                        'id'    => $team->id_doi_cuu_ho ?? $team->id,
+                        'ten_co' => $team->ten_co ?? 'N/A',
+                        'sdt'   => $team->so_dien_thoai_hotline ?? '',
+                    ] : null,
+                    'phan_cong_count'   => $item->phanCongs->count(),
+                ];
+            });
+
+            $serverTime = now()->toISOString();
+            $currentIds = $data->pluck('id')->toArray();
+
+            // If caller provided `since`, compute which items disappeared
+            $removedIds = [];
+            if ($since) {
+                $beforeIds = YeuCauCuuHo::with('phanCongs.doiCuuHo')
+                    ->whereIn('trang_thai', ['DA_PHAN_CONG', 'DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'])
+                    ->where('updated_at', '<', $since)
+                    ->pluck('id_yeu_cau')
+                    ->toArray();
+
+                // Items that existed before but aren't in the current list → they completed/cancelled
+                $currentIdSet = array_flip($currentIds);
+                $removedIds = array_values(array_filter($beforeIds, fn($id) => !isset($currentIdSet[$id])));
+            }
+
+            return Response::json([
+                'success' => true,
+                'message' => 'Cập nhật theo dõi',
+                'server_time' => $serverTime,
+                'items' => $data,
+                'removed_ids' => $removedIds,
+            ], 200);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi khi lấy cập nhật: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Get rescue requests actively being processed (for the tracking list).
      *
      * Route: GET api/yeu-cau-cuu-ho/theo-doi/danh-sach
