@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('doi_cuu_ho', function (Blueprint $table) {
             $table->id('id_doi_cuu_ho');
-            $table->string('ten_co', 255);
+            $table->string('ten_doi', 255);
             $table->string('khu_vuc_quan_ly', 255)->nullable();
             $table->string('so_dien_thoai_hotline', 20)->nullable();
             $table->decimal('vi_tri_lat', 10, 8)->nullable();
