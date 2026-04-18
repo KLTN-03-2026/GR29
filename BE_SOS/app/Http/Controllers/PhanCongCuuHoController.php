@@ -125,6 +125,27 @@ class PhanCongCuuHoController extends Controller
         ]);
 
         $newStatus = strtoupper(trim($validated['trang_thai_nhiem_vu']));
+
+        // BUSINESS RULE: prevent rescuer from accepting a second active request
+        // Only allow if transitioning from MOI/CHUA_TIEP_NHAN to DANG_XU_LY
+        $currentStatus = strtoupper(trim($item->trang_thai_nhiem_vu ?? ''));
+        if ($newStatus === 'DANG_XU_LY' && in_array($currentStatus, ['MOI', 'CHUA_TIEP_NHAN'])) {
+            $teamId = $item->id_doi_cuu_ho;
+
+            // Check if this team already has another active assignment
+            $hasActiveRequest = PhanCongCuuHo::where('id_doi_cuu_ho', $teamId)
+                ->whereIn('trang_thai_nhiem_vu', ['DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'])
+                ->where('id_phan_cong', '!=', $item->id_phan_cong)
+                ->exists();
+
+            if ($hasActiveRequest) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bạn đang có yêu cầu cần xử lí, hãy hoàn thành'
+                ], 400);
+            }
+        }
+
         $item->update(['trang_thai_nhiem_vu' => $newStatus]);
 
         // Sync yeu_cau status based on assignment status transitions
@@ -174,6 +195,31 @@ class PhanCongCuuHoController extends Controller
             DoiCuuHo::where('id_doi_cuu_ho', $teamId)
                 ->update(['trang_thai' => 'SAN_SANG']);
         }
+    }
+
+    /**
+     * Check if rescuer team already has an active assignment.
+     * Used by frontend to disable "Tiếp nhận" buttons when already handling a request.
+     *
+     * Route: GET phan-cong-cuu-ho/active/{teamId}
+     */
+    public function getActiveAssignment($teamId)
+    {
+        $active = PhanCongCuuHo::with([
+            'yeuCau.nguoiDung',
+            'yeuCau.loaiSuCo',
+            'doiCuuHo',
+            'ketQua'
+        ])
+            ->where('id_doi_cuu_ho', $teamId)
+            ->whereIn('trang_thai_nhiem_vu', ['DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'])
+            ->first();
+
+        return response()->json([
+            'success' => true,
+            'has_active' => $active !== null,
+            'active' => $active
+        ]);
     }
 
     /**

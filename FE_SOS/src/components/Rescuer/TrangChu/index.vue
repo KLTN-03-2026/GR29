@@ -17,6 +17,12 @@
             </div>
           </div>
 
+          <!-- Active request warning banner -->
+          <div v-if="hasActiveRequest" class="alert alert-danger py-2 px-3 mb-0 small fw-bold d-flex align-items-center gap-2 position-relative z-1">
+            <i class="bi bi-exclamation-octagon-fill"></i>
+            Bạn đang có nhiệm vụ đang xử lý — không thể tiếp nhận thêm.
+          </div>
+
           <div class="d-flex gap-2 position-relative z-1 overflow-auto pb-1 hide-scrollbar">
             <button class="btn btn-sm btn-dark rounded-pill px-3 fw-bold shadow-sm" @click="activeTab = 'all'">Tất cả</button>
             <button class="btn btn-sm bg-danger bg-opacity-10 text-danger border-0 rounded-pill px-3 fw-bold" @click="activeTab = 'critical'">Khẩn cấp</button>
@@ -65,6 +71,8 @@
               <button
                 v-if="item.trang_thai_nhiem_vu === 'MOI'"
                 class="btn btn-primary w-100 fw-bold btn-lg rounded-3 py-2 btn-accept shadow-sm"
+                :class="{ 'disabled': hasActiveRequest }"
+                :disabled="hasActiveRequest"
                 @click.stop="acceptMission(item)"
               >
                 <i class="bi bi-check-circle me-2"></i>TIẾP NHẬN NGAY
@@ -150,6 +158,8 @@
               <button
                 v-if="selectedMission.trang_thai_nhiem_vu === 'MOI'"
                 class="btn btn-primary w-100 py-3 fw-bold rounded-3 shadow-danger"
+                :class="{ 'disabled': hasActiveRequest }"
+                :disabled="hasActiveRequest"
                 @click="acceptMission(selectedMission)"
               >
                 <i class="bi bi-check-circle-fill me-2"></i> TIẾP NHẬN NHIỆM VỤ
@@ -193,6 +203,7 @@ export default {
       teamId: null,
       teamLat: null,
       teamLng: null,
+      hasActiveRequest: false,
     };
   },
   computed: {
@@ -287,11 +298,24 @@ export default {
         }
         this.assignments = all;
         this.updateMapMarkers();
+
+        // Step 3 fix: check if team already has an active assignment
+        // to disable "Tiếp nhận" buttons and show correct state
+        await this.checkActiveAssignment();
       } catch (e) {
         console.error("Lỗi tải phân công:", e);
         toaster.error("Không thể tải danh sách nhiệm vụ");
       } finally {
         this.loading = false;
+      }
+    },
+    async checkActiveAssignment() {
+      try {
+        if (!this.teamId) return;
+        const res = await rescuerAPI.getActiveAssignment(this.teamId);
+        this.hasActiveRequest = res.data?.has_active === true;
+      } catch (e) {
+        console.error("Lỗi kiểm tra yêu cầu đang xử lý:", e);
       }
     },
     initMap() {
@@ -436,7 +460,8 @@ export default {
         this.$router.push("/rescuer/dang-xu-ly");
       } catch (e) {
         console.error("Lỗi tiếp nhận:", e);
-        toaster.error("Không thể tiếp nhận nhiệm vụ");
+        const msg = e.response?.data?.message || e.response?.data?.msg || "Không thể tiếp nhận nhiệm vụ";
+        toaster.error(msg);
       }
     },
     goToMission(item) {
