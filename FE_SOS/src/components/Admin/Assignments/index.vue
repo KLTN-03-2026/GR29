@@ -251,12 +251,19 @@
                               v-if="team.khoang_cach_km !== null"><i class="fa-solid fa-location-arrow me-1"></i>{{
                               team.khoang_cach_km }} km</span>
                             <span class="meta-tag text-danger bg-danger-subtle bg-opacity-25"
-                              v-if="team.cung_loai_su_co"><i class="fa-solid fa-fire me-1"></i>Đúng loại</span>
+                              v-if="team.cung_loai_su_co === true"><i class="fa-solid fa-fire me-1"></i>Đúng loại</span>
+                            <span class="meta-tag text-secondary bg-secondary-subtle bg-opacity-25"
+                              v-if="team.cung_loai_su_co === false"><i class="fa-solid fa-fire me-1"></i>Khác loại</span>
+                            <span class="meta-tag text-muted bg-light"
+                              v-if="team.cung_loai_su_co === null"><i class="fa-solid fa-circle-question me-1"></i>Chưa rõ</span>
                           </div>
                           <div class="d-flex flex-wrap gap-1 mt-2" v-if="team.loai_su_co && team.loai_su_co.length > 0">
                             <span class="type-tag" v-for="(type, idx) in team.loai_su_co" :key="idx"
-                              :class="{ 'type-match': team.cung_loai_su_co && team.loai_su_co.length === 1, 'type-other': !team.cung_loai_su_co || team.loai_su_co.length > 1 }">{{
-                              type }}</span>
+                              :class="{
+                                'type-match': team.cung_loai_su_co === true,
+                                'type-mismatch': team.cung_loai_su_co === false,
+                                'type-unknown': team.cung_loai_su_co === null
+                              }">{{ type }}</span>
                           </div>
                         </div>
                       </div>
@@ -441,7 +448,12 @@ function parseTeams(payload) {
       vi_tri_lat: item.vi_tri_lat || null,
       vi_tri_lng: item.vi_tri_lng || null,
       khoang_cach_km: item.khoang_cach_km !== undefined && item.khoang_cach_km !== null ? item.khoang_cach_km : null,
-      cung_loai_su_co: item.cung_loai_su_co === true || item.cung_loai_su_co === 1 || item.cung_loai_su_co === '1',
+      cung_loai_su_co: (() => {
+        const v = item.cung_loai_su_co;
+        if (v === true || v === 1 || v === '1') return true;
+        if (v === false || v === 0 || v === '0') return false;
+        return null; // chưa xác định (backend trả về null)
+      })(),
       cung_quan: item.cung_quan === true || item.cung_quan === 1 || item.cung_quan === '1',
       loai_su_co: loaiSuCo,
     };
@@ -531,8 +543,11 @@ export default {
       // Teams that are fully occupied (busy) are shown but not selectable.
       if (!this.selectedReq) {
         return [...this.availableTeams].sort((a, b) => {
-          const aScore = (a.cung_loai_su_co ? 2 : 0) + (a.cung_quan ? 1 : 0);
-          const bScore = (b.cung_loai_su_co ? 2 : 0) + (b.cung_quan ? 1 : 0);
+          // Score: true=2, null=1, false=0 cho cung_loai_su_co
+          const aTypeScore = a.cung_loai_su_co === true ? 2 : (a.cung_loai_su_co === false ? 0 : 1);
+          const bTypeScore = b.cung_loai_su_co === true ? 2 : (b.cung_loai_su_co === false ? 0 : 1);
+          const aScore = aTypeScore + (a.cung_quan ? 1 : 0);
+          const bScore = bTypeScore + (b.cung_quan ? 1 : 0);
           if (aScore !== bScore) return bScore - aScore;
           const aDist = a.khoang_cach_km ?? Infinity;
           const bDist = b.khoang_cach_km ?? Infinity;
@@ -541,8 +556,11 @@ export default {
       }
 
       return [...this.availableTeams].sort((a, b) => {
-        const aScore = (a.cung_loai_su_co ? 2 : 0) + (a.cung_quan ? 1 : 0);
-        const bScore = (b.cung_loai_su_co ? 2 : 0) + (b.cung_quan ? 1 : 0);
+        // Score: true=2, null=1, false=0 cho cung_loai_su_co
+        const aTypeScore = a.cung_loai_su_co === true ? 2 : (a.cung_loai_su_co === false ? 0 : 1);
+        const bTypeScore = b.cung_loai_su_co === true ? 2 : (b.cung_loai_su_co === false ? 0 : 1);
+        const aScore = aTypeScore + (a.cung_quan ? 1 : 0);
+        const bScore = bTypeScore + (b.cung_quan ? 1 : 0);
 
         if (aScore !== bScore) {
           return bScore - aScore;
@@ -632,6 +650,14 @@ export default {
     async initData() {
       this.error = '';
       await Promise.all([this.loadRequests(), this.loadTeams()]);
+      // Fix timing bug: after data loads, check if a request was navigated to via ?id=
+      const queryId = this.$route.query.id;
+      if (queryId && !this.selectedReq) {
+        const found = this.pendingRequests.find(r => String(r.id) === String(queryId));
+        if (found) {
+          this.selectedReq = found;
+        }
+      }
     },
     async loadRequests() {
       this.loadingRequests = true;
@@ -1083,9 +1109,15 @@ export default {
   border: 1px solid #fecaca;
 }
 
-.type-tag.type-other {
-  background: #f1f5f9;
-  color: #475569;
+.type-tag.type-mismatch {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+.type-tag.type-unknown {
+  background: #f8fafc;
+  color: #64748b;
   border: 1px solid #e2e8f0;
 }
 

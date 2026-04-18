@@ -144,14 +144,21 @@
                         @click="showDetailModal(item)">
                   Chi tiết
                 </button>
-                <button v-if="item.statusKey !== 'HOAN_THANH' && item.statusKey !== 'huy_bo'"
-                        class="btn text-danger border rounded-pill fw-bold flex-fill" 
+                <button v-if="item.statusKey !== 'HOAN_THANH' && item.statusKey !== 'huy_bo' && item.statusKey !== 'DA_PHAN_CONG' && item.statusKey !== 'DANG_XU_LY'"
+                        class="btn text-danger border rounded-pill fw-bold flex-fill"
                         style="font-size: 0.875rem; border-color: rgba(195, 198, 216, 0.2); padding: 0.6rem 1rem; min-width: 140px;"
                         @click="huyYeuCau(item)">
                   Hủy Yêu Cầu
                 </button>
+                <button v-else-if="item.statusKey === 'DA_PHAN_CONG' || item.statusKey === 'DANG_XU_LY'"
+                        class="btn text-secondary border rounded-pill fw-bold flex-fill"
+                        style="font-size: 0.875rem; border-color: rgba(195, 198, 216, 0.2); padding: 0.6rem 1rem; min-width: 140px; cursor: not-allowed;"
+                        disabled
+                        title="Yêu cầu đang được xử lý, không thể hủy">
+                  Đang xử lý
+                </button>
                 <button v-else
-                        class="btn text-secondary border rounded-pill fw-bold flex-fill opacity-50" 
+                        class="btn text-secondary border rounded-pill fw-bold flex-fill opacity-50"
                         style="font-size: 0.875rem; border-color: rgba(195, 198, 216, 0.2); padding: 0.6rem 1rem; min-width: 140px; cursor: not-allowed;"
                         disabled>
                   Đã kết thúc
@@ -469,9 +476,10 @@ export default {
       let result = [...this.danhsach];
 
       // Ẩn các yêu cầu đã hoàn thành
+      const pendingStatuses = new Set(["cho_xu_ly", "chua_xu_ly", "cho_xac_nhan", "waiting", "pending"]);
       result = result.filter(item => {
         const key = normalizeStatusKey(item.statusKey);
-        return key !== "hoan_thanh" && key !== "done";
+        return pendingStatuses.has(key);
       });
 
       if (this.searchQuery.trim()) {
@@ -627,6 +635,17 @@ export default {
         this.hienToast("warning", "Không xác định được yêu cầu cần hủy.");
         return;
       }
+
+      // Chặn hủy nếu yêu cầu đang được xử lý
+      const statusKey = item.statusKey || '';
+      const isProcessing = ['DA_PHAN_CONG', 'DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'].some(
+        s => statusKey.toUpperCase().includes(s.toUpperCase())
+      );
+      if (isProcessing) {
+        this.hienToast("warning", "Yêu cầu đang được xử lý, không thể hủy.");
+        return;
+      }
+
       this.cancelItem = item;
       this.isCancelModalOpen = true;
       document.body.style.overflow = 'hidden';

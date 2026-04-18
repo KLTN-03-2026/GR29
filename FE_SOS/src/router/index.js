@@ -75,6 +75,11 @@ const routes = [
         meta: { layout: "admin" },
     },
     {
+        path: "/admin/theo-doi-cuu-ho",
+        component: () => import("../components/Admin/TheoDoiYeuCau/index.vue"),
+        meta: { layout: "admin" },
+    },
+    {
         path: "/admin/dang-xu-ly",
         component: () => import("../components/Admin/DangXuLy/index.vue"),
         meta: { layout: "admin" },
