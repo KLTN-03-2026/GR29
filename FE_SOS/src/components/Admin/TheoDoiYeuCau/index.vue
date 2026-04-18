@@ -6,6 +6,9 @@
         <h2 class="fw-bold mb-1 d-flex align-items-center gap-3">
           <i class="fa-solid fa-satellite-dish text-primary pulse-icon"></i>
           Giám sát cứu hộ thời gian thực
+          <span v-if="selectedId" class="live-badge">
+            <span class="live-dot"></span> LIVE
+          </span>
         </h2>
         <p class="text-muted mb-0">
           Theo dõi tiến độ, vị trí và trao đổi trực tiếp với các yêu cầu đang xử lý
@@ -61,7 +64,7 @@
                   <i class="fa-regular fa-clock me-1"></i>{{ formatTimeShort(item.thoi_gian_cap_nhat) }}
                 </span>
               </div>
-              <div class="text-dark fw-medium small mb-1">{{ item.loai_su_co }}</div>
+                  <div class="text-dark fw-medium small mb-1">{{ item.loai_su_co?.ten || item.loai_su_co || 'N/A' }}</div>
               <div class="text-muted small text-truncate" style="max-width: 90%;">
                 <i class="fa-solid fa-location-dot me-1 text-primary"></i>{{ item.vi_tri_dia_chi || 'Chưa có địa chỉ' }}
               </div>
@@ -95,7 +98,7 @@
         <!-- Chi tiết yêu cầu -->
         <template v-else-if="trackingDetail">
           <!-- Card Thông tin đơn vị & Timeline -->
-          <div class="d-flex flex-column gap-4">
+          <div class="d-flex flex-column gap-4" :class="{ 'detail-refreshing': isDetailRefreshing }">
 
             <!-- Card Rescuer & Timeline -->
             <div class="card border-0 shadow-sm custom-card">
@@ -104,9 +107,15 @@
                   <h6 class="text-uppercase fw-bold text-muted mb-0" style="letter-spacing: 1px; font-size: 0.8rem;">
                     <i class="fa-solid fa-truck-medical text-danger me-2"></i> Thông tin đơn vị cứu hộ
                   </h6>
-                  <span class="badge px-3 py-2 rounded-pill" :class="statusBadgeClass(trackingDetail.trang_thai)">
-                    {{ statusLabel(trackingDetail.trang_thai) }}
-                  </span>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="badge px-3 py-2 rounded-pill" :class="statusBadgeClass(trackingDetail.trang_thai)">
+                      <span v-if="isDetailRefreshing" class="spinner-border spinner-border-sm me-1" style="width:12px;height:12px;border-width:2px;"></span>
+                      {{ statusLabel(trackingDetail.trang_thai) }}
+                    </span>
+                    <button class="btn btn-sm btn-light rounded-circle shadow-sm d-flex align-items-center justify-content-center" style="width:30px;height:30px;" title="Đóng" @click="clearSelection">
+                      <i class="fa-solid fa-xmark small"></i>
+                    </button>
+                  </div>
                 </div>
               </div>
               <div class="card-body">
@@ -336,21 +345,33 @@ export default {
       loadingList: false,
       loadingDetail: false,
       completing: false,
+      // Smart polling state
+      pollTimer: null,
+      lastSyncTime: null,      // ISO timestamp of last successful sync
+      isDetailRefreshing: false,
+      // Track previous status per item to detect changes
+      prevStatusMap: {},
+      // Track whether user has dismissed the completed-notice for an item
+      dismissedItems: new Set(),
     };
   },
   created() {
-    this.loadTrackingList();
+    // Initial full load, then start smart polling
+    this.loadTrackingList().then(() => {
+      this.startSmartPolling();
+    });
+  },
+  beforeUnmount() {
+    this.stopPolling();
   },
   mounted() {
+    // Handle ?id=... query parameter — select item on page load
     const queryId = this.$route.query.id;
-    if (queryId) {
-      this.$nextTick(async () => {
-        await this.loadTrackingList();
-        const item = this.trackingList.find(r => String(r.id) === String(queryId) || String(r.id_yeu_cau) === String(queryId));
-        if (item) {
-          this.selectRequest(item);
-        }
-      });
+    if (queryId && this.trackingList.length > 0) {
+      const item = this.trackingList.find(r => String(r.id) === String(queryId) || String(r.id_yeu_cau) === String(queryId));
+      if (item) {
+        this.$nextTick(() => this.selectRequest(item));
+      }
     }
   },
   watch: {
@@ -426,31 +447,255 @@ export default {
       }
       return steps;
     },
+
+    // ─── Smart Polling ─────────────────────────────────────────────────────────
+
+    /**
+     * Start the unified smart polling timer.
+     * Uses delta API when possible (lastSyncTime available), falls back to full list on first load.
+     */
+    startSmartPolling() {
+      this.stopPolling();
+      // 10s interval — much gentler than the old 3s/5s dual polling
+      this.pollTimer = setInterval(() => {
+        this.syncList();
+      }, 10000);
+    },
+
+    stopPolling() {
+      if (this.pollTimer) {
+        clearInterval(this.pollTimer);
+        this.pollTimer = null;
+      }
+    },
+
+    /**
+     * Sync list: uses delta API with `since` parameter when available,
+     * otherwise falls back to full list load.
+     * Runs in the background (no loading spinner) unless it's the initial load.
+     */
+    async syncList() {
+      if (this.loadingList) return;
+
+      try {
+        let response;
+        if (this.lastSyncTime) {
+          // Delta update: only fetch items changed since last sync
+          response = await rescueRequestAPI.getTrackingDelta(this.lastSyncTime);
+        } else {
+          // Fallback: full list (shouldn't happen after first load)
+          response = await rescueRequestAPI.getTrackingList();
+        }
+
+        const data = response?.data;
+
+        if (data && data.items) {
+          // Delta response: items + server_time + removed_ids
+          const { items: newItems, server_time: serverTime, removed_ids: removedIds } = data;
+
+          if (Array.isArray(newItems)) {
+            this._applyDeltaUpdate(newItems, removedIds || []);
+          }
+
+          // Update sync timestamp from server to handle clock drift
+          if (serverTime) {
+            this.lastSyncTime = serverTime;
+          }
+        } else {
+          // Full list fallback response
+          const rawData = data?.data || data || [];
+          const newList = Array.isArray(rawData) ? rawData : [];
+          this._applyFullUpdate(newList);
+        }
+      } catch (error) {
+        // Network hiccup — silently retry next cycle
+      }
+    },
+
+    /**
+     * Full list load (used for initial page load and when user selects an item).
+     * Clears dismissed set and applies a full replacement.
+     */
     async loadTrackingList() {
+      if (this.loadingList) return;
       this.loadingList = true;
+
       try {
         const response = await rescueRequestAPI.getTrackingList();
         const rawData = response?.data?.data || response?.data || [];
-        this.trackingList = Array.isArray(rawData) ? rawData : [];
+        const newList = Array.isArray(rawData) ? rawData : [];
+        this._applyFullUpdate(newList);
+        // Record sync time from client after successful full load
+        this.lastSyncTime = new Date().toISOString();
       } catch (error) {
         console.error('Lỗi tải danh sách theo dõi:', error);
       } finally {
         this.loadingList = false;
       }
     },
+
+    /**
+     * Full update: replace entire list.
+     * Used on initial load and when user manually triggers refresh.
+     */
+    _applyFullUpdate(newItems) {
+      // Track which items we're losing (completed/cancelled)
+      const newIds = new Set(newItems.map(i => i.id));
+      const removedItems = this.trackingList.filter(i => !newIds.has(i.id));
+      const removedIds = removedItems.map(i => i.id);
+
+      // If the currently selected item was removed, close the detail panel
+      if (this.selectedId && removedIds.includes(this.selectedId)) {
+        this.clearSelection();
+      }
+
+      // Replace list — Vue's reactivity handles the DOM update
+      this.trackingList = newItems;
+
+      // Rebuild status map
+      this._rebuildStatusMap(newItems);
+    },
+
+    /**
+     * Delta update: merge changes in-place, remove completed items.
+     * Minimal DOM churn — only changed/new items trigger Vue reactivity.
+     */
+    _applyDeltaUpdate(newItems, removedIds) {
+      if (!removedIds || removedIds.length === 0) {
+        // No removals — just merge updates in-place
+        this._mergeItemsInPlace(newItems);
+        return;
+      }
+
+      // Filter out items that have been completed/cancelled from the backend
+      const safeIds = new Set(removedIds.map(id => Number(id)));
+      const hadSelected = this.selectedId && safeIds.has(Number(this.selectedId));
+
+      if (hadSelected) {
+        // Selected item just completed — close the detail panel
+        this.clearSelection();
+      }
+
+      // Remove from tracking list (in-place mutation triggers Vue reactivity)
+      const filtered = this.trackingList.filter(item => !safeIds.has(Number(item.id)));
+
+      if (filtered.length !== this.trackingList.length) {
+        this.trackingList = filtered;
+      }
+
+      // Merge any remaining new/changed items
+      this._mergeItemsInPlace(newItems);
+    },
+
+    /**
+     * Merge new/changed items into existing list without losing selected state.
+     * Preserves Vue object references for unchanged items — no unnecessary re-renders.
+     */
+    _mergeItemsInPlace(newItems) {
+      const existingMap = new Map(this.trackingList.map(i => [Number(i.id), i]));
+      const processedIds = new Set();
+
+      newItems.forEach(newItem => {
+        const id = Number(newItem.id);
+        processedIds.add(id);
+        const existing = existingMap.get(id);
+
+        if (existing) {
+          // Detect status change for selected item
+          const prevStatus = this.prevStatusMap[id];
+          const newStatus = newItem.trang_thai;
+          const statusChanged = prevStatus && prevStatus !== newStatus;
+
+          // In-place mutation — Vue's reactive system detects changes
+          Object.assign(existing, newItem);
+          this.prevStatusMap[id] = newStatus;
+
+          // Auto-refresh detail when selected item's status changes
+          if (statusChanged && id === Number(this.selectedId)) {
+            this.refreshDetailSilently();
+          }
+        } else {
+          // New item — add to list
+          this.trackingList.unshift(newItem);
+          this.prevStatusMap[id] = newItem.trang_thai;
+        }
+      });
+    },
+
+    _rebuildStatusMap(items) {
+      this.prevStatusMap = {};
+      items.forEach(item => {
+        this.prevStatusMap[Number(item.id)] = item.trang_thai;
+      });
+    },
+
+    /**
+     * Reload detail silently when selected item's status changes (no spinner flash).
+     */
+    async refreshDetailSilently() {
+      if (!this.selectedId) return;
+      this.isDetailRefreshing = true;
+      try {
+        const response = await rescueRequestAPI.getTrackingDetail(this.selectedId);
+        this.trackingDetail = response?.data?.data || response?.data;
+
+        // Check if selected item just completed → remove it from list and close detail
+        if (this.trackingDetail && this.trackingDetail.trang_thai === 'HOAN_THANH') {
+          const idNum = Number(this.selectedId);
+          const idx = this.trackingList.findIndex(i => Number(i.id) === idNum);
+          if (idx !== -1) {
+            this.trackingList.splice(idx, 1);
+          }
+          this.clearSelection();
+        }
+      } catch (error) {
+        // Silently fail on network errors
+      } finally {
+        this.isDetailRefreshing = false;
+      }
+    },
+
     async selectRequest(item) {
       this.selectedId = item.id;
       this.trackingDetail = null;
       this.loadingDetail = true;
+
       try {
         const response = await rescueRequestAPI.getTrackingDetail(item.id);
-        this.trackingDetail = response?.data?.data || response?.data;
+        const detail = response?.data?.data || response?.data;
+
+        // If somehow the selected item is already completed, close detail
+        if (detail && detail.trang_thai === 'HOAN_THANH') {
+          this.clearSelection();
+          return;
+        }
+
+        this.trackingDetail = detail;
+
+        // Update the item in the list with fresh data
+        const idx = this.trackingList.findIndex(i => Number(i.id) === Number(item.id));
+        if (idx !== -1) {
+          this.trackingList[idx] = { ...this.trackingList[idx], ...detail };
+          this.prevStatusMap[Number(item.id)] = detail.trang_thai;
+        }
       } catch (error) {
         console.error('Lỗi tải chi tiết:', error);
       } finally {
         this.loadingDetail = false;
       }
+
+      // Keep polling the LIST in background — detail refreshes via status-change detection
     },
+
+    clearSelection() {
+      this.selectedId = null;
+      this.trackingDetail = null;
+      // Resume list polling if it was stopped (safety net)
+      if (!this.pollTimer) {
+        this.startSmartPolling();
+      }
+    },
+
     callTeam(phone) {
       if (!phone) return;
       window.open(`tel:${phone}`);
@@ -472,8 +717,7 @@ export default {
       this.completing = true;
       try {
         await rescueRequestAPI.changeStatus(this.selectedId, { trang_thai: 'HOAN_THANH' });
-        this.trackingDetail = null;
-        this.selectedId = null;
+        this.clearSelection();
         await this.loadTrackingList();
       } catch (error) {
         console.error('Lỗi đánh dấu hoàn thành:', error);
@@ -484,7 +728,6 @@ export default {
     cancelTask() {
       if (!this.selectedId) return;
       if (!confirm("Bạn có chắc chắn muốn huỷ nhiệm vụ này? Hành động này không thể hoàn tác.")) return;
-      // Implement cancel via API if available
       alert("Chức năng hủy nhiệm vụ đang được phát triển.");
     },
   },
@@ -603,6 +846,42 @@ export default {
 @keyframes pulse-icon {
   0% { filter: drop-shadow(0 0 2px rgba(37, 99, 235, 0.4)); transform: scale(1); }
   100% { filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.8)); transform: scale(1.05); }
+}
+
+/* Live badge */
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #ef4444;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+.live-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #ef4444;
+  border-radius: 50%;
+  animation: live-pulse 1.5s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}
+
+/* Detail refresh flash */
+@keyframes refresh-flash {
+  0% { background-color: transparent; }
+  30% { background-color: rgba(37, 99, 235, 0.06); }
+  100% { background-color: transparent; }
+}
+.detail-refreshing {
+  animation: refresh-flash 0.6s ease-out;
 }
 
 /* Request list */

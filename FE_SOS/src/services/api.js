@@ -110,6 +110,7 @@ export const rescueRequestAPI = {
   findNearestTeams: (data) => api.post('/yeu-cau-cuu-ho/tim-doi-gan-nhat', data),
   getTrackingDetail: (id) => api.get(`/yeu-cau-cuu-ho/${id}/theo-doi`),
   getTrackingList: () => api.get('/yeu-cau-cuu-ho/theo-doi/danh-sach'),
+  getTrackingDelta: (since) => api.get('/yeu-cau-cuu-ho/theo-doi/thay-doi', { params: { since } }),
 };
 
 // Rescue Teams (Đội Cứu hộ)
@@ -191,6 +192,8 @@ export const rescuerAPI = {
     api.get('/phan-cong-cuu-ho/theo-trang-thai/' + status),
   updateAssignmentStatus: (id, data) =>
     api.put('/phan-cong-cuu-ho/' + id + '/trang-thai', data),
+  getActiveAssignment: (teamId) =>
+    api.get('/phan-cong-cuu-ho/active/' + teamId),
 
   // Yêu cầu cứu hộ liên quan
   getYeuCauDetail: (id) => api.get('/yeu-cau-cuu-ho/' + id),

@@ -103,17 +103,20 @@
               <!-- Thanh Tiến Độ -->
               <div class="mt-auto">
                 <div class="progress mb-2 rounded-pill" style="height: 8px; background-color: #f1f5f9;">
-                  <div class="progress-bar progress-bar-striped progress-bar-animated rounded-pill" 
-                       role="progressbar" 
-                       :style="{ width: item.progress + '%', backgroundColor: item.trangThaiColor }"></div>
+                  <div class="progress-bar progress-bar-striped progress-bar-animated rounded-pill"
+                       role="progressbar"
+                       :style="{ width: getProgress(item.trang_thai) + '%', backgroundColor: item.trangThaiColor }"></div>
                 </div>
                 <div class="d-flex justify-content-between text-secondary small fw-bold" style="font-size: 0.75rem;">
-                  <span>Đã tiếp nhận</span>
-                  <span>Đội cứu hộ đã tới</span>
-                  <span>Vấn đề đang được giải quyết</span>
+                  <span :class="getStepClass(0, getStepIndex(item.trang_thai))">Chờ Xử Lý</span>
+                  <span :class="getStepClass(1, getStepIndex(item.trang_thai))">Đã Phân Công</span>
+                  <span :class="getStepClass(2, getStepIndex(item.trang_thai))">Đã Tiếp Nhận</span>
+                  <span :class="getStepClass(3, getStepIndex(item.trang_thai))">Đã Đến Hiện Trường</span>
+               
                 </div>
               </div>
               
+
               <!-- Buttons -->
               <div class="d-flex gap-2 mt-4 pt-3 border-top">
                 <button class="btn btn-outline-secondary rounded-pill px-4 fw-bold flex-grow-1 flex-sm-grow-0" style="font-size: 0.85rem;" @click="showDetailModal(item)">
@@ -290,6 +293,46 @@ function normalizeStatusCode(value) {
     .replace(/\s+/g, "_");
 }
 
+// ─── Progress Step Mapping (maps trang_thai → 4-step flow) ────────────────────
+// Backend canonical trang_thai values from yeu_cau_cuu_ho table:
+//   CHO_XU_LY       → step 0 (default/new request)
+//   DA_PHAN_CONG    → step 1 (admin dispatched a team)
+//   DANG_XU_LY      → step 2 (rescue team accepted / is handling)
+//   DA_DEN_HIEN_TRUONG → step 3 (team arrived at scene)
+//   HOAN_THANH      → step 4 (resolved)  -- filtered out in active list
+//   THAT_BAI        → step 4 (failed)    -- filtered out in active list
+//   HUY_BO          → step 4 (cancelled)-- filtered out in active list
+
+const STATUS_STEP_INDEX = {
+  CHO_XU_LY:            0,  // Đang điều phối
+  DA_PHAN_CONG:         1,  // Đã tiếp nhận
+  DANG_XU_LY:           2,  // Đội cứu hộ đã tới (accepted, en-route)
+  DA_DEN_HIEN_TRUONG:   3,  // Vấn đề đang được giải quyết (team on scene)
+};
+
+const STATUS_PROGRESS_PCT = {
+  0: 25,   // CHO_XU_LY          → Đang điều phối
+  1: 50,   // DA_PHAN_CONG       → Đã tiếp nhận
+  2: 75,   // DANG_XU_LY          → Đội cứu hộ đã tới
+  3: 100,  // DA_DEN_HIEN_TRUONG → Vấn đề đang được giải quyết
+};
+
+function getStepIndex(trangThai) {
+  if (!trangThai) return 0;
+  const key = normalizeStatusCode(trangThai);
+  return STATUS_STEP_INDEX[key] ?? 0;
+}
+
+function getProgress(trangThai) {
+  return STATUS_PROGRESS_PCT[getStepIndex(trangThai)] ?? 0;
+}
+
+function getStepClass(stepIdx, currentIdx) {
+  if (stepIdx < currentIdx) return "step-done";
+  if (stepIdx === currentIdx) return "step-active";
+  return "step-pending";
+}
+
 function buildStatusMeta(requestStatus, assignmentStatus = "") {
   const req = normalizeStatusCode(requestStatus);
   const mission = normalizeStatusCode(assignmentStatus);
@@ -383,6 +426,11 @@ export default {
     if (this.pollInterval) clearInterval(this.pollInterval);
   },
   methods: {
+    // ─── Progress step helpers ────────────────────────────────────────────────
+    getStepIndex,
+    getProgress,
+    getStepClass,
+
     normalizeResults(items, trackingMap = {}) {
       if (!Array.isArray(items)) return [];
       return items.map((item) => {
@@ -572,6 +620,22 @@ h1, h2, h3, h4, h5, .font-headline {
 
 .object-fit-cover {
   object-fit: cover;
+}
+
+/* ─── Progress Step Indicators ─────────────────────────────────────────────── */
+.step-done {
+  color: #16a34a !important;
+  font-weight: 700;
+}
+
+.step-active {
+  color: #2563eb !important;
+  font-weight: 800;
+  opacity: 1 !important;
+}
+
+.step-pending {
+  opacity: 0.4;
 }
 
 /* Modal styling */
