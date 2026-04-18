@@ -116,14 +116,11 @@
 
             <!-- Actions -->
             <div class="mt-auto pt-3">
-              <button 
-                class="btn btn-action btn-success w-100 d-flex align-items-center justify-content-center gap-2 fw-bolder py-2 shadow-sm" 
-                @click="updateToComplete(request)" :disabled="request.updating"
+              <button
+                class="btn btn-action btn-primary w-100 d-flex align-items-center justify-content-center gap-2 fw-bolder py-2 shadow-sm"
+                @click="trackMission(request)"
               >
-                <span class="spinner-border spinner-border-sm" v-if="request.updating"></span>
-                <template v-else>
-                   <i class="fa-solid fa-check-double"></i> Đánh dấu hoàn thành
-                </template>
+                <i class="fa-solid fa-satellite-dish"></i> Theo dõi nhiệm vụ
               </button>
             </div>
           </div>
@@ -323,6 +320,9 @@ export default {
         this.hienToast("error", "Thay đổi thất bại. Vui lòng kiểm tra lại đường truyền.");
         request.updating = false;
       }
+    },
+    trackMission(request) {
+      this.$router.push(`/admin/theo-doi-cuu-ho?id=${request.id}`);
     },
   },
 };

@@ -26,6 +26,9 @@
       <router-link class="nav-item-link" to="/admin/dang-xu-ly">
         <i class="fa-solid fa-spinner me-2"></i>Đang Xử Lý
       </router-link>
+      <router-link class="nav-item-link" to="/admin/theo-doi-cuu-ho">
+        <i class="fa-solid fa-spinner me-2"></i>Theo dõi cứu hộ
+      </router-link>
       <router-link class="nav-item-link" to="/admin/assignments">
         <i class="fa-solid fa-person-military-pointing me-2"></i>Phân công đội cứu hộ
       </router-link>
