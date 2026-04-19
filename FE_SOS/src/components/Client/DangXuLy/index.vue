@@ -35,6 +35,12 @@
         <p class="text-secondary">Vui lòng đợi trong giây lát</p>
       </div>
 
+      <!-- Syncing indicator (non-blocking, subtle) -->
+      <div v-else-if="isSyncing" class="d-flex align-items-center gap-2 mb-3 px-2">
+        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+        <span class="text-secondary small fw-medium">Đang cập nhật...</span>
+      </div>
+
       <!-- Không có yêu cầu đang xử lý -->
       <div v-else-if="filteredList.length === 0" class="d-flex flex-column align-items-center justify-content-center py-5 text-center" style="min-height: 40vh;">
         <div class="empty-state-icon mb-4 rounded-circle bg-white shadow-sm d-flex align-items-center justify-content-center" style="width: 100px; height: 100px;">
@@ -396,10 +402,12 @@ export default {
     return {
       danhsach: [],
       loading: false,
+      isSyncing: false,
       searchQuery: "",
       isModalOpen: false,
       selectedItem: null,
       pollInterval: null,
+      lastSyncAt: null,
     };
   },
   computed: {
@@ -418,14 +426,139 @@ export default {
   },
   async created() {
     await this.loadActiveRequests();
-    this.pollInterval = setInterval(() => {
-      this.loadActiveRequests(true);
-    }, 10000);
+    this.startSmartPolling();
   },
   beforeUnmount() {
-    if (this.pollInterval) clearInterval(this.pollInterval);
+    this.stopPolling();
   },
   methods: {
+    // ─── Smart Polling ────────────────────────────────────────────────────────────
+    startSmartPolling() {
+      this.stopPolling();
+      // Poll every 15 seconds — delta-based so only changed items are fetched
+      this.pollInterval = setInterval(() => {
+        this.smartPoll();
+      }, 15000);
+    },
+    stopPolling() {
+      if (this.pollInterval) {
+        clearInterval(this.pollInterval);
+        this.pollInterval = null;
+      }
+    },
+    async smartPoll() {
+      // Skip if already syncing or no active requests remain
+      if (this.isSyncing) return;
+      if (this.danhsach.length === 0) {
+        this.stopPolling();
+        return;
+      }
+
+      this.isSyncing = true;
+      try {
+        const currentUserId = getCurrentUserId();
+        if (!currentUserId) return;
+
+        // Use delta endpoint when we have a last sync time
+        if (this.lastSyncAt) {
+          const since = encodeURIComponent(this.lastSyncAt);
+          try {
+            const deltaResp = await rescueRequestAPI.getTrackingDelta(since);
+            const delta = deltaResp?.data;
+            if (delta) {
+              const hasChanges =
+                (delta.items?.length > 0 || delta.updated?.length > 0) ||
+                (delta.removed_ids?.length > 0 || delta.removed?.length > 0);
+              if (hasChanges) {
+                await this.applyDelta(delta, currentUserId);
+              }
+              // Update lastSyncAt from server_time so next poll is a true delta
+              if (delta.server_time) {
+                this.lastSyncAt = delta.server_time;
+              } else {
+                this.lastSyncAt = new Date().toISOString();
+              }
+              return;
+            }
+          } catch (e) {
+            // Fall through to full reload if delta fails
+          }
+        }
+
+        // Full reload as fallback
+        await this.loadActiveRequests(true);
+      } catch (e) {
+        // Silently ignore polling errors
+      } finally {
+        this.isSyncing = false;
+      }
+    },
+    async applyDelta(delta, currentUserId) {
+      // Handle removed items (backend uses 'removed_ids' key)
+      const removedIds = delta.removed || delta.removed_ids || [];
+      if (removedIds.length > 0) {
+        const removedSet = new Set(removedIds.map(i => String(i.id_yeu_cau || i.id)));
+        this.danhsach = this.danhsach.filter(item => !removedSet.has(String(item.id)));
+      }
+
+      // Handle updated/new items (backend uses 'items' key)
+      const updatedItems = delta.updated || delta.items || [];
+      if (updatedItems.length > 0) {
+        for (const raw of updatedItems) {
+          const itemId = String(raw.id_yeu_cau || raw.id);
+
+          // Verify this item belongs to current user
+          const itemUserId = extractUserId(raw) || extractUserId(raw?.nguoi_dung);
+          if (itemUserId !== currentUserId) continue;
+
+          const reqStatus = normalizeStatusCode(raw.trang_thai || raw.status);
+          const closed = new Set(["HOAN_THANH", "DA_HOAN_THANH", "HUY_BO", "DA_HUY", "TU_CHOI", "THAT_BAI", "DONE"]);
+          if (closed.has(reqStatus)) {
+            // Remove completed item
+            this.danhsach = this.danhsach.filter(item => String(item.id) !== itemId);
+            continue;
+          }
+
+          // Find existing item and update in place
+          const idx = this.danhsach.findIndex(item => String(item.id) === itemId);
+          const trackingMap = {};
+          trackingMap[itemId] = raw;
+
+          if (idx >= 0) {
+            const normalized = this.normalizeResults([raw], trackingMap);
+            if (normalized.length > 0) {
+              this.danhsach.splice(idx, 1, normalized[0]);
+            }
+          } else {
+            // New item — add to list
+            const normalized = this.normalizeResults([raw], trackingMap);
+            if (normalized.length > 0) {
+              this.danhsach.unshift(normalized[0]);
+            }
+          }
+        }
+      }
+
+      // Update server_time so next poll is a true delta
+      if (delta.server_time) {
+        this.lastSyncAt = delta.server_time;
+      } else {
+        this.lastSyncAt = new Date().toISOString();
+      }
+      if (this.selectedItem?.id) {
+        const fresh = this.danhsach.find(item => String(item.id) === String(this.selectedItem.id));
+        if (fresh) {
+          this.selectedItem = fresh;
+        } else {
+          this.closeModal();
+        }
+      }
+
+      // Stop polling when list is empty
+      if (this.danhsach.length === 0) {
+        this.stopPolling();
+      }
+    },
     // ─── Progress step helpers ────────────────────────────────────────────────
     getStepIndex,
     getProgress,
@@ -542,6 +675,7 @@ export default {
         });
 
         this.danhsach = this.normalizeResults(activeItems, trackingMap);
+        this.lastSyncAt = new Date().toISOString();
 
         if (this.selectedItem?.id) {
           const freshItem = this.danhsach.find((item) => String(item.id) === String(this.selectedItem.id));

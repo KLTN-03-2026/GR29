@@ -108,7 +108,8 @@
 <script>
 import { rescueRequestAPI } from "../../../services/api";
 
-const BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+const BASE_URL = API_BASE_URL.replace(/\/api\/?$/, "");
 
 const SEVERITY_MAP = {
   'CRITICAL': { label: 'CRITICAL', badge: 'lv-critical' },
@@ -161,10 +162,22 @@ function formatTime(value) {
 function getImageUrl(image) {
   const raw = normalizeText(image);
   if (!raw) return null;
-  if (/^(https?:|data:)/i.test(raw)) return raw;
-  if (raw.startsWith('uploads/') || raw.startsWith('/uploads/')) {
-    return BASE_URL + (raw.startsWith('/') ? '' : '/') + raw;
+  if (/^(https?:|data:|blob:)/i.test(raw)) return raw;
+
+  const clean = raw.replace(/^\/+/, "");
+  if (clean.startsWith("uploads/") || clean.startsWith("storage/")) {
+    return `${BASE_URL}/${clean}`;
   }
+
+  // Backend đôi khi chỉ trả về tên file: image_14.jpg
+  if (!clean.includes("/") && /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(clean)) {
+    return `${BASE_URL}/uploads/${clean}`;
+  }
+
+  if (clean.includes("/")) {
+    return `${BASE_URL}/${clean}`;
+  }
+
   return null;
 }
 
@@ -184,6 +197,14 @@ function parseRequests(payload) {
     const sevValue = item.muc_do_khan_cap || item.muc_do || item.diem_uu_tien || 2;
     const sevInfo = getSeverityInfo(sevValue);
 
+    const imageRaw =
+      item.hinh_anh ||
+      item.anh_hien_truong ||
+      item.anh ||
+      item.image ||
+      item.hinhAnh ||
+      null;
+
     return {
       key: `${id}-${Math.random()}`,
       id,
@@ -195,7 +216,7 @@ function parseRequests(payload) {
       mucDoKhanCap: sevValue,
       severityLabel: sevInfo.label,
       status: String(item.trang_thai || item.status || 'CHO_XU_LY').toUpperCase().replace(/\s+/g, '_'),
-      imageUrl: getImageUrl(item.hinh_anh),
+      imageUrl: getImageUrl(imageRaw),
       raw: item,
       updating: false,
     };

@@ -287,6 +287,8 @@ export default {
       reinforceMessage: '',
       submittingReinforce: false,
       teamId: null,
+      pollInterval: null,
+      isSyncing: false,
     };
   },
   async mounted() {
@@ -299,13 +301,74 @@ export default {
         this.reinforceModalEl = document.getElementById('reinforceModal');
       }
     });
+    this.startPolling();
   },
   beforeUnmount() {
+    this.stopPolling();
     if (this.map) {
       this.map.remove();
     }
   },
   methods: {
+    // ─── Smart Delta Polling (15s) ─────────────────────────────────────────────
+    // Only polls while a mission is active. Fetches the single active assignment
+    // by team ID (targeted call, not the full list), then updates in-place.
+    startPolling() {
+      this.stopPolling();
+      // Poll every 15s — only matters while there's an active mission
+      this.pollInterval = setInterval(() => {
+        this.pollMissionStatus();
+      }, 15000);
+    },
+    stopPolling() {
+      if (this.pollInterval) {
+        clearInterval(this.pollInterval);
+        this.pollInterval = null;
+      }
+    },
+    async pollMissionStatus() {
+      if (this.isSyncing || !this.currentMission) return;
+      this.isSyncing = true;
+      try {
+        // Targeted poll: fetch only the active assignment for this team
+        const teamId = this.teamId;
+        if (!teamId) {
+          // No team context — stop polling and fall back to full reload next time
+          this.stopPolling();
+          return;
+        }
+
+        // Use getActiveAssignment for a single-record query (lightweight)
+        let assignment = null;
+        try {
+          const resp = await rescuerAPI.getActiveAssignment(teamId);
+          assignment = resp?.data?.data || resp?.data || null;
+        } catch {
+          assignment = null;
+        }
+
+        if (!assignment) {
+          // Mission completed / cancelled by admin — navigate away
+          this.stopPolling();
+          this.currentMission = null;
+          toaster.info("Nhiệm vụ đã hoàn thành hoặc bị hủy.");
+          return;
+        }
+
+        // Detect status changes
+        const newStatus = assignment.trang_thai_nhiem_vu || "";
+        const oldStatus = this.currentMission.trang_thai_nhiem_vu || "";
+        if (newStatus !== oldStatus) {
+          this.currentMission = assignment;
+          this.updateMissionStep();
+          this.updateMapMission();
+        }
+      } catch (e) {
+        // Silent — don't interrupt user
+      } finally {
+        this.isSyncing = false;
+      }
+    },
     loadTeamData() {
       const teamStr = localStorage.getItem("rescuer_team");
       if (teamStr) {
@@ -319,8 +382,8 @@ export default {
         }
       }
     },
-    async loadActiveMission() {
-      this.loading = true;
+    async loadActiveMission(silent = false) {
+      if (!silent) this.loading = true;
       try {
         let teamId = this.teamId;
         if (!teamId) {
@@ -386,7 +449,9 @@ export default {
         console.error("Lỗi tải nhiệm vụ:", e);
       } finally {
         this.loading = false;
-        this.updateMapMission();
+        if (!silent) {
+          this.updateMapMission();
+        }
       }
     },
     async markArrived() {
@@ -395,12 +460,19 @@ export default {
         await rescuerAPI.updateAssignmentStatus(this.currentMission.id_phan_cong, {
           trang_thai_nhiem_vu: 'DA_DEN_HIEN_TRUONG'
         });
-        this.missionStep = 3;
+        this.currentMission = { ...this.currentMission, trang_thai_nhiem_vu: 'DA_DEN_HIEN_TRUONG' };
+        this.updateMissionStep();
         toaster.success("Đã cập nhật: Đã đến hiện trường");
       } catch (e) {
         console.error("Lỗi cập nhật:", e);
         toaster.error("Không thể cập nhật trạng thái");
       }
+    },
+    updateMissionStep() {
+      const status = this.currentMission?.trang_thai_nhiem_vu || "";
+      if (status === "DANG_XU_LY") this.missionStep = 2;
+      else if (status === "DA_DEN_HIEN_TRUONG") this.missionStep = 3;
+      else this.missionStep = 1;
     },
     openReportModal() {
       this.reportResult = 'success';

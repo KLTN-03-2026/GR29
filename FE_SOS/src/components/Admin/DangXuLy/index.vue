@@ -209,7 +209,7 @@ function parseRequests(payload) {
     const sevInfo = getSeverityInfo(sevValue);
 
     return {
-      key: `${id}-${Math.random()}`,
+      key: `admin-${id}`,
       id,
       type,
       chiTiet,
@@ -235,6 +235,11 @@ export default {
       searchDate: "",
       loading: false,
       error: "",
+      pollInterval: null,
+      isSyncing: false,
+      lastSyncAt: null,
+      // Stable key map: itemId → Vue key, so Vue can diff in-place
+      itemKeyMap: {},
     };
   },
   computed: {
@@ -245,8 +250,98 @@ export default {
   },
   async created() {
     await this.loadRequests();
+    this.startPolling();
+  },
+  beforeUnmount() {
+    this.stopPolling();
   },
   methods: {
+    // ─── Smart Delta Polling (15s) ─────────────────────────────────────────────
+    // Uses /theo-doi/thay-doi?since= to get only changed/removed items,
+    // then applies changes in-place without touching other DOM nodes.
+    startPolling() {
+      this.stopPolling();
+      this.pollInterval = setInterval(() => {
+        this.smartPoll();
+      }, 15000);
+    },
+    stopPolling() {
+      if (this.pollInterval) {
+        clearInterval(this.pollInterval);
+        this.pollInterval = null;
+      }
+    },
+    async smartPoll() {
+      if (this.isSyncing) return;
+      if (this.requests.length === 0) {
+        this.stopPolling();
+        return;
+      }
+      this.isSyncing = true;
+      try {
+        const since = this.lastSyncAt ? encodeURIComponent(this.lastSyncAt) : null;
+        const resp = await rescueRequestAPI.getTrackingDelta(since);
+        const data = resp?.data;
+        if (!data) return;
+
+        const hasChanges =
+          (data.items && data.items.length > 0) ||
+          (data.removed_ids && data.removed_ids.length > 0);
+
+        if (!hasChanges) return;
+
+        // Apply removed (completed / cancelled)
+        if (data.removed_ids?.length > 0) {
+          const removedSet = new Set(data.removed_ids.map(id => String(id)));
+          this.requests = this.requests.filter(r => !removedSet.has(String(r.id)));
+        }
+
+        // Apply updated items in-place
+        if (data.items?.length > 0) {
+          for (const raw of data.items) {
+            const itemId = String(raw.id || raw.id_yeu_cau || "");
+
+            const reqStatus = String(raw.trang_thai || "").toUpperCase().replace(/\s+/g, "_");
+            const closed = new Set(["HOAN_THANH", "DA_HOAN_THANH", "HUY_BO", "DA_HUY", "TU_CHOI", "THAT_BAI", "DONE"]);
+            if (closed.has(reqStatus)) {
+              this.requests = this.requests.filter(r => String(r.id) !== itemId);
+              continue;
+            }
+
+            // Filter: only keep DANG_XU_LY / PROCESSING
+            if (reqStatus !== "DANG_XU_LY" && reqStatus !== "PROCESSING" && reqStatus !== "DA_PHAN_CONG") continue;
+
+            const parsed = parseRequests([raw]);
+            if (!parsed.length) continue;
+            const updated = parsed[0];
+
+            const idx = this.requests.findIndex(r => String(r.id) === itemId);
+            if (idx >= 0) {
+              // Preserve stable key so Vue updates in-place without full re-render
+              updated.key = this.requests[idx].key;
+              this.requests.splice(idx, 1, updated);
+            } else {
+              // New item — allocate stable key, cache it
+              const stableKey = `admin-${itemId}`;
+              this.itemKeyMap[itemId] = stableKey;
+              updated.key = stableKey;
+              this.requests.unshift(updated);
+            }
+          }
+        }
+
+        // Stop polling when list empties
+        if (this.requests.length === 0) {
+          this.stopPolling();
+        }
+      } catch (e) {
+        // Silently ignore polling errors
+      } finally {
+        this.isSyncing = false;
+        // Always update lastSyncAt so next poll is a true delta
+        this.lastSyncAt = new Date().toISOString();
+      }
+    },
     getSeverityBadge(sev) {
       return getSeverityInfo(sev).badge;
     },
@@ -288,6 +383,12 @@ export default {
         }
 
         this.requests = all;
+        this.lastSyncAt = new Date().toISOString();
+
+        // Build stable key map from loaded items
+        for (const req of this.requests) {
+          this.itemKeyMap[String(req.id)] = req.key;
+        }
       } catch (error) {
         console.error("Không tải được yêu cầu đang xử lý:", error);
         this.error = "Lỗi kết nối máy chủ. Thử lại sau.";
