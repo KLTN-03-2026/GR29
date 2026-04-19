@@ -9,6 +9,7 @@ class YeuCauCuuHo extends Model
     protected $table = 'yeu_cau_cuu_ho';
     protected $primaryKey = 'id_yeu_cau';
     protected $fillable = ['id_nguoi_dung', 'id_loai_su_co', 'vi_tri_lat', 'vi_tri_lng', 'vi_tri_dia_chi', 'chi_tiet', 'mo_ta', 'hinh_anh', 'so_nguoi_bi_anh_huong', 'muc_do_khan_cap', 'diem_uu_tien', 'trang_thai', 'thoi_gian_gui'];
+    protected $appends = ['hinh_anh_url'];
 
     /**
      * Relationship with NguoiDung (User)
@@ -95,5 +96,33 @@ class YeuCauCuuHo extends Model
     public function getDiaChiAttribute()
     {
         return $this->vi_tri_dia_chi;
+    }
+
+    /**
+     * Full image URL for frontend rendering.
+     */
+    public function getHinhAnhUrlAttribute()
+    {
+        $path = $this->attributes['hinh_anh'] ?? null;
+
+        if (empty($path)) {
+            return null;
+        }
+
+        // Keep existing absolute URLs unchanged.
+        if (preg_match('/^https?:\/\//i', $path)) {
+            return $path;
+        }
+
+        return url($path);
+    }
+
+    public function toArray()
+    {
+        $data = parent::toArray();
+        $data['hinhAnh'] = $data['hinh_anh'] ?? null;
+        $data['hinhAnhUrl'] = $data['hinh_anh_url'] ?? null;
+
+        return $data;
     }
 }

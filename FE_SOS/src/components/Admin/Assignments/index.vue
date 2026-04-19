@@ -236,8 +236,8 @@
                         <div class="flex-grow-1 min-w-0">
                           <div class="d-flex justify-content-between align-items-start">
                             <h6 class="fw-bold text-dark mb-0 text-truncate pe-2">{{ team.ten_co }}</h6>
-                            <span class="status-dot" :class="getTeamStatusClass(team.trang_thai)"
-                              :title="getTeamStatusLabel(team.trang_thai)"></span>
+                            <span class="status-dot" :class="getTeamStatusClass(team)"
+                              :title="getTeamStatusLabel(team)"></span>
                           </div>
                           <div class="text-muted small fw-medium mt-1 text-truncate"><i
                               class="fa-solid fa-map-location-dot me-1"></i>{{ team.khu_vuc_quan_ly || 'Hỗ trợ toàn khu vực' }}</div>
@@ -436,6 +436,10 @@ function parseTeams(payload) {
         .filter(Boolean);
     }
 
+    // phan_congs: backend returns this; fallback to item.raw.phan_congs if set
+    const phanCongRaw = item.phan_congs ?? item.raw?.phan_congs ?? [];
+    const phanCongs = Array.isArray(phanCongRaw) ? phanCongRaw : [];
+
     return {
       id: item.id_doi_cuu_ho || item.id,
       raw: item,
@@ -456,6 +460,11 @@ function parseTeams(payload) {
       })(),
       cung_quan: item.cung_quan === true || item.cung_quan === 1 || item.cung_quan === '1',
       loai_su_co: loaiSuCo,
+      // Capacity fields — backend is the single source of truth
+      phan_congs: phanCongs,
+      active_count: item.active_count ?? 0,
+      capacity: item.capacity ?? 0,
+      trang_thai_theo_nang_luc: item.trang_thai_theo_nang_luc || 'available',
     };
   });
 }
@@ -512,25 +521,9 @@ export default {
       return this.teams;
     },
     busyTeams() {
-      // Determine which teams are fully occupied (all members busy with active assignments).
-      // A team is considered "busy" (cannot select) when ALL of its members
-      // are currently assigned to active requests (DANG_XU_LY or DA_DEN_HIEN_TRUONG).
-      return this.teams.filter(t => {
-        const totalMembers = t.thanh_viens ? t.thanh_viens.length : 0;
-        if (totalMembers === 0) {
-          // No members = cannot take assignments, treat as busy
-          return true;
-        }
-        // Count how many of this team's assignments are still active
-        const activeAssignments = t.raw && t.raw.phan_congs
-          ? t.raw.phan_congs.filter(pc => {
-              const st = (pc.trang_thai_nhiem_vu || '').toUpperCase().replace(/\s+/g, '_');
-              return st === 'DANG_XU_LY' || st === 'DA_DEN_HIEN_TRUONG';
-            }).length
-          : 0;
-        // If active assignments >= total members, team is fully occupied
-        return activeAssignments >= totalMembers;
-      });
+      // Source of truth: trang_thai_theo_nang_luc comes from the backend.
+      // 'overload' means the team has reached or exceeded its capacity (rescuers × 3).
+      return this.teams.filter(t => t.trang_thai_theo_nang_luc === 'overload');
     },
     availableTeamsCount() {
       return this.teams.length - this.busyTeams.length;
@@ -703,21 +696,31 @@ export default {
         }
       }
     },
-    getTeamStatusClass(status) {
-      if (!status) return 'st-unknown';
-      const st = String(status).toUpperCase().replace(/\s+/g, '_');
-      if (st === 'SAN_SANG' || st === 'SẴN_SÀNG' || status === 'Sẵn sàng') return 'st-ready';
-      if (st === 'DANG_BAN' || st === 'ĐANG_BẬN' || status === 'Đang bận') return 'st-busy';
-      if (st === 'DANG_XU_LY' || st === 'ĐANG_XỬ_LÝ') return 'st-processing';
-      return 'st-unknown';
+    getTeamStatusClass(team) {
+      // Dot color is determined by capacity-based status from backend.
+      // trang_thai_theo_nang_luc: 'available' | 'overload'
+      // Falls back to raw trang_thai only when capacity field is absent.
+      const capacityStatus = team?.trang_thai_theo_nang_luc;
+      if (capacityStatus === 'overload') return 'st-overload';
+      if (capacityStatus === 'available') return 'st-ready';
+      // Fallback: use raw trang_thai when capacity field not present
+      const st = String(team?.trang_thai || '').toUpperCase().replace(/\s+/g, '_');
+      if (st === 'SAN_SANG' || st === 'SẴN_SÀNG') return 'st-ready';
+      if (st === 'DANG_CUU_HO') return 'st-processing';
+      if (st === 'DANG_BAN' || st === 'ĐANG_BẬN') return 'st-overload';
+      return 'st-ready';
     },
-    getTeamStatusLabel(status) {
-      if (!status) return 'Offline';
-      const st = String(status).toUpperCase().replace(/\s+/g, '_');
-      if (st === 'SAN_SANG' || st === 'SẴN_SÀNG' || status === 'Sẵn sàng') return 'Sẵn sàng';
-      if (st === 'DANG_BAN' || st === 'ĐANG_BẬN' || status === 'Đang bận') return 'Đang bận';
-      if (st === 'DANG_XU_LY' || st === 'ĐANG_XỬ_LÝ') return 'Đang xử lý';
-      return normalizeText(status, 'Offline');
+    getTeamStatusLabel(team) {
+      // Label reflects capacity-based status from backend.
+      const capacityStatus = team?.trang_thai_theo_nang_luc;
+      if (capacityStatus === 'overload') return 'Đội quá tải, chọn đội khác';
+      if (capacityStatus === 'available') return 'Sẵn sàng';
+      // Fallback
+      const st = String(team?.trang_thai || '').toUpperCase().replace(/\s+/g, '_');
+      if (st === 'SAN_SANG' || st === 'SẴN_SÀNG') return 'Sẵn sàng';
+      if (st === 'DANG_CUU_HO') return 'Đang xử lý';
+      if (st === 'DANG_BAN' || st === 'ĐANG_BẬN') return 'Đang bận';
+      return 'Sẵn sàng';
     },
     isTeamSelected(teamId) {
       return this.selectedTeams.some(t => t.id === teamId);
@@ -753,13 +756,7 @@ export default {
             mo_ta: `Chỉ thị đội ${team.ten_co} xử lý sự cố cấp độ ${this.selectedReq.severityLabel}`,
             trang_thai_nhiem_vu: 'MOI',
           });
-
-          await rescueTeamAPI.update(team.id, { trang_thai: 'DANG_CUU_HO' });
-
-          const teamIdx = this.teams.findIndex(t => t.id === team.id);
-          if (teamIdx !== -1) {
-            this.teams[teamIdx].trang_thai = 'DangCuuHo';
-          }
+          // Team capacity and status are calculated by the backend — do NOT set manually here.
         }
 
         await rescueRequestAPI.changeStatus(reqId, { trang_thai: 'DA_PHAN_CONG' });
@@ -772,6 +769,13 @@ export default {
         this.pendingRequests = this.pendingRequests.filter(r => r.id !== reqId);
         this.selectedReq = null;
         this.selectedTeams = [];
+
+        // Reload team data so capacity fields reflect the new assignment
+        await this.loadTeams();
+        // Re-fetch nearest teams to update cung_loai_su_co, cung_quan, khoang_cach_km
+        if (this.selectedReq) {
+          await this.fetchNearestTeams(this.selectedReq);
+        }
       } catch (error) {
         console.error('Lỗi chuyển phân công:', error);
         this.$toast?.error?.('Không thể phát lệnh! Vui lòng kiểm tra lại đường truyền.', {
@@ -1081,9 +1085,9 @@ export default {
   box-shadow: 0 0 0 3px #dcfce7;
 }
 
-.st-busy {
-  background: #f59e0b;
-  box-shadow: 0 0 0 3px #fef3c7;
+.st-overload {
+  background: #dc2626;
+  box-shadow: 0 0 0 3px #fecaca;
 }
 
 .st-processing {

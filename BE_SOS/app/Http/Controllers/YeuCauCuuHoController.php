@@ -53,9 +53,13 @@ class YeuCauCuuHoController extends Controller
         $reqLat = $yeuCau ? floatval($yeuCau->vi_tri_lat ?? 0) : null;
         $reqLng = $yeuCau ? floatval($yeuCau->vi_tri_lng ?? 0) : null;
 
-        $allTeams = DoiCuuHo::with(['thanhViens', 'taiNguyens', 'loaiSuCos', 'viTris'])
-            ->whereIn('trang_thai', ['SAN_SANG', 'SanSang', 'Sẵn sàng'])
-            ->get();
+        $allTeams = DoiCuuHo::with([
+            'thanhViens',
+            'taiNguyens',
+            'loaiSuCos',
+            'viTris',
+            'phanCongs',
+        ])->get();
 
         // Hàm normalize quận
         $normalizeDistrict = function($value) {
@@ -107,6 +111,19 @@ class YeuCauCuuHoController extends Controller
                 $teamLng = floatval($latestViTri->vi_tri_lng ?? $teamLng);
             }
 
+            $soThanhVien = $team->thanhViens ? $team->thanhViens->count() : 0;
+            $capacity = $soThanhVien * 3;
+
+            // Count active assignments: MOI, CHUA_TIEP_NHAN, DANG_XU_LY, DA_DEN_HIEN_TRUONG
+            $activeStatuses = ['MOI', 'CHUA_TIEP_NHAN', 'DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'];
+            $phanCongList = $team->phanCongs ?? collect();
+            $activeCount = $phanCongList
+                ->filter(fn($pc) => in_array(strtoupper(trim($pc->trang_thai_nhiem_vu ?? '')), $activeStatuses, true))
+                ->count();
+
+            // Determine team capacity status: 'overload' if active >= capacity, else 'available'
+            $trangThaiTheoNangLuc = $activeCount >= $capacity && $capacity > 0 ? 'overload' : 'available';
+
             $teamData = [
                 'id'                     => $team->id_doi_cuu_ho,
                 'ten_doi'               => $team->ten_co,
@@ -115,6 +132,7 @@ class YeuCauCuuHoController extends Controller
                 'trang_thai'            => $trangThai,
                 'trang_thai_goc'        => $team->trang_thai,
                 'thanh_viens'           => $team->thanhViens,
+                'phan_congs'            => $phanCongList->toArray(),
                 'tai_nguyens'           => $team->taiNguyens->map(fn($t) => [
                     'ten_tai_nguyen' => $t->ten_tai_nguyen,
                 ]),
@@ -122,6 +140,10 @@ class YeuCauCuuHoController extends Controller
                 'cung_loai_su_co' => $cungLoaiSuCo,
                 'cung_quan'       => $cungQuan,
                 'khoang_cach_km'  => $this->haversineDistance($reqLat, $reqLng, $teamLat ?: null, $teamLng ?: null),
+                // Capacity fields — source of truth for frontend
+                'active_count'           => $activeCount,
+                'capacity'              => $capacity,
+                'trang_thai_theo_nang_luc' => $trangThaiTheoNangLuc,
             ];
 
             $allTeamsList[] = $teamData;
