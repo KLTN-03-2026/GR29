@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\{DoiCuuHo, ThanhVienDoi, TaiNguyenCuuHo, ViTriDoiCuuHo, NangLucDoi, DoiCuuHoLoaiSuCo, LoaiSuCo};
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -71,7 +72,9 @@ class DoiCuuHoController extends Controller
 
             // Nếu yêu cầu lấy tất cả (get_all=true hoặc per_page >= 100)
             if ($getAll || $perPage >= 100) {
-                $items = $query->get();
+                $items = $query->get()->map(function ($team) {
+                    return $this->appendCapacityFields($team);
+                });
                 return Response::json([
                     'success' => true,
                     'message' => 'Danh sách tất cả đội cứu hộ',
@@ -92,6 +95,28 @@ class DoiCuuHoController extends Controller
                 'message' => 'Lỗi khi lấy danh sách: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Append real-time capacity fields to a team object.
+     * Used by index() and show() to provide a single source of truth to the frontend.
+     */
+    private function appendCapacityFields($team)
+    {
+        $soThanhVien = $team->thanhViens ? $team->thanhViens->count() : 0;
+        $capacity = $soThanhVien * 3;
+
+        $activeStatuses = ['MOI', 'CHUA_TIEP_NHAN', 'DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'];
+        $phanCongList = $team->phanCongs ?? collect();
+        $activeCount = $phanCongList
+            ->filter(fn($pc) => in_array(strtoupper(trim($pc->trang_thai_nhiem_vu ?? '')), $activeStatuses, true))
+            ->count();
+
+        $team->active_count = $activeCount;
+        $team->capacity = $capacity;
+        $team->trang_thai_theo_nang_luc = ($activeCount >= $capacity && $capacity > 0) ? 'overload' : 'available';
+
+        return $team;
     }
 
     /**
@@ -162,6 +187,8 @@ class DoiCuuHoController extends Controller
         try {
             $item = DoiCuuHo::with(['thanhViens', 'taiNguyens', 'viTris', 'nangLuc', 'loaiSuCos', 'phanCongs'])
                 ->findOrFail($id);
+
+            $this->appendCapacityFields($item);
 
             return Response::json([
                 'success' => true,
@@ -795,14 +822,24 @@ class DoiCuuHoController extends Controller
     public function getAvailableTeams(Request $request)
     {
         try {
-            $items = DoiCuuHo::where('trang_thai', 'SAN_SANG')
+            $items = DoiCuuHo::whereIn('trang_thai', ['SAN_SANG', 'SanSang', 'Sẵn sàng'])
                 ->with(['thanhViens', 'taiNguyens', 'nangLuc', 'phanCongs'])
                 ->get()
                 ->filter(function ($team) {
-                    $currentAssignments = $team->phanCongs()
-                        ->where('trang_thai_nhiem_vu', 'DANG_XU_LY')->count();
-                    $capacity = $team->nangLuc?->so_viec_toi_da ?? 999;
-                    return $currentAssignments < $capacity;
+                    $soThanhVien = $team->thanhViens ? $team->thanhViens->count() : 0;
+                    $capacity = $soThanhVien * 3;
+
+                    $activeStatuses = ['MOI', 'CHUA_TIEP_NHAN', 'DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'];
+                    $activeCount = $team->phanCongs()
+                        ->whereIn('trang_thai_nhiem_vu', $activeStatuses)
+                        ->count();
+
+                    // available if below capacity; teams with 0 members are excluded
+                    return $soThanhVien > 0 && $activeCount < $capacity;
+                })
+                ->map(function ($team) {
+                    $this->appendCapacityFields($team);
+                    return $team;
                 });
 
             return Response::json([
