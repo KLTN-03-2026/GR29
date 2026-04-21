@@ -8,17 +8,17 @@
           <div class="bg-shape bg-danger rounded-circle position-absolute opacity-10" style="width: 180px; height: 180px; top: -80px; right: -60px;"></div>
           <div class="d-flex align-items-center justify-content-between position-relative z-1">
             <div class="d-flex align-items-center">
-              <div class="icon-box bg-danger bg-opacity-10 text-danger me-3 d-flex align-items-center justify-content-center rounded-3" style="width: 48px; height: 48px;">
+              <div class="icon-box bg-danger bg-opacity-10 text-white me-3 d-flex align-items-center justify-content-center rounded-3" style="width: 48px; height: 48px;">
                 <i class="fa-solid fa-spinner fa-spin fs-5"></i>
               </div>
               <div>
                 <h5 class="fw-bolder mb-1 text-dark">Nhiệm Vụ Đang Xử Lý</h5>
-                <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-3 py-1 small fw-bold">
+                <span class="badge bg-danger bg-opacity-10 text-white rounded-pill px-3 py-1 small fw-bold">
                   <span class="pulse-dot bg-danger me-1"></span> ĐANG XỬ LÝ
                 </span>
               </div>
             </div>
-            <router-link to="/rescuer/home" class="btn btn-sm btn-outline-secondary rounded-circle">
+            <router-link to="/rescuer/home" class="btn btn-sm btn-outline-secondary text-white rounded-circle">
               <i class="fa-solid fa-arrow-left"></i>
             </router-link>
           </div>
@@ -330,19 +330,23 @@ export default {
       if (this.isSyncing || !this.currentMission) return;
       this.isSyncing = true;
       try {
-        // Targeted poll: fetch only the active assignment for this team
         const teamId = this.teamId;
         if (!teamId) {
-          // No team context — stop polling and fall back to full reload next time
           this.stopPolling();
           return;
         }
 
-        // Use getActiveAssignment for a single-record query (lightweight)
+        // Dùng getActiveAssignment — endpoint rescuer chuyên dụng
         let assignment = null;
         try {
           const resp = await rescuerAPI.getActiveAssignment(teamId);
-          assignment = resp?.data?.data || resp?.data || null;
+          const d = resp?.data;
+          // Hỗ trợ format { has_active, data } hoặc trực tiếp object
+          if (d?.has_active === true && d?.active?.id_phan_cong) {
+            assignment = d.active;
+          } else if (d?.id_phan_cong) {
+            assignment = d;
+          }
         } catch {
           assignment = null;
         }
@@ -389,62 +393,84 @@ export default {
         if (!teamId) {
           const teamStr = localStorage.getItem("rescuer_team");
           if (teamStr) {
-            const team = JSON.parse(teamStr);
-            teamId = team.id_doi_cuu_ho || team.id;
-          }
-        }
-
-        let assignments = [];
-        if (teamId) {
-          const res = await rescuerAPI.getAssignmentByTeam(teamId, { per_page: 100 });
-          if (res.data && res.data.data) {
-            assignments = res.data.data.data || res.data.data;
-          }
-        } else {
-          const res = await rescuerAPI.getAssignments({ per_page: 100 });
-          if (res.data && res.data.data) {
-            assignments = res.data.data.data || res.data.data;
+            try {
+              const team = JSON.parse(teamStr);
+              teamId = team.id_doi_cuu_ho || team.id;
+              this.teamId = teamId;
+            } catch (e) {
+              console.error('Lỗi parse team data:', e);
+            }
           }
         }
 
         this.currentMission = null;
         this.missionStep = 1;
 
-        if (Array.isArray(assignments)) {
-          for (let i = 0; i < assignments.length; i++) {
-            const item = assignments[i];
-            const status = item.trang_thai_nhiem_vu || '';
-            if (status === 'DANG_XU_LY') {
-              this.currentMission = item;
-              this.missionStep = 2;
-              break;
-            } else if (status === 'DA_DEN_HIEN_TRUONG' && !this.currentMission) {
-              this.currentMission = item;
-              this.missionStep = 3;
-              break;
-            }
+        if (!teamId) {
+          console.warn('[DangXuLy] Không có teamId — không thể tải nhiệm vụ');
+          return;
+        }
+
+        // Bước 1: thử dùng getActiveAssignment (API rescuer chuyên dụng)
+        try {
+          const activeRes = await rescuerAPI.getActiveAssignment(teamId);
+          const activeData = activeRes?.data;
+          console.log('[DangXuLy] getActiveAssignment response:', activeData);
+
+          // Backend trả về { success, has_active, active: {...} }
+          let activeAssignment = null;
+          if (activeData?.has_active === true && activeData?.active) {
+            activeAssignment = activeData.active;
+          } else if (activeData?.id_phan_cong) {
+            activeAssignment = activeData;
+          }
+
+          if (activeAssignment && activeAssignment.id_phan_cong) {
+            const status = activeAssignment.trang_thai_nhiem_vu || '';
+            this.currentMission = activeAssignment;
+            if (status === 'DANG_XU_LY') this.missionStep = 2;
+            else if (status === 'DA_DEN_HIEN_TRUONG') this.missionStep = 3;
+            else this.missionStep = 2;
+            console.log('[DangXuLy] currentMission (from active):', this.currentMission);
+            return; // Tìm được — không cần fallback
+          }
+        } catch (activeErr) {
+          console.warn('[DangXuLy] getActiveAssignment failed, thử fallback:', activeErr?.response?.status);
+        }
+
+        // Bước 2: fallback — lấy danh sách theo team rồi filter theo trạng thái
+        const res = await rescuerAPI.getAssignmentByTeam(teamId, { per_page: 100 });
+        console.log('[DangXuLy] getAssignmentByTeam raw response:', res?.data);
+
+        // Hỗ trợ cả 2 format: paginated { data: { data: [...] } } hoặc { data: [...] }
+        let assignments = [];
+        const rd = res?.data;
+        if (Array.isArray(rd)) {
+          assignments = rd;
+        } else if (Array.isArray(rd?.data)) {
+          assignments = rd.data;
+        } else if (rd?.data && Array.isArray(rd.data.data)) {
+          assignments = rd.data.data;
+        } else if (rd?.data?.data) {
+          assignments = rd.data.data;
+        }
+
+        console.log('[DangXuLy] assignments parsed:', assignments.length, assignments.map(a => ({ id: a.id_phan_cong, status: a.trang_thai_nhiem_vu })));
+
+        for (const item of assignments) {
+          const status = (item.trang_thai_nhiem_vu || '').trim();
+          if (status === 'DANG_XU_LY') {
+            this.currentMission = item;
+            this.missionStep = 2;
+            break;
+          } else if (status === 'DA_DEN_HIEN_TRUONG') {
+            this.currentMission = item;
+            this.missionStep = 3;
+            break;
           }
         }
 
-        if (!this.currentMission) {
-          const allRes = await rescuerAPI.getAssignments({ per_page: 100 });
-          if (allRes.data && allRes.data.data) {
-            const all = allRes.data.data.data || allRes.data.data;
-            for (let i = 0; i < all.length; i++) {
-              const item = all[i];
-              const status = item.trang_thai_nhiem_vu || '';
-              if (status === 'DANG_XU_LY') {
-                this.currentMission = item;
-                this.missionStep = 2;
-                break;
-              } else if (status === 'DA_DEN_HIEN_TRUONG' && !this.currentMission) {
-                this.currentMission = item;
-                this.missionStep = 3;
-                break;
-              }
-            }
-          }
-        }
+        console.log('[DangXuLy] currentMission (from list):', this.currentMission);
       } catch (e) {
         console.error("Lỗi tải nhiệm vụ:", e);
       } finally {

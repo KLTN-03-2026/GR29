@@ -1,8 +1,14 @@
 import axios from "axios";
 import { createToaster } from "@meforma/vue-toaster";
+
 const toaster = createToaster({ position: "top-right" });
 export default function (to, from, next) {
-    var token = localStorage.getItem("user_token");
+    const token = localStorage.getItem("token") || localStorage.getItem("user_token");
+    if (!token) {
+        next("/client/login");
+        return;
+    }
+
     axios
         .get("http://127.0.0.1:8000/api/nguoi-dung/check-client", {
             headers: {
@@ -10,14 +16,27 @@ export default function (to, from, next) {
             },
         })
         .then((res) => {
-            if (res.data.status) {
-                localStorage.setItem("ho_ten", res.data.ho_ten);
-                localStorage.setItem("email_kh", res.data.email);
-                localStorage.setItem("check_kh", res.data.status);
+            if (res.data?.status) {
+                // Update stored user data with fresh data from server
+                if (res.data.data) {
+                    localStorage.setItem("user", JSON.stringify(res.data.data));
+                }
                 next();
             } else {
-                toaster.error(res.data.message);
+                if (res.data?.message) {
+                    toaster.error(res.data.message);
+                }
+                localStorage.removeItem("token");
+                localStorage.removeItem("user_token");
+                localStorage.removeItem("user");
                 next("/client/login");
             }
+        })
+        .catch((error) => {
+            console.error("Client auth check failed:", error);
+            localStorage.removeItem("token");
+            localStorage.removeItem("user_token");
+            localStorage.removeItem("user");
+            next("/client/login");
         });
 }

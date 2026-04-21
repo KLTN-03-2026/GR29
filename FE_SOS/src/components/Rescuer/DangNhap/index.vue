@@ -80,6 +80,7 @@ const handleTeamLogin = async () => {
     });
 
     if (response.data.status) {
+      // Store rescuer token only
       localStorage.setItem('rescuer_token', response.data.token);
       localStorage.setItem('rescuer_user', JSON.stringify(response.data.data));
       localStorage.setItem('rescuer_team', JSON.stringify(response.data.data.doi_cuu_ho || response.data.data.doiCuuHo || null));

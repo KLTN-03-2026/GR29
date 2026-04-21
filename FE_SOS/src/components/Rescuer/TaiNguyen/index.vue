@@ -21,7 +21,7 @@
       <div class="row g-3">
         <div class="col-6 col-md-3">
           <div class="stat-card bg-light rounded-4 p-3 text-center border border-light shadow-sm">
-            <div class="stat-icon mb-2 mx-auto d-flex align-items-center justify-content-center rounded-3 bg-primary bg-opacity-10 text-primary" style="width: 40px; height: 40px;">
+            <div class="stat-icon mb-2 mx-auto d-flex align-items-center justify-content-center rounded-3 bg-primary bg-opacity-10 text-white" style="width: 40px; height: 40px;">
               <i class="fa-solid fa-truck-medical"></i>
             </div>
             <div class="fw-bold text-dark fs-4">{{ resources.length }}</div>
@@ -30,7 +30,7 @@
         </div>
         <div class="col-6 col-md-3">
           <div class="stat-card bg-light rounded-4 p-3 text-center border border-light shadow-sm">
-            <div class="stat-icon mb-2 mx-auto d-flex align-items-center justify-content-center rounded-3 bg-success bg-opacity-10 text-success" style="width: 40px; height: 40px;">
+            <div class="stat-icon mb-2 mx-auto d-flex align-items-center justify-content-center rounded-3 bg-success bg-opacity-10 text-white" style="width: 40px; height: 40px;">
               <i class="fa-solid fa-check-circle"></i>
             </div>
             <div class="fw-bold text-dark fs-4">{{ availableCount }}</div>
@@ -48,7 +48,7 @@
         </div>
         <div class="col-6 col-md-3">
           <div class="stat-card bg-light rounded-4 p-3 text-center border border-light shadow-sm">
-            <div class="stat-icon mb-2 mx-auto d-flex align-items-center justify-content-center rounded-3 bg-danger bg-opacity-10 text-danger" style="width: 40px; height: 40px;">
+            <div class="stat-icon mb-2 mx-auto d-flex align-items-center justify-content-center rounded-3 bg-danger bg-opacity-10 text-white" style="width: 40px; height: 40px;">
               <i class="fa-solid fa-triangle-exclamation"></i>
             </div>
             <div class="fw-bold text-dark fs-4">{{ brokenCount }}</div>
@@ -300,7 +300,7 @@ export default {
       return classes[type] || "bg-secondary";
     },
     getStatusClass(status) {
-      return status === 1 ? "bg-success bg-opacity-10 text-success" : "bg-danger bg-opacity-10 text-danger";
+      return status === 1 ? "bg-success bg-opacity-10 text-white" : "bg-danger bg-opacity-10 text-danger";
     },
     getStatusText(status) {
       return status === 1 ? "Sẵn sàng" : "Hỏng / Bảo trì";

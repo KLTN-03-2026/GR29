@@ -42,11 +42,11 @@ class DoiCuuHoController extends Controller
 
     public function checkThanhVien()
     {
-        $user = Auth::guard('sanctum')->user();
+        $user = Auth::guard('doi-cuu-ho')->user();
         if ($user) {
             return response()->json([
                 'status' => true,
-                'ho_ten' => $user->ho_va_ten,
+                'ho_ten' => $user->ten_co,
             ]);
         } else {
             return response()->json([
@@ -104,15 +104,24 @@ class DoiCuuHoController extends Controller
     private function appendCapacityFields($team)
     {
         $soThanhVien = $team->thanhViens ? $team->thanhViens->count() : 0;
-        $capacity = $soThanhVien * 3;
+        // Mỗi thành viên xử lý tối đa 1 task tại một thời điểm
+        $capacity = $soThanhVien;
 
-        $activeStatuses = ['MOI', 'CHUA_TIEP_NHAN', 'DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'];
+        // Chỉ tính task thực sự đang xử lý (DANG_XU_LY / DA_DEN_HIEN_TRUONG)
+        // MOI (mới phân công, chưa tiếp nhận) KHÔNG tính là "đang nhận"
+        $activeStatuses = ['DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'];
         $phanCongList = $team->phanCongs ?? collect();
         $activeCount = $phanCongList
             ->filter(fn($pc) => in_array(strtoupper(trim($pc->trang_thai_nhiem_vu ?? '')), $activeStatuses, true))
             ->count();
 
+        // MOI: đã được phân công nhưng chưa tiếp nhận (chưa tính vào active)
+        $pendingCount = $phanCongList
+            ->filter(fn($pc) => strtoupper(trim($pc->trang_thai_nhiem_vu ?? '')) === 'MOI')
+            ->count();
+
         $team->active_count = $activeCount;
+        $team->pending_count = $pendingCount;
         $team->capacity = $capacity;
         $team->trang_thai_theo_nang_luc = ($activeCount >= $capacity && $capacity > 0) ? 'overload' : 'available';
 
@@ -827,9 +836,11 @@ class DoiCuuHoController extends Controller
                 ->get()
                 ->filter(function ($team) {
                     $soThanhVien = $team->thanhViens ? $team->thanhViens->count() : 0;
-                    $capacity = $soThanhVien * 3;
+                    // Mỗi thành viên xử lý tối đa 1 task tại một thời điểm
+                    $capacity = $soThanhVien;
 
-                    $activeStatuses = ['MOI', 'CHUA_TIEP_NHAN', 'DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'];
+                    // Chỉ tính task thực sự đang xử lý (DANG_XU_LY / DA_DEN_HIEN_TRUONG)
+                    $activeStatuses = ['DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'];
                     $activeCount = $team->phanCongs()
                         ->whereIn('trang_thai_nhiem_vu', $activeStatuses)
                         ->count();

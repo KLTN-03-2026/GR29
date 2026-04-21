@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 import checkAdmin from "./checkAdmin";
 import checkRescuer from "./checkRescuer";
+import checkClient from "./checkClient";
 
 const routes = [
     // client
@@ -213,6 +214,10 @@ router.beforeEach((to, from, next) => {
     }
     if (to.path.startsWith("/rescuer") && to.path !== "/rescuer/login") {
         return checkRescuer(to, from, next);
+    }
+    const clientProtected = ["/client/profile", "/client/change-password", "/client/history", "/client/dang-xu-ly", "/client/requests"];
+    if (clientProtected.some(p => to.path === p)) {
+        return checkClient(to, from, next);
     }
     next();
 });

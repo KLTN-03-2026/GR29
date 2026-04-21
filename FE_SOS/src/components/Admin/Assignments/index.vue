@@ -236,11 +236,44 @@
                         <div class="flex-grow-1 min-w-0">
                           <div class="d-flex justify-content-between align-items-start">
                             <h6 class="fw-bold text-dark mb-0 text-truncate pe-2">{{ team.ten_co }}</h6>
-                            <span class="status-dot" :class="getTeamStatusClass(team)"
-                              :title="getTeamStatusLabel(team)"></span>
+                            <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                              <span class="status-dot" :class="getTeamStatusClass(team)"
+                                :title="getTeamStatusLabel(team)"></span>
+                            </div>
                           </div>
                           <div class="text-muted small fw-medium mt-1 text-truncate"><i
                               class="fa-solid fa-map-location-dot me-1"></i>{{ team.khu_vuc_quan_ly || 'Hỗ trợ toàn khu vực' }}</div>
+
+                          <!-- Capacity progress bar -->
+                          <div class="capacity-wrapper mt-2">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                              <span class="capacity-label small fw-semibold" :class="isTeamBusy(team.id) ? 'text-danger' : 'text-secondary'">
+                                <i class="fa-solid fa-list-check me-1"></i>Nhiệm vụ
+                              </span>
+                              <div class="d-flex align-items-center gap-2">
+                                <!-- Pending: đã phân công nhưng chưa tiếp nhận -->
+                                <span v-if="(team.pending_count ?? 0) > 0" class="capacity-pending-badge small fw-bolder">
+                                  <i class="fa-regular fa-clock me-1"></i>{{ team.pending_count }} chờ
+                                </span>
+                                <!-- Active: đang xử lý -->
+                                <span class="capacity-badge small fw-bolder" :class="isTeamBusy(team.id) ? 'bg-danger-subtle text-danger' : 'bg-light text-secondary'">
+                                  {{ team.active_count ?? 0 }} / {{ team.capacity ?? 0 }}
+                                </span>
+                              </div>
+                            </div>
+                            <div class="capacity-bar-track">
+                              <div class="capacity-bar-fill" :class="getCapacityBarClass(team)"
+                                :style="{ width: getCapacityBarWidth(team) }"></div>
+                            </div>
+                            <div class="capacity-hint small mt-1" :class="isTeamBusy(team.id) ? 'text-danger' : 'text-muted'">
+                              <template v-if="isTeamBusy(team.id)">
+                                <i class="fa-solid fa-circle-exclamation me-1"></i>Đội đang xử lý hết công suất ({{ team.capacity - (team.active_count ?? 0) === 0 ? 'không còn chỗ' : (team.capacity - (team.active_count ?? 0)) + ' chỗ trống' }})
+                              </template>
+                              <template v-else>
+                                <i class="fa-solid fa-check-circle me-1"></i>Còn {{ team.capacity - (team.active_count ?? 0) }} chỗ trống
+                              </template>
+                            </div>
+                          </div>
 
                           <div class="d-flex flex-wrap gap-1 mt-2">
                             <span class="meta-tag"><i class="fa-solid fa-users text-primary me-1"></i>{{
@@ -424,50 +457,54 @@ function parseRequests(payload) {
   });
 }
 
-function parseTeams(payload) {
-  const rawData = payload?.data?.data || payload?.data || payload || [];
-  const items = Array.isArray(rawData) ? rawData : [];
-  return items.map((item) => {
-    const loaiSuCoRaw = item.loai_su_co;
-    let loaiSuCo = [];
-    if (Array.isArray(loaiSuCoRaw)) {
-      loaiSuCo = loaiSuCoRaw
-        .map(s => (typeof s === 'string' ? s : (s?.ten || s?.ten_danh_muc || '')))
-        .filter(Boolean);
+    function parseTeams(payload) {
+      const rawData = payload?.data?.data || payload?.data || payload || [];
+      const items = Array.isArray(rawData) ? rawData : [];
+      return items.map((item) => {
+        const loaiSuCoRaw = item.loai_su_co;
+        let loaiSuCo = [];
+        if (Array.isArray(loaiSuCoRaw)) {
+          loaiSuCo = loaiSuCoRaw
+            .map(s => (typeof s === 'string' ? s : (s?.ten || s?.ten_danh_muc || '')))
+            .filter(Boolean);
+        }
+
+        // phan_congs: backend returns this; fallback to item.raw.phan_congs if set
+        const phanCongRaw = item.phan_congs ?? item.raw?.phan_congs ?? [];
+        const phanCongs = Array.isArray(phanCongRaw) ? phanCongRaw : [];
+
+        return {
+          id: item.id_doi_cuu_ho || item.id,
+          raw: item,
+          ten_co: normalizeText(item.ten_co || item.ten_doi || item.name || "Đội cứu hộ"),
+          khu_vuc_quan_ly: normalizeText(item.khu_vuc_quan_ly || item.area || ""),
+          so_dien_thoai_hotline: item.so_dien_thoai_hotline || item.phone || "",
+          trang_thai: item.trang_thai || "SanSang",
+          thanh_viens: Array.isArray(item.thanh_viens) ? item.thanh_viens : [],
+          tai_nguyens: Array.isArray(item.tai_nguyens) ? item.tai_nguyens : [],
+          vi_tri_lat: item.vi_tri_lat || null,
+          vi_tri_lng: item.vi_tri_lng || null,
+          khoang_cach_km: item.khoang_cach_km !== undefined && item.khoang_cach_km !== null ? item.khoang_cach_km : null,
+          cung_loai_su_co: (() => {
+            const v = item.cung_loai_su_co;
+            if (v === true || v === 1 || v === '1') return true;
+            if (v === false || v === 0 || v === '0') return false;
+            return null; // chưa xác định (backend trả về null)
+          })(),
+          cung_quan: item.cung_quan === true || item.cung_quan === 1 || item.cung_quan === '1',
+          loai_su_co: loaiSuCo,
+          // Capacity fields — backend is the single source of truth
+          phan_congs: phanCongs,
+          // active_count: task thực sự đang xử lý (DANG_XU_LY / DA_DEN_HIEN_TRUONG)
+          active_count: item.active_count ?? 0,
+          // pending_count: task mới phân công chưa tiếp nhận (MOI)
+          pending_count: item.pending_count ?? 0,
+          // capacity: tổng số task tối đa = số thành viên
+          capacity: item.capacity ?? 0,
+          trang_thai_theo_nang_luc: item.trang_thai_theo_nang_luc || 'available',
+        };
+      });
     }
-
-    // phan_congs: backend returns this; fallback to item.raw.phan_congs if set
-    const phanCongRaw = item.phan_congs ?? item.raw?.phan_congs ?? [];
-    const phanCongs = Array.isArray(phanCongRaw) ? phanCongRaw : [];
-
-    return {
-      id: item.id_doi_cuu_ho || item.id,
-      raw: item,
-      ten_co: normalizeText(item.ten_co || item.ten_doi || item.name || "Đội cứu hộ"),
-      khu_vuc_quan_ly: normalizeText(item.khu_vuc_quan_ly || item.area || ""),
-      so_dien_thoai_hotline: item.so_dien_thoai_hotline || item.phone || "",
-      trang_thai: item.trang_thai || "SanSang",
-      thanh_viens: Array.isArray(item.thanh_viens) ? item.thanh_viens : [],
-      tai_nguyens: Array.isArray(item.tai_nguyens) ? item.tai_nguyens : [],
-      vi_tri_lat: item.vi_tri_lat || null,
-      vi_tri_lng: item.vi_tri_lng || null,
-      khoang_cach_km: item.khoang_cach_km !== undefined && item.khoang_cach_km !== null ? item.khoang_cach_km : null,
-      cung_loai_su_co: (() => {
-        const v = item.cung_loai_su_co;
-        if (v === true || v === 1 || v === '1') return true;
-        if (v === false || v === 0 || v === '0') return false;
-        return null; // chưa xác định (backend trả về null)
-      })(),
-      cung_quan: item.cung_quan === true || item.cung_quan === 1 || item.cung_quan === '1',
-      loai_su_co: loaiSuCo,
-      // Capacity fields — backend is the single source of truth
-      phan_congs: phanCongs,
-      active_count: item.active_count ?? 0,
-      capacity: item.capacity ?? 0,
-      trang_thai_theo_nang_luc: item.trang_thai_theo_nang_luc || 'available',
-    };
-  });
-}
 
 export default {
   name: "AdminAssignments",
@@ -722,6 +759,22 @@ export default {
       if (st === 'DANG_BAN' || st === 'ĐANG_BẬN') return 'Đang bận';
       return 'Sẵn sàng';
     },
+    getCapacityBarWidth(team) {
+      const active = team.active_count ?? 0;
+      const capacity = team.capacity ?? 0;
+      if (capacity === 0) return '0%';
+      const pct = Math.min((active / capacity) * 100, 100);
+      return pct + '%';
+    },
+    getCapacityBarClass(team) {
+      const active = team.active_count ?? 0;
+      const capacity = team.capacity ?? 0;
+      if (capacity === 0) return 'bar-empty';
+      const ratio = active / capacity;
+      if (ratio >= 1) return 'bar-full';
+      if (ratio >= 0.67) return 'bar-warning';
+      return 'bar-normal';
+    },
     isTeamSelected(teamId) {
       return this.selectedTeams.some(t => t.id === teamId);
     },
@@ -773,8 +826,8 @@ export default {
         // Reload team data so capacity fields reflect the new assignment
         await this.loadTeams();
         // Re-fetch nearest teams to update cung_loai_su_co, cung_quan, khoang_cach_km
-        if (this.selectedReq) {
-          await this.fetchNearestTeams(this.selectedReq);
+        if (reqId) {
+          await this.fetchNearestTeams({ id: reqId, idLoaiSuCo: this.selectedReq?.idLoaiSuCo });
         }
       } catch (error) {
         console.error('Lỗi chuyển phân công:', error);
@@ -1132,6 +1185,55 @@ export default {
   font-weight: 600;
   padding: 4px 8px;
   border-radius: 6px;
+}
+
+/* Capacity Bar */
+.capacity-wrapper {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.capacity-bar-track {
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.capacity-bar-fill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.4s ease, background 0.3s ease;
+}
+
+.bar-empty { background: #e2e8f0; }
+.bar-normal { background: #16a34a; }
+.bar-warning { background: #f59e0b; }
+.bar-full { background: #dc2626; }
+
+.capacity-badge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  letter-spacing: 0.3px;
+}
+
+.capacity-pending-badge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  letter-spacing: 0.3px;
+  background-color: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fcd34d;
+}
+
+.bg-danger-subtle { background-color: #fef2f2; }
+
+.capacity-hint {
+  font-size: 11px;
+  line-height: 1.3;
 }
 
 .selected-overlay {

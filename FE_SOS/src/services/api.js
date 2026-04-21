@@ -12,15 +12,71 @@ const api = axios.create({
   },
 });
 
-// Bearer: ưu tiên admin_token (trang /admin), sau đó rescuer_token, rồi token người dùng
+// Bearer: chọn token đúng theo route đang gọi, tránh gửi nhầm token giữa các role
 api.interceptors.request.use((config) => {
-  const adminToken = localStorage.getItem("admin_token");
-  const rescuerToken = localStorage.getItem("rescuer_token");
-  const userToken = localStorage.getItem("token");
-  const t = adminToken || rescuerToken || userToken;
-  if (t) {
-    config.headers.Authorization = `Bearer ${t}`;
+  const url = config.url || '';
+
+  // Helper: kiểm tra URL có match prefix (ưu tiên exact match trước)
+  const match = (prefix) => url.startsWith(prefix);
+
+  // === RESCUER endpoints — kiểm tra TRƯỚC để tránh bị Admin route bắt nhầm ===
+  // Tất cả các route /phan-cong-cuu-ho/{id}/... đều là rescuer (tiếp nhận, cập nhật trạng thái...)
+  const isRescuerRoute =
+    match('/phan-cong-cuu-ho/theo-doi') ||        // GET theo-doi/{teamId}
+    match('/phan-cong-cuu-ho/active') ||           // GET active/{teamId}
+    match('/thanh-vien-doi/login') ||
+    match('/rescuer/login') ||
+    match('/rescuer/check-token') ||
+    match('/rescuer/gui-bao-cao') ||
+    match('/rescuer/bao-cao') ||
+    match('/doi-cuu-ho/login') ||
+    match('/doi-cuu-ho/check-token') ||
+    match('/get-doi-cuu-ho') ||
+    match('/post-doi-cuu-ho') ||
+    match('/put-doi-cuu-ho') ||
+    match('/post-ket-qua-cuu-ho') ||
+    match('/get-ket-qua-cuu-ho') ||
+    match('/get-danh-gia-cuu-ho') ||
+    match('/post-danh-gia-cuu-ho') ||
+    // Các PUT/GET /phan-cong-cuu-ho/{id}/trang-thai và tương tự (có id số trong URL)
+    /^\/phan-cong-cuu-ho\/\d+/.test(url);
+
+  // === 1. ADMIN endpoints (auth:admin) ===
+  // Chỉ dùng admin_token cho các route admin cụ thể — KHÔNG dùng match chung cho /phan-cong-cuu-ho
+  const isAdminRoute =
+    !isRescuerRoute && (
+      match('/admin') ||
+      match('/yeu-cau-cuu-ho') ||
+      match('/phan-cong-cuu-ho/theo-yeu-cau') ||
+      match('/phan-cong-cuu-ho/theo-trang-thai') ||
+      match('/phan-cong-cuu-ho') ||              // chỉ các route list/create (GET/POST root)
+      match('/nguoi-dung/list') ||
+      match('/nguoi-dung/chi-tiet') ||
+      match('/nguoi-dung/create') ||
+      match('/nguoi-dung/update') ||
+      match('/nguoi-dung/delete') ||
+      match('/nguoi-dung/change-status') ||
+      match('/nguoi-dung/search') ||
+      match('/thanh-vien-doi/list') ||
+      match('/thanh-vien-doi/create') ||
+      match('/thanh-vien-doi/update') ||
+      match('/thanh-vien-doi/delete') ||
+      match('/thanh-vien-doi/change-status') ||
+      match('/thong-ke')
+    );
+
+  if (isRescuerRoute) {
+    const t = localStorage.getItem('rescuer_token');
+    if (t) config.headers.Authorization = `Bearer ${t}`;
+  } else if (isAdminRoute) {
+    const t = localStorage.getItem('admin_token');
+    if (t) config.headers.Authorization = `Bearer ${t}`;
+  } else {
+    // === 3. USER endpoints (client) ===
+    const t = localStorage.getItem('token') || localStorage.getItem('user_token');
+    if (t) config.headers.Authorization = `Bearer ${t}`;
   }
+
   return config;
 });
 
@@ -30,6 +86,12 @@ export const authAPI = {
   loginUser: (data) => api.post('/nguoi-dung/login', data),
   registerUser: (data) => api.post('/nguoi-dung/register', data),
   loginRescuer: (data) => api.post('/rescuer/login', data),
+};
+
+// Client Profile
+export const clientAPI = {
+  getProfile: () => api.get('/nguoi-dung/check-client'),
+  updateProfile: (data) => api.post('/client/profile/update', data),
 };
 
 // Password Reset

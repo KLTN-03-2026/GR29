@@ -148,6 +148,14 @@ class PhanCongCuuHoController extends Controller
 
         $item->update(['trang_thai_nhiem_vu' => $newStatus]);
 
+        // When a team accepts (DANG_XU_LY), cancel all other pending assignments for the same request
+        if ($newStatus === 'DANG_XU_LY') {
+            PhanCongCuuHo::where('id_yeu_cau', $item->id_yeu_cau)
+                ->where('id_phan_cong', '!=', $item->id_phan_cong)
+                ->whereIn('trang_thai_nhiem_vu', ['MOI', 'CHUA_TIEP_NHAN', 'DA_PHAN_CONG'])
+                ->update(['trang_thai_nhiem_vu' => 'HUY_BO']);
+        }
+
         // Sync yeu_cau status based on assignment status transitions
         $yeuCau = $item->yeuCau;
         if ($yeuCau) {
