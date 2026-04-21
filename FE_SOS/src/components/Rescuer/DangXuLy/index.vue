@@ -637,7 +637,7 @@ export default {
       this.teamMarker = L.marker([lat, lng], { icon: icon }).addTo(this.map);
       this.teamMarker.bindPopup('<b>Vị trí đội của bạn</b>');
     },
-    updateMapMission() {
+    async updateMapMission() {
       if (!this.map || !this.currentMission) return;
 
       const lat = this.currentMission.yeu_cau && this.currentMission.yeu_cau.vi_tri_lat;
@@ -668,13 +668,41 @@ export default {
         `);
 
         if (this.teamLat && this.teamLng) {
-          if (this.routeLine) this.map.removeLayer(this.routeLine);
-          this.routeLine = L.polyline([[this.teamLat, this.teamLng], [lat, lng]], {
-            color: '#2563eb', weight: 4, opacity: 0.7, dashArray: '10, 10',
-          }).addTo(this.map);
+          await this.drawRoute(this.teamLat, this.teamLng, lat, lng);
         }
 
         this.map.flyTo([lat, lng], 15);
+      }
+    },
+    async drawRoute(lat1, lng1, lat2, lng2) {
+      if (this.routeLine) {
+        this.map.removeLayer(this.routeLine);
+        this.routeLine = null;
+      }
+      try {
+        const response = await fetch(
+          `https://router.project-osrm.org/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=full&geometries=geojson`
+        );
+        const data = await response.json();
+        if (data.routes && data.routes.length > 0) {
+          const coordinates = data.routes[0].geometry.coordinates;
+          const routeCoords = coordinates.map(coord => [coord[1], coord[0]]);
+          this.routeLine = L.polyline(routeCoords, {
+            color: '#2563eb',
+            weight: 5,
+            opacity: 0.8,
+          }).addTo(this.map);
+        } else {
+          // Fallback: straight dashed line
+          this.routeLine = L.polyline([[lat1, lng1], [lat2, lng2]], {
+            color: '#2563eb', weight: 4, opacity: 0.8, dashArray: '10, 10',
+          }).addTo(this.map);
+        }
+      } catch (error) {
+        // Fallback: straight dashed line
+        this.routeLine = L.polyline([[lat1, lng1], [lat2, lng2]], {
+          color: '#2563eb', weight: 4, opacity: 0.8, dashArray: '10, 10',
+        }).addTo(this.map);
       }
     },
     zoomIn() { if (this.map) this.map.zoomIn(); },
