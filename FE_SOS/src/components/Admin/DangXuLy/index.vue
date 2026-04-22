@@ -218,7 +218,7 @@ function parseRequests(payload) {
       mucDoKhanCap: sevValue,
       severityLabel: sevInfo.label,
       status: String(item.trang_thai || item.status || 'DANG_XU_LY').toUpperCase().replace(/\s+/g, '_'),
-      imageUrl: getImageUrl(item.hinh_anh),
+      imageUrl: item.hinhAnhUrl || item.imageUrl || getImageUrl(item.hinh_anh),
       raw: item,
       updating: false,
     };

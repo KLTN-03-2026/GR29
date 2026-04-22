@@ -9,7 +9,6 @@ class YeuCauCuuHo extends Model
     protected $table = 'yeu_cau_cuu_ho';
     protected $primaryKey = 'id_yeu_cau';
     protected $fillable = ['id_nguoi_dung', 'id_loai_su_co', 'vi_tri_lat', 'vi_tri_lng', 'vi_tri_dia_chi', 'chi_tiet', 'mo_ta', 'hinh_anh', 'so_nguoi_bi_anh_huong', 'muc_do_khan_cap', 'diem_uu_tien', 'trang_thai', 'thoi_gian_gui'];
-    protected $appends = ['hinh_anh_url'];
 
     /**
      * Relationship with NguoiDung (User)
@@ -100,6 +99,7 @@ class YeuCauCuuHo extends Model
 
     /**
      * Full image URL for frontend rendering.
+     * Handles both old path (uploads/hinh_anh/) and new path (uploads/anh_su_co/).
      */
     public function getHinhAnhUrlAttribute()
     {
@@ -109,19 +109,43 @@ class YeuCauCuuHo extends Model
             return null;
         }
 
-        // Keep existing absolute URLs unchanged.
         if (preg_match('/^https?:\/\//i', $path)) {
             return $path;
         }
 
-        return url($path);
+        $normalized = ltrim((string) $path, '/');
+
+        // Legacy rows may store only filename (e.g. image_5.jpg).
+        if (!str_contains($normalized, '/')) {
+            $candidates = [
+                'uploads/anh_su_co/' . $normalized,
+                'uploads/hinh_anh/' . $normalized,
+                $normalized,
+            ];
+
+            foreach ($candidates as $candidate) {
+                if (is_file(public_path($candidate))) {
+                    return url($candidate);
+                }
+            }
+
+            return null;
+        }
+
+        if (!is_file(public_path($normalized))) {
+            return null;
+        }
+
+        return url($normalized);
     }
 
     public function toArray()
     {
         $data = parent::toArray();
-        $data['hinhAnh'] = $data['hinh_anh'] ?? null;
-        $data['hinhAnhUrl'] = $data['hinh_anh_url'] ?? null;
+
+        $fullUrl = $this->hinhAnhUrl;
+        $data['hinhAnhUrl'] = $fullUrl;
+        $data['imageUrl'] = $fullUrl;
 
         return $data;
     }

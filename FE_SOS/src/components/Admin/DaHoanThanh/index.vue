@@ -257,7 +257,7 @@ function parseRequests(payload) {
       statusClass: statusMeta.badge,
       buttonClass: statusMeta.button,
       buttonLabel: statusMeta.buttonLabel,
-      imageUrl: getImageUrl(item.hinh_anh),
+      imageUrl: item.hinhAnhUrl || item.imageUrl || getImageUrl(item.hinh_anh),
       raw: item,
       loading: false,
     };
