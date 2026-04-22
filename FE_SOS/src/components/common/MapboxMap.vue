@@ -17,7 +17,7 @@ import { onMounted, onUnmounted, ref, watch } from "vue";
 import maplibregl from "@openmapvn/openmapvn-gl";
 import "@openmapvn/openmapvn-gl/dist/maplibre-gl.css";
 
-const emit = defineEmits(["mapClick"]);
+const emit = defineEmits(["mapClick", "load"]);
 
 const props = defineProps({
   center: {
@@ -81,6 +81,7 @@ function initMap() {
 
   map.on("load", () => {
     map.resize();
+    emit("load");
   });
 
   map.on("styleimagemissing", (e) => {
