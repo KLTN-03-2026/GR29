@@ -194,6 +194,9 @@ class PhanCongCuuHoController extends Controller
     private function releaseTeamAfterCompletion(int $teamId)
     {
         // Count remaining active assignments for this team (excluding the one we just completed)
+        // Active = any status NOT in the terminal/completed statuses
+        // Terminal: MOI (mới phân công, chưa tiếp nhận), HOAN_THANH, THAT_BAI, HUY_BO
+        // Active: DANG_XU_LY, DA_PHAN_CONG, DA_DEN_HIEN_TRUONG
         $activeCount = PhanCongCuuHo::where('id_doi_cuu_ho', $teamId)
             ->whereNotIn('trang_thai_nhiem_vu', ['MOI', 'HOAN_THANH', 'THAT_BAI', 'HUY_BO'])
             ->count();

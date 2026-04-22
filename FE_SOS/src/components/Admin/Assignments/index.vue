@@ -175,7 +175,7 @@
                       class="info-box bg-white border border-light h-100 p-4 rounded-4 d-flex flex-column justify-content-center align-items-center text-center shadow-sm">
                       <div
                         class="box-label text-muted small fw-bolder text-uppercase tracking-wider mb-3 w-100 text-start">
-                        <i class="fa-solid fa-user me-1"></i> Người Tới Báo</div>
+                        <i class="fa-solid fa-user me-1"></i> Người Gửi Yêu Cầu </div>
                       <div
                         class="reporter-avatar bg-primary text-white fw-bolder rounded-circle d-flex align-items-center justify-content-center mb-3 shadow"
                         style="width: 56px; height: 56px; font-size: 24px;">
@@ -248,7 +248,7 @@
                           <div class="capacity-wrapper mt-2">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                               <span class="capacity-label small fw-semibold" :class="isTeamBusy(team.id) ? 'text-danger' : 'text-secondary'">
-                                <i class="fa-solid fa-list-check me-1"></i>Nhiệm vụ
+                                <i class="fa-solid fa-list-check me-1"></i>Nhiệm vụ đang xử lý
                               </span>
                               <div class="d-flex align-items-center gap-2">
                                 <!-- Pending: đã phân công nhưng chưa tiếp nhận -->

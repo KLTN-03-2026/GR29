@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\YeuCauCuuHoRequest;
 use App\Models\{DoiCuuHo, YeuCauCuuHo, HangDoiXuLy, PhanLoaiAis, DuLieuHeatmap, PhanCongCuuHo, NguoiDung, LoaiSuCo};
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\DB;
 
@@ -49,9 +50,9 @@ class YeuCauCuuHoController extends Controller
             }
         }
 
-        // Lấy tọa độ sự cố
-        $reqLat = $yeuCau ? floatval($yeuCau->vi_tri_lat ?? 0) : null;
-        $reqLng = $yeuCau ? floatval($yeuCau->vi_tri_lng ?? 0) : null;
+        // Lấy tọa độ sự cố — dùng null thay vì 0 để haversineDistance trả về null khi thiếu tọa độ
+        $reqLat = $yeuCau ? floatval($yeuCau->vi_tri_lat) : null;
+        $reqLng = $yeuCau ? floatval($yeuCau->vi_tri_lng) : null;
 
         $allTeams = DoiCuuHo::with([
             'thanhViens',
@@ -104,25 +105,52 @@ class YeuCauCuuHoController extends Controller
             $teamLat = floatval($team->vi_tri_lat ?? null);
             $teamLng = floatval($team->vi_tri_lng ?? null);
 
-            // Ưu tiên vị trí mới nhất từ bảng vi_tri_doi_cuu_ho (đội di chuyển)
+            // Tính khoảng cách cho TẤT CẢ viTri và lấy MIN (đội có thể di chuyển nhiều điểm)
+            // Nếu chỉ lấy viTri mới nhất (sortByDesc id) → sẽ sai khi viTri mới nhất lại ở xa hơn
             if ($team->viTris && $team->viTris->count() > 0) {
-                $latestViTri = $team->viTris->sortByDesc('id')->first();
-                $teamLat = floatval($latestViTri->vi_tri_lat ?? $teamLat);
-                $teamLng = floatval($latestViTri->vi_tri_lng ?? $teamLng);
+                $khoangCachs = $team->viTris->map(function ($vt) use ($reqLat, $reqLng) {
+                    return $this->haversineDistance($reqLat, $reqLng, floatval($vt->vi_tri_lat), floatval($vt->vi_tri_lng));
+                })->filter(fn($d) => $d !== null);
+                $khoangCachMin = $khoangCachs->min();
+                // Ưu tiên khoảng cách từ viTri, fallback về HQ
+                $teamLat = floatval($team->vi_tris_first?->vi_tri_lat ?? $teamLat);
+                $teamLng = floatval($team->vi_tris_first?->vi_tri_lng ?? $teamLng);
+                if ($khoangCachMin !== null) {
+                    $teamLat = null; // đánh dấu đã dùng viTri
+                    $teamLng = null;
+                }
             }
+            // $khoang_cach_km sẽ dùng MIN khoảng cách từ tất cả viTri
+            $khoangCachTuViTri = null;
+            if ($team->viTris && $team->viTris->count() > 0) {
+                $khoangCachTuViTri = $team->viTris
+                    ->map(fn($vt) => $this->haversineDistance($reqLat, $reqLng, floatval($vt->vi_tri_lat), floatval($vt->vi_tri_lng)))
+                    ->filter(fn($d) => $d !== null)
+                    ->min();
+            }
+            $khoangCachTuHQ = $this->haversineDistance($reqLat, $reqLng, $team->vi_tri_lat, $team->vi_tri_lng);
+            $khoangCachCuoi = $khoangCachTuViTri !== null ? $khoangCachTuViTri : $khoangCachTuHQ;
 
             $soThanhVien = $team->thanhViens ? $team->thanhViens->count() : 0;
-            $capacity = $soThanhVien * 3;
+            $sucChuaToiDa = $soThanhVien * 3;
 
-            // Count active assignments: MOI, CHUA_TIEP_NHAN, DANG_XU_LY, DA_DEN_HIEN_TRUONG
-            $activeStatuses = ['MOI', 'CHUA_TIEP_NHAN', 'DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'];
+            // soYeuCauDangXuLy: count of assignments where status IN (DANG_XU_LY, DA_PHAN_CONG)
+            $activeStatuses = ['DANG_XU_LY', 'DA_PHAN_CONG'];
             $phanCongList = $team->phanCongs ?? collect();
-            $activeCount = $phanCongList
+            $soYeuCauDangXuLy = $phanCongList
                 ->filter(fn($pc) => in_array(strtoupper(trim($pc->trang_thai_nhiem_vu ?? '')), $activeStatuses, true))
                 ->count();
 
-            // Determine team capacity status: 'overload' if active >= capacity, else 'available'
-            $trangThaiTheoNangLuc = $activeCount >= $capacity && $capacity > 0 ? 'overload' : 'available';
+            // Determine team capacity status: 'overload' if soYeuCauDangXuLy >= sucChuaToiDa, else 'available'
+            $trangThaiTheoNangLuc = $soYeuCauDangXuLy >= $sucChuaToiDa && $sucChuaToiDa > 0 ? 'overload' : 'available';
+
+            // DEBUG LOG
+            Log::channel('daily')->info('[TIMDOI-CAPACITY] teamId=' . $team->id_doi_cuu_ho
+                . ' | soThanhVien=' . $soThanhVien
+                . ' | soYeuCauDangXuLy=' . $soYeuCauDangXuLy
+                . ' | sucChuaToiDa=' . $sucChuaToiDa
+                . ' | trangThaiTheoNangLuc=' . $trangThaiTheoNangLuc
+                . ' | statuses=' . json_encode($phanCongList->pluck('trang_thai_nhiem_vu')->toArray()));
 
             $teamData = [
                 'id'                     => $team->id_doi_cuu_ho,
@@ -139,10 +167,10 @@ class YeuCauCuuHoController extends Controller
                 'loai_su_co'      => $loaiSuCoNames,
                 'cung_loai_su_co' => $cungLoaiSuCo,
                 'cung_quan'       => $cungQuan,
-                'khoang_cach_km'  => $this->haversineDistance($reqLat, $reqLng, $teamLat ?: null, $teamLng ?: null),
+                'khoang_cach_km'  => $khoangCachCuoi,
                 // Capacity fields — source of truth for frontend
-                'active_count'           => $activeCount,
-                'capacity'              => $capacity,
+                'active_count'           => $soYeuCauDangXuLy,
+                'capacity'              => $sucChuaToiDa,
                 'trang_thai_theo_nang_luc' => $trangThaiTheoNangLuc,
             ];
 
