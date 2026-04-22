@@ -402,8 +402,8 @@ class YeuCauCuuHoController extends Controller
             if ($request->hasFile('hinh_anh')) {
                 $file = $request->file('hinh_anh');
                 $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                $file->move(public_path('uploads/hinh_anh'), $filename);
-                $hinhAnhPath = 'uploads/hinh_anh/' . $filename;
+                $file->move(public_path('uploads/anh_su_co'), $filename);
+                $hinhAnhPath = 'uploads/anh_su_co/' . $filename;
             }
 
             $item = YeuCauCuuHo::create([
