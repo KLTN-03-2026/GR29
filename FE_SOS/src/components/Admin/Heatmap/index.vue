@@ -492,10 +492,12 @@ export default {
         if (!lng && item.longitude) lng = parseFloat(item.longitude);
 
         const imageRaw = item.hinh_anh;
-        let imageUrl = null;
-        if (imageRaw && /^(https?:|data:)/i.test(imageRaw)) imageUrl = imageRaw;
-        else if (imageRaw && (imageRaw.startsWith("uploads/") || imageRaw.startsWith("/uploads/")))
-          imageUrl = BASE_URL + "/" + imageRaw;
+        let imageUrl = item.hinhAnhUrl || item.imageUrl || null;
+        if (!imageUrl) {
+          if (imageRaw && /^(https?:|data:)/i.test(imageRaw)) imageUrl = imageRaw;
+          else if (imageRaw && (imageRaw.startsWith("uploads/") || imageRaw.startsWith("/uploads/")))
+            imageUrl = BASE_URL + "/" + imageRaw;
+        }
 
         return {
           id, type, typeId, priority, address, rawTime,
