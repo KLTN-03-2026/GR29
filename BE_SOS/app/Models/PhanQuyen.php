@@ -19,4 +19,16 @@ class PhanQuyen extends Model
     {
         return $this->belongsTo(ChucVu::class, 'id_chuc_vu', 'id_chuc_vu');
     }
+
+    public function thanhVienDoi()
+    {
+        return $this->hasManyThrough(
+            ThanhVienDoi::class,
+            ChucVu::class,
+            'id_chuc_vu',
+            'vai_tro_trong_doi',
+            'id_chuc_vu',
+            'id_chuc_vu'
+        );
+    }
 }

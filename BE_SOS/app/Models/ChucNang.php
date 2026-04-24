@@ -8,7 +8,7 @@ class ChucNang extends Model
 {
     protected $table = 'chuc_nang';
     protected $primaryKey = 'id_chuc_nang';
-    protected $fillable = ['ten_chuc_nang'];
+    protected $fillable = ['ma_chuc_nang', 'ten_chuc_nang'];
 
     public function phanQuyens()
     {
