@@ -13,6 +13,8 @@
     <hr class="border-secondary border-opacity-25 my-2" />
 
     <nav class="flex-grow-1 px-2 pb-3 overflow-auto">
+
+      <!-- ========== TỔNG QUAN (admin + operator) ========== -->
       <div class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mb-2">Tổng quan</div>
       <router-link v-slot="{ href, navigate, isExactActive }" to="/admin" custom>
         <a :href="href" class="nav-item-link" :class="{ 'nav-item-link--active': isExactActive }"
@@ -23,19 +25,14 @@
       <router-link class="nav-item-link" to="/admin/queue">
         <i class="fa-solid fa-list-check me-2"></i>Hàng đợi theo ưu tiên
       </router-link>
-      <router-link class="nav-item-link" to="/admin/dang-xu-ly">
-        <i class="fa-solid fa-spinner me-2"></i>Đang Xử Lý
-      </router-link>
       <router-link class="nav-item-link" to="/admin/theo-doi-cuu-ho">
         <i class="fa-solid fa-spinner me-2"></i>Theo dõi cứu hộ
-      </router-link>
-      <router-link class="nav-item-link" to="/admin/assignments">
-        <i class="fa-solid fa-person-military-pointing me-2"></i>Phân công đội cứu hộ
       </router-link>
       <router-link class="nav-item-link" to="/admin/da-hoan-thanh">
         <i class="fa-solid fa-circle-check me-2"></i>Đã Hoàn Thành
       </router-link>
 
+      <!-- ========== GIÁM SÁT (admin + operator) ========== -->
       <div class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mt-3 mb-2">Giám sát</div>
       <router-link class="nav-item-link" to="/admin/heatmap">
         <i class="fa-solid fa-fire me-2"></i>Bản đồ nhiệt nguy hiểm
@@ -47,30 +44,34 @@
         <i class="fa-solid fa-chart-column me-2"></i>Báo cáo thống kê
       </router-link>
 
-      <div class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mt-3 mb-2">Cấu hình</div>
-      <router-link class="nav-item-link" to="/admin/incident-types">
-        <i class="fa-solid fa-bolt me-2"></i>Loại sự cố
-      </router-link>
-      <router-link class="nav-item-link" to="/admin/resources">
-        <i class="fa-solid fa-helmet-safety me-2"></i>Đội cứu hộ & tài nguyên
-      </router-link>
-      <router-link class="nav-item-link" to="/admin/ai-scoring">
-        <i class="fa-solid fa-brain me-2"></i>Trọng số AI scoring
-      </router-link>
+      <!-- ========== CẤU HÌNH (admin only) ========== -->
+      <template v-if="isAdmin">
+        <div class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mt-3 mb-2">Cấu hình</div>
+        <router-link class="nav-item-link" to="/admin/incident-types">
+          <i class="fa-solid fa-bolt me-2"></i>Loại sự cố
+        </router-link>
+        <router-link class="nav-item-link" to="/admin/resources">
+          <i class="fa-solid fa-helmet-safety me-2"></i>Đội cứu hộ & tài nguyên
+        </router-link>
+        <router-link class="nav-item-link" to="/admin/ai-scoring">
+          <i class="fa-solid fa-brain me-2"></i>Trọng số AI scoring
+        </router-link>
+      </template>
 
+      <!-- ========== TÀI KHOẢN & PHÂN QUYỀN (admin only) ========== -->
+      <template v-if="isAdmin">
+        <div class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mt-3 mb-2">Tài khoản & phân quyền</div>
+        <router-link class="nav-item-link" to="/admin/accounts/admin">
+          <i class="fa-solid fa-user-shield me-2"></i>Tài khoản ADMIN
+        </router-link>
+        <router-link class="nav-item-link" to="/admin/accounts/user">
+          <i class="fa-solid fa-user me-2"></i>Tài khoản USER
+        </router-link>
+        <router-link class="nav-item-link" to="/admin/accounts/rescuer">
+          <i class="fa-solid fa-user-nurse me-2"></i>Tài khoản RESCUER
+        </router-link>
+      </template>
 
-      <div class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mt-3 mb-2">Tài khoản & phân quyền</div>
-      <router-link class="nav-item-link" to="/admin/accounts/admin">
-        <i class="fa-solid fa-user-shield me-2"></i>Tài khoản ADMIN
-      </router-link>
-
-      <router-link class="nav-item-link" to="/admin/accounts/user">
-        <i class="fa-solid fa-user me-2"></i>Tài khoản USER
-      </router-link>
-
-      <router-link class="nav-item-link" to="/admin/accounts/rescuer">
-        <i class="fa-solid fa-user-nurse me-2"></i>Tài khoản RESCUER
-      </router-link>
     </nav>
   </div>
 </template>
@@ -78,6 +79,28 @@
 <script>
 export default {
   name: "MenuAdmin",
+  data() {
+    return {
+      isAdmin: false,
+    };
+  },
+  created() {
+    this.checkPermissions();
+  },
+  methods: {
+    checkPermissions() {
+      try {
+        const raw = localStorage.getItem("admin_user");
+        if (!raw) return;
+        const user = JSON.parse(raw);
+        const idChucVu = Number(user.id_chuc_vu || user.id_chuc_vu_admin);
+        const role = user.role?.slug_chuc_vu || user.slug_chuc_vu || "";
+        this.isAdmin = (idChucVu === 1) || (role === "admin");
+      } catch (e) {
+        this.isAdmin = true;
+      }
+    },
+  },
 };
 </script>
 

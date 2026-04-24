@@ -57,7 +57,7 @@
                     <div class="fw-semibold text-dark">{{ rescuerName }}</div>
                     <div class="text-muted small">
                       <i class="fa-solid fa-star text-warning me-1"></i>
-                      Thành viên đội cứu hộ
+                      {{ roleLabel }}
                     </div>
                     <div class="text-muted small" v-if="teamName">
                       <i class="fa-solid fa-users text-info me-1"></i>
@@ -113,6 +113,26 @@ export default {
       const name = encodeURIComponent(this.rescuerName);
       const color = this.avatarColors[this.rescuerName.length % this.avatarColors.length];
       return `https://ui-avatars.com/api/?name=${name}&background=${color}&color=fff&bold=true`;
+    },
+    rescuerRole() {
+      try {
+        const raw = localStorage.getItem("rescuer_user");
+        if (!raw) return "";
+        const u = JSON.parse(raw);
+        if (u.slug_chuc_vu) return u.slug_chuc_vu;
+        const roleMap = { 0: 'manager', 1: 'team_leader', 2: 'member' };
+        return roleMap[u.vai_tro_trong_doi] || "";
+      } catch {
+        return "";
+      }
+    },
+    roleLabel() {
+      const labels = {
+        manager: "Quản lý",
+        team_leader: "Trưởng đội",
+        member: "Thành viên",
+      };
+      return labels[this.rescuerRole] || "Thành viên cứu hộ";
     },
   },
   methods: {

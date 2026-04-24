@@ -1,6 +1,6 @@
 <template>
-    <div class="admin-menu d-flex flex-column h-100">
-        <!-- Thông tin thành viên -->
+    <div class="rescuer-menu d-flex flex-column h-100">
+        <!-- Header: brand + user info -->
         <div class="px-3 pt-3 pb-2">
             <div class="d-flex align-items-center mb-2">
                 <div class="brand-icon me-2">
@@ -12,14 +12,14 @@
                 </div>
             </div>
 
-            <!-- Khu vực thành viên -->
+            <!-- Logged-in user zone -->
             <div class="member-zone p-2 rounded-3 mb-2" v-if="isLoggedIn">
                 <div class="d-flex align-items-center mb-2">
                     <img :src="avatarSrc" class="rounded-circle me-2" width="36" height="36" :alt="rescuerName">
                     <div class="flex-grow-1 overflow-hidden">
                         <div class="text-white small fw-semibold text-truncate">{{ rescuerName }}</div>
                         <div class="text-secondary small" style="font-size: 10px;">
-                            <i class="fa-solid fa-star text-warning me-1"></i>Thành viên cứu hộ
+                            <i class="fa-solid fa-star text-warning me-1"></i>{{ roleLabel }}
                         </div>
                     </div>
                 </div>
@@ -28,7 +28,7 @@
                 </div>
             </div>
 
-            <!-- Chưa đăng nhập -->
+            <!-- Not logged in -->
             <div class="text-center p-2" v-else>
                 <router-link to="/rescuer/login" class="btn btn-sm btn-outline-light w-100 rounded-pill">
                     <i class="fa-solid fa-right-to-bracket me-1"></i> Đăng nhập
@@ -39,6 +39,8 @@
         <hr class="border-secondary border-opacity-25 my-2" />
 
         <nav class="flex-grow-1 px-2 pb-3 overflow-auto">
+
+            <!-- ========== TỔNG QUAN (all roles) ========== -->
             <div class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mb-2">Tổng quan</div>
             <router-link v-slot="{ href, navigate, isExactActive }" to="/rescuer/home" custom>
                 <a :href="href" class="nav-item-link" :class="{ 'nav-item-link--active': isExactActive }"
@@ -52,20 +54,41 @@
             <router-link class="nav-item-link" to="/rescuer/da-xu-ly">
                 <i class="fa-solid fa-circle-check me-2"></i>Đã Xử Lý
             </router-link>
-            <router-link class="nav-item-link" to="/rescuer/reports">
-                <i class="fa-solid fa-chart-line me-2"></i>Báo Cáo
-            </router-link>
 
+            <!-- ========== TÀI NGUYÊN (all roles) ========== -->
             <div class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mt-3 mb-2">Tài nguyên</div>
             <router-link class="nav-item-link" to="/rescuer/tai-nguyen">
                 <i class="fa-solid fa-helmet-safety me-2"></i>Tài Nguyên & Trang Thiết Bị
             </router-link>
 
-            <div class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mt-3 mb-2">Quản Lý</div>
-            <router-link class="nav-item-link" to="/rescuer/quan-ly-thanh-vien">
-                <i class="fa-solid fa-shield-halved me-2"></i>Thành Viên
-            </router-link>
+            <!-- ========== GIÁM SÁT (manager + team_leader) ========== -->
+            <template v-if="isManager || isTeamLeader">
+                <div class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mt-3 mb-2">Giám sát</div>
+                <router-link class="nav-item-link" to="/rescuer/theo-doi-cuu-ho">
+                    <i class="fa-solid fa-spinner me-2"></i>Theo dõi cứu hộ
+                </router-link>
+                <router-link class="nav-item-link" to="/rescuer/heatmap">
+                    <i class="fa-solid fa-fire me-2"></i>Bản đồ nhiệt
+                </router-link>
+            </template>
 
+            <!-- ========== BÁO CÁO (manager + team_leader) ========== -->
+            <template v-if="isManager || isTeamLeader">
+                <div class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mt-3 mb-2">Báo cáo</div>
+                <router-link class="nav-item-link" to="/rescuer/reports">
+                    <i class="fa-solid fa-chart-line me-2"></i>Báo Cáo Thống Kê
+                </router-link>
+            </template>
+
+            <!-- ========== THÔNG BÁO NHIỆM VỤ (manager + team_leader) ========== -->
+            <template v-if="isManager || isTeamLeader">
+                <div class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mt-3 mb-2">Thông báo</div>
+                <router-link class="nav-item-link" to="/rescuer/thong-bao-nhiem-vu">
+                    <i class="fa-solid fa-bell me-2"></i>Thông báo nhiệm vụ
+                </router-link>
+            </template>
+
+            <!-- Logout -->
             <div class="mt-auto pt-3 border-top border-secondary border-opacity-25 px-2">
                 <a href="#" class="nav-item-link text-danger" @click.prevent="logout" v-if="isLoggedIn">
                     <i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất
@@ -115,6 +138,37 @@ export default {
             const color = this.avatarColors[this.rescuerName.length % this.avatarColors.length];
             return `https://ui-avatars.com/api/?name=${name}&background=${color}&color=fff&bold=true`;
         },
+        rescuerRole() {
+            try {
+                const raw = localStorage.getItem("rescuer_user");
+                if (!raw) return "";
+                const u = JSON.parse(raw);
+                // Priority: slug_chuc_vu (set by login) > fallback map from vai_tro_trong_doi
+                if (u.slug_chuc_vu) return u.slug_chuc_vu;
+                const roleMap = { 0: 'manager', 1: 'team_leader', 2: 'member' };
+                const rawRole = u.vai_tro_trong_doi ?? u.vaiTroTrongDoi;
+                return roleMap[rawRole] || "";
+            } catch {
+                return "";
+            }
+        },
+        isManager() {
+            return this.rescuerRole === "manager";
+        },
+        isTeamLeader() {
+            return this.rescuerRole === "team_leader";
+        },
+        isMember() {
+            return this.rescuerRole === "member";
+        },
+        roleLabel() {
+            const labels = {
+                manager: "Quản lý",
+                team_leader: "Trưởng đội",
+                member: "Thành viên",
+            };
+            return labels[this.rescuerRole] || "Thành viên cứu hộ";
+        },
     },
     methods: {
         logout() {
@@ -129,7 +183,7 @@ export default {
 </script>
 
 <style scoped>
-.admin-menu {
+.rescuer-menu {
     background: radial-gradient(circle at top, #111827 0, #020617 48%, #020617 100%);
     height: 100%;
 }

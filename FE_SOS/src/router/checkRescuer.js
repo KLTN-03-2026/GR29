@@ -21,6 +21,73 @@ export default function (to, from, next) {
                 if (res.data.ho_ten) {
                     localStorage.setItem("rescuer_name", res.data.ho_ten);
                 }
+
+                // =============================================================
+                // Role-based access control for rescuer panel
+                // Roles (slug_chuc_vu): manager | team_leader | member
+                // vai_tro_trong_doi: 0=manager, 1=team_leader, 2=member
+                // =============================================================
+
+                // quan-ly-thanh-vien: manager + team_leader only
+                if (to.path === "/rescuer/quan-ly-thanh-vien") {
+                    const raw = localStorage.getItem("rescuer_user");
+                    if (raw) {
+                        try {
+                            const u = JSON.parse(raw);
+                            const roleMap = { 0: 'manager', 1: 'team_leader', 2: 'member' };
+                            const role = u.slug_chuc_vu || roleMap[u.vai_tro_trong_doi] || "";
+                            if (role !== "manager" && role !== "team_leader") {
+                                toaster.error("Bạn không có quyền truy cập trang này");
+                                next("/rescuer/home");
+                                return;
+                            }
+                        } catch (e) {
+                            next("/rescuer/home");
+                            return;
+                        }
+                    }
+                }
+
+                // reports: manager + team_leader only
+                if (to.path === "/rescuer/reports") {
+                    const raw = localStorage.getItem("rescuer_user");
+                    if (raw) {
+                        try {
+                            const u = JSON.parse(raw);
+                            const roleMap = { 0: 'manager', 1: 'team_leader', 2: 'member' };
+                            const role = u.slug_chuc_vu || roleMap[u.vai_tro_trong_doi] || "";
+                            if (role !== "manager" && role !== "team_leader") {
+                                toaster.error("Bạn không có quyền truy cập trang này");
+                                next("/rescuer/home");
+                                return;
+                            }
+                        } catch (e) {
+                            next("/rescuer/home");
+                            return;
+                        }
+                    }
+                }
+
+                // heatmap: manager + team_leader only
+                if (to.path === "/rescuer/heatmap") {
+                    const raw = localStorage.getItem("rescuer_user");
+                    if (raw) {
+                        try {
+                            const u = JSON.parse(raw);
+                            const roleMap = { 0: 'manager', 1: 'team_leader', 2: 'member' };
+                            const role = u.slug_chuc_vu || roleMap[u.vai_tro_trong_doi] || "";
+                            if (role !== "manager" && role !== "team_leader") {
+                                toaster.error("Bạn không có quyền truy cập trang này");
+                                next("/rescuer/home");
+                                return;
+                            }
+                        } catch (e) {
+                            next("/rescuer/home");
+                            return;
+                        }
+                    }
+                }
+
                 next();
             } else {
                 if (res.data?.message) {

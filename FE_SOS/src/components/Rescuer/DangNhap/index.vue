@@ -80,9 +80,15 @@ const handleTeamLogin = async () => {
     });
 
     if (response.data.status) {
-      // Store rescuer token only
+      // Normalize role: map vai_tro_trong_doi to slug_chuc_vu
+      // vai_tro_trong_doi: 0 = manager, 1 = team_leader, 2 = member
+      const userData = response.data.data;
+      const roleMap = { 0: 'manager', 1: 'team_leader', 2: 'member' };
+      const rawRole = userData.vai_tro_trong_doi ?? userData.vaiTroTrongDoi;
+      userData.slug_chuc_vu = roleMap[rawRole] || 'member';
+
       localStorage.setItem('rescuer_token', response.data.token);
-      localStorage.setItem('rescuer_user', JSON.stringify(response.data.data));
+      localStorage.setItem('rescuer_user', JSON.stringify(userData));
       localStorage.setItem('rescuer_team', JSON.stringify(response.data.data.doi_cuu_ho || response.data.data.doiCuuHo || null));
 
       router.push('/rescuer/home');

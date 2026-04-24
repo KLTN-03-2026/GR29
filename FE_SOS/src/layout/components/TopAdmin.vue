@@ -6,7 +6,7 @@
       </button>
       <div class="d-flex align-items-center gap-2">
         <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis small fw-semibold">
-          ADMIN CONSOLE
+          {{ roleLabel }}
         </span>
         <span class="text-white-50 small d-none d-sm-inline">
           Giám sát & điều phối cứu hộ
@@ -57,6 +57,23 @@ export default {
         return u.ho_ten || u.email || "Admin";
       } catch {
         return "Admin";
+      }
+    },
+    roleLabel() {
+      try {
+        const raw = localStorage.getItem("admin_user");
+        if (!raw) return "ADMIN CONSOLE";
+        const u = JSON.parse(raw);
+        const idChucVu = Number(u.id_chuc_vu || u.id_chuc_vu_admin);
+        const slug = u.chucVu?.slug_chuc_vu || u.role?.slug_chuc_vu || u.slug_chuc_vu || "";
+        const role = idChucVu === 1 ? "admin" : (slug || "");
+        const labels = {
+          admin:     "QUẢN TRỊ VIÊN",
+          operator:  "ĐIỀU PHỐI",
+        };
+        return labels[role] || "QUẢN TRỊ VIÊN";
+      } catch {
+        return "ADMIN CONSOLE";
       }
     },
   },
