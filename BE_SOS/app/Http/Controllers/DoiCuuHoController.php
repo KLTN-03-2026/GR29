@@ -514,6 +514,36 @@ class DoiCuuHoController extends Controller
         }
     }
 
+    /**
+     * Delete team resource
+     */
+    public function destroyTaiNguyen($id, $id_tai_nguyen)
+    {
+        try {
+            DoiCuuHo::findOrFail($id);
+            $item = TaiNguyenCuuHo::where('id_tai_nguyen', $id_tai_nguyen)
+                ->where('id_doi_cuu_ho', $id)
+                ->firstOrFail();
+
+            $item->delete();
+
+            return Response::json([
+                'success' => true,
+                'message' => 'Xóa tài nguyên thành công'
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Tài nguyên hoặc đội không tồn tại'
+            ], 404);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     // ========== VỊ TRÍ ĐỘI ==========
 
     /**

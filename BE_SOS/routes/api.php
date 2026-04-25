@@ -95,18 +95,6 @@ Route::post('phan-loai-ais/{id_yeu_cau}/tao-phan-loai', [YeuCauCuuHoController::
 Route::apiResource('doi-cuu-ho', DoiCuuHoController::class);
 Route::post('doi-cuu-ho/login', [DoiCuuHoController::class, 'login']);
 Route::get('/doi-cuu-ho/check-token', [DoiCuuHoController::class, 'checkThanhVien']);
-Route::get('get-doi-cuu-ho/{id}/thanh-vien', [DoiCuuHoController::class, 'getThanhVien']);
-Route::post('post-doi-cuu-ho/{id}/thanh-vien', [DoiCuuHoController::class, 'addThanhVien']);
-Route::delete('delete-doi-cuu-ho/{id}/thanh-vien/{id_thanh_vien}', [DoiCuuHoController::class, 'removeThanhVien']);
-Route::get('get-doi-cuu-ho/{id}/tai-nguyen', [DoiCuuHoController::class, 'getTaiNguyen']);
-Route::post('post-doi-cuu-ho/{id}/tai-nguyen', [DoiCuuHoController::class, 'addTaiNguyen']);
-Route::put('put-doi-cuu-ho/{id}/tai-nguyen/{id_tai_nguyen}', [DoiCuuHoController::class, 'updateTaiNguyen']);
-Route::get('get-doi-cuu-ho/{id}/vi-tri', [DoiCuuHoController::class, 'getViTri']);
-Route::post('post-doi-cuu-ho/{id}/vi-tri', [DoiCuuHoController::class, 'addViTri']);
-Route::get('get-doi-cuu-ho/{id}/nang-luc', [DoiCuuHoController::class, 'getNangLuc']);
-Route::put('put-doi-cuu-ho/{id}/nang-luc', [DoiCuuHoController::class, 'updateNangLuc']);
-Route::get('get-doi-cuu-ho/{id}/loai-su-co-dung-xu-ly', [DoiCuuHoController::class, 'getLoaiSuCoDungXuLy']);
-Route::post('post-doi-cuu-ho/{id}/loai-su-co-dung-xu-ly', [DoiCuuHoController::class, 'addLoaiSuCoDungXuLy']);
 Route::get('doi-cuu-ho/theo-trang-thai/{trang_thai}', [DoiCuuHoController::class, 'getByStatus']);
 Route::get('doi-cuu-ho/theo-khu-vuc/{khu_vuc}', [DoiCuuHoController::class, 'getByKhuVuc']);
 
@@ -193,10 +181,27 @@ Route::middleware(['auth:thanh-vien-doi', 'check.rescuer'])->group(function () {
     Route::post('post-ket-qua-cuu-ho/phan-cong/{id_phan_cong}', [KetQuaCuuHoController::class, 'createForPhanCong']);
     Route::get('get-ket-qua-cuu-ho/phan-cong/{id_phan_cong}', [KetQuaCuuHoController::class, 'getByPhanCong']);
 
-    // Báo cáo cứu hộ (Issue #4 - rescue reports)
+    // Báo cáo cứu hộ
     Route::post('rescuer/gui-bao-cao', [BaoCaoCuuHoController::class, 'guiBaoCao']);
     Route::get('rescuer/bao-cao/theo-doi/{id}', [BaoCaoCuuHoController::class, 'getByDoi']);
     Route::get('rescuer/bao-cao/{id}', [BaoCaoCuuHoController::class, 'show']);
+
+    // Rescuer - Quan ly thanh vien / tai nguyen (Tat ca deu xem duoc)
+    Route::get('rescuer/thanh-vien-doi/list', [ThanhVienDoiController::class, 'rescuerIndex']);
+    Route::get('get-doi-cuu-ho/{id}/tai-nguyen', [DoiCuuHoController::class, 'getTaiNguyen']);
+    Route::get('get-doi-cuu-ho/{id}/thanh-vien', [DoiCuuHoController::class, 'getThanhVien']);
+
+    // Chi Team Leader moi co quyen them/sua/xoa
+    Route::middleware(['check.role:Team Leader'])->group(function () {
+        Route::post('rescuer/thanh-vien-doi/create', [ThanhVienDoiController::class, 'rescuerCreate']);
+        Route::put('rescuer/thanh-vien-doi/update/{id}', [ThanhVienDoiController::class, 'rescuerUpdate']);
+        Route::delete('rescuer/thanh-vien-doi/delete/{id}', [ThanhVienDoiController::class, 'rescuerDestroy']);
+        Route::put('rescuer/thanh-vien-doi/change-status/{id}', [ThanhVienDoiController::class, 'updateStatus']); // can reuse
+
+        Route::post('post-doi-cuu-ho/{id}/tai-nguyen', [DoiCuuHoController::class, 'addTaiNguyen']);
+        Route::put('put-doi-cuu-ho/{id}/tai-nguyen/{id_tai_nguyen}', [DoiCuuHoController::class, 'updateTaiNguyen']);
+        Route::delete('delete-doi-cuu-ho/{id}/tai-nguyen/{id_tai_nguyen}', [DoiCuuHoController::class, 'destroyTaiNguyen']);
+    });
 });
 
 // =========================================

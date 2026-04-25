@@ -15,9 +15,9 @@ class ThanhVienDoiSeeder extends Seeder
     use WithoutModelEvents;
 
     // Define role cho dễ dùng
-    const ROLE_MANAGER = 0;
-    const ROLE_LEADER = 1;
-    const ROLE_MEMBER = 2;
+    const ROLE_MANAGER = 'Manager';
+    const ROLE_LEADER = 'Team Leader';
+    const ROLE_MEMBER = 'Member';
 
     public function run(): void
     {

@@ -24,16 +24,14 @@ api.interceptors.request.use((config) => {
   const isRescuerRoute =
     match('/phan-cong-cuu-ho/theo-doi') ||        // GET theo-doi/{teamId}
     match('/phan-cong-cuu-ho/active') ||           // GET active/{teamId}
+    match('/rescuer/') ||
     match('/thanh-vien-doi/login') ||
-    match('/rescuer/login') ||
-    match('/rescuer/check-token') ||
-    match('/rescuer/gui-bao-cao') ||
-    match('/rescuer/bao-cao') ||
     match('/doi-cuu-ho/login') ||
     match('/doi-cuu-ho/check-token') ||
     match('/get-doi-cuu-ho') ||
     match('/post-doi-cuu-ho') ||
     match('/put-doi-cuu-ho') ||
+    match('/delete-doi-cuu-ho') ||
     match('/post-ket-qua-cuu-ho') ||
     match('/get-ket-qua-cuu-ho') ||
     match('/get-danh-gia-cuu-ho') ||
@@ -304,14 +302,16 @@ export const rescuerAPI = {
   getRatings: (yeuCauId) => api.get('/get-danh-gia-cuu-ho/yeu-cau/' + yeuCauId),
 
   // Thành viên đội (quản lý)
-  getMembers: () => api.get('/thanh-vien-doi/list'),
-  addMember: (data) => api.post('/thanh-vien-doi/create', data),
-  updateMember: (id, data) => api.put('/thanh-vien-doi/update/' + id, data),
-  toggleMemberStatus: (id) => api.put('/thanh-vien-doi/change-status/' + id),
-  removeMember: (id) => api.delete('/thanh-vien-doi/delete/' + id),
+  getMembers: () => api.get('/rescuer/thanh-vien-doi/list'),
+  addMember: (data) => api.post('/rescuer/thanh-vien-doi/create', data),
+  updateMember: (id, data) => api.put('/rescuer/thanh-vien-doi/update/' + id, data),
+  toggleMemberStatus: (id) => api.put('/rescuer/thanh-vien-doi/change-status/' + id),
+  removeMember: (id) => api.delete('/rescuer/thanh-vien-doi/delete/' + id),
 
   // Thống kê heatmap
   getHeatmap: () => api.get('/thong-ke/heatmap'),
+  
+  deleteTeamResource: (id, resourceId) => api.delete('/delete-doi-cuu-ho/' + id + '/tai-nguyen/' + resourceId),
 };
 
 export default api;

@@ -11,7 +11,7 @@
           <span class="text-muted small">{{ resources.length }} thiết bị trong đội</span>
         </div>
       </div>
-      <button class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm" @click="showAddModal = true">
+      <button v-if="isLeader" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm" @click="showAddModal = true">
         <i class="fa-solid fa-plus me-2"></i>Thêm thiết bị
       </button>
     </div>
@@ -100,7 +100,7 @@
                   <span class="text-muted small">Số lượng:</span>
                   <span class="fw-bold text-dark ms-2">{{ item.so_luong }}</span>
                 </div>
-                <div class="d-flex gap-2">
+                <div v-if="isLeader" class="d-flex gap-2">
                   <button class="btn btn-sm btn-outline-secondary rounded-3" @click="editResource(item)">
                     <i class="fa-solid fa-pen"></i>
                   </button>
@@ -208,6 +208,16 @@ export default {
       }
       return null;
     },
+    isLeader() {
+      const userStr = localStorage.getItem("rescuer_user");
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          return user.vai_tro_trong_doi === 'Team Leader';
+        } catch { return false; }
+      }
+      return false;
+    },
   },
   async mounted() {
     await this.fetchResources();
@@ -267,7 +277,7 @@ export default {
     async deleteResource(item) {
       if (!confirm("Xóa thiết bị này?")) return;
       try {
-        await this.$refs.api.delete(`/tai-nguyen/${item.id_tai_nguyen}`);
+        await rescuerAPI.deleteTeamResource(this.teamId, item.id_tai_nguyen);
         toaster.success("Đã xóa thiết bị");
         await this.fetchResources();
       } catch (e) {

@@ -11,7 +11,7 @@
           <span class="text-muted small">{{ members.length }} thành viên</span>
         </div>
       </div>
-      <button class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm" @click="showAddModal = true">
+      <button v-if="isLeader" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm" @click="showAddModal = true">
         <i class="fa-solid fa-user-plus me-2"></i>Thêm thành viên
       </button>
     </div>
@@ -44,7 +44,7 @@
                 <th class="border-0 fw-bold text-secondary py-3">Email</th>
                 <th class="border-0 fw-bold text-secondary py-3">Điện thoại</th>
                 <th class="border-0 fw-bold text-secondary py-3">Trạng thái</th>
-                <th class="border-0 fw-bold text-secondary text-end pe-4 py-3">Thao tác</th>
+                <th v-if="isLeader" class="border-0 fw-bold text-secondary text-end pe-4 py-3">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -69,7 +69,7 @@
                     {{ member.trang_thai === 1 ? 'Hoạt động' : 'Tạm khóa' }}
                   </span>
                 </td>
-                <td class="text-end pe-4">
+                <td v-if="isLeader" class="text-end pe-4">
                   <div class="d-flex gap-2 justify-content-end">
                     <button class="btn btn-sm btn-outline-primary rounded-3" @click="editMember(member)" title="Sửa">
                       <i class="fa-solid fa-pen"></i>
@@ -162,6 +162,18 @@ export default {
         mat_khau: "",
       },
     };
+  },
+  computed: {
+    isLeader() {
+      const userStr = localStorage.getItem("rescuer_user");
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          return user.vai_tro_trong_doi === 'Team Leader';
+        } catch { return false; }
+      }
+      return false;
+    },
   },
   async mounted() {
     await this.fetchMembers();

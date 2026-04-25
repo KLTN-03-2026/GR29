@@ -118,4 +118,76 @@ class ThanhVienDoiController extends Controller
             'message' => 'Token không hợp lệ hoặc đã hết hạn.',
         ], 401);
     }
+
+    public function rescuerIndex()
+    {
+        $user = Auth::guard('sanctum')->user();
+        if (!$user || !isset($user->id_doi_cuu_ho)) {
+            return response()->json([], 200);
+        }
+        $thanhVien = ThanhVienDoi::where('id_doi_cuu_ho', $user->id_doi_cuu_ho)->get();
+        return response()->json($thanhVien);
+    }
+
+    public function rescuerCreate(Request $request)
+    {
+        $user = Auth::guard('sanctum')->user();
+        if (!$user || !isset($user->id_doi_cuu_ho)) {
+            return response()->json(['status' => false, 'message' => 'Lỗi xác thực'], 403);
+        }
+
+        $request->validate([
+            'ho_ten' => 'required',
+            'email' => 'required|email|unique:thanh_vien_doi,email',
+            'so_dien_thoai' => 'required',
+            'vai_tro_trong_doi' => 'required',
+            'mat_khau' => 'required',
+        ]);
+
+        $data = $request->all();
+        $data['mat_khau'] = Hash::make($data['mat_khau']);
+        $data['trang_thai'] = 1;
+        $data['id_doi_cuu_ho'] = $user->id_doi_cuu_ho;
+
+        $thanhVien = ThanhVienDoi::create($data);
+        return response()->json([
+            'status' => true,
+            'message' => 'Thêm thành viên thành công',
+            'data' => $thanhVien
+        ]);
+    }
+
+    public function rescuerUpdate(Request $request, $id)
+    {
+        $user = Auth::guard('sanctum')->user();
+        $thanhVien = ThanhVienDoi::where('id_doi_cuu_ho', $user->id_doi_cuu_ho)->findOrFail($id);
+
+        $data = $request->only(['ho_ten', 'email', 'so_dien_thoai', 'vai_tro_trong_doi']);
+        if ($request->has('mat_khau') && !empty($request->mat_khau)) {
+            $data['mat_khau'] = Hash::make($request->mat_khau);
+        }
+
+        $thanhVien->update($data);
+        return response()->json([
+            'status' => true,
+            'message' => 'Cập nhật thành công',
+            'data' => $thanhVien
+        ]);
+    }
+
+    public function rescuerDestroy($id)
+    {
+        $user = Auth::guard('sanctum')->user();
+        $thanhVien = ThanhVienDoi::where('id_doi_cuu_ho', $user->id_doi_cuu_ho)->findOrFail($id);
+        
+        // Remove from team instead of deleting
+        $thanhVien->id_doi_cuu_ho = null;
+        $thanhVien->vai_tro_trong_doi = 'Khách'; // Or unset
+        $thanhVien->save();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Xóa thành viên khỏi đội thành công'
+        ]);
+    }
 }

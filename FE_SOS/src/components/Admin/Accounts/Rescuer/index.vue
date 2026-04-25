@@ -234,13 +234,11 @@ export default {
 
         async fetchTeams() {
             try {
-                const response = await rescueTeamAPI.getList();
+                const response = await rescueTeamAPI.getList({ get_all: true });
                 console.log("Teams response:", response.data);
 
-                // Backend trả về: { success, message, data: { current_page, data: [...] } }
-                // response.data = { success, message, data: { ...pagination } }
-                // response.data.data = { current_page, data: [...], total, ... }
-                // response.data.data.data = [...]
+                // Backend trả về: { success, message, data: [...] } if get_all=true
+                // or { data: { data: [...] } } if paginated
                 const paginatedData = response.data?.data;
 
                 if (Array.isArray(paginatedData)) {
