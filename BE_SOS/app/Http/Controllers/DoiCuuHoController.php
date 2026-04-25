@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\{DoiCuuHo, ThanhVienDoi, TaiNguyenCuuHo, ViTriDoiCuuHo, NangLucDoi, DoiCuuHoLoaiSuCo, LoaiSuCo};
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -41,11 +42,11 @@ class DoiCuuHoController extends Controller
 
     public function checkThanhVien()
     {
-        $user = Auth::guard('sanctum')->user();
+        $user = Auth::guard('doi-cuu-ho')->user();
         if ($user) {
             return response()->json([
                 'status' => true,
-                'ho_ten' => $user->ho_va_ten,
+                'ho_ten' => $user->ten_co,
             ]);
         } else {
             return response()->json([
@@ -71,7 +72,9 @@ class DoiCuuHoController extends Controller
 
             // Nếu yêu cầu lấy tất cả (get_all=true hoặc per_page >= 100)
             if ($getAll || $perPage >= 100) {
-                $items = $query->get();
+                $items = $query->get()->map(function ($team) {
+                    return $this->appendCapacityFields($team);
+                });
                 return Response::json([
                     'success' => true,
                     'message' => 'Danh sách tất cả đội cứu hộ',
@@ -92,6 +95,45 @@ class DoiCuuHoController extends Controller
                 'message' => 'Lỗi khi lấy danh sách: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Append real-time capacity fields to a team object.
+     * Used by index() and show() to provide a single source of truth to the frontend.
+     */
+    private function appendCapacityFields($team)
+    {
+        $soThanhVien = $team->thanhViens ? $team->thanhViens->count() : 0;
+        // sucChuaToiDa = soThanhVien * 3 (3 requests / 1 rescuer)
+        $sucChuaToiDa = $soThanhVien * 3;
+
+        // soYeuCauDangXuLy = count of assignments where status IN (DANG_XU_LY, DA_PHAN_CONG)
+        // DANG_XU_LY: đội đang xử lý
+        // DA_PHAN_CONG: đã phân công, đang tiếp nhận / di chuyển
+        $activeStatuses = ['DANG_XU_LY', 'DA_PHAN_CONG'];
+        $phanCongList = $team->phanCongs ?? collect();
+        $soYeuCauDangXuLy = $phanCongList
+            ->filter(fn($pc) => in_array(strtoupper(trim($pc->trang_thai_nhiem_vu ?? '')), $activeStatuses, true))
+            ->count();
+
+        // MOI: đã được phân công nhưng chưa tiếp nhận (chưa tính vào active)
+        $pendingCount = $phanCongList
+            ->filter(fn($pc) => strtoupper(trim($pc->trang_thai_nhiem_vu ?? '')) === 'MOI')
+            ->count();
+
+        $team->active_count = $soYeuCauDangXuLy;
+        $team->pending_count = $pendingCount;
+        $team->capacity = $sucChuaToiDa;
+        // overload khi soYeuCauDangXuLy >= sucChuaToiDa (>=, không phải >)
+        $team->trang_thai_theo_nang_luc = ($soYeuCauDangXuLy >= $sucChuaToiDa && $sucChuaToiDa > 0) ? 'overload' : 'available';
+
+        \Log::channel('daily')->info('[CAPACITY] teamId=' . ($team->id_doi_cuu_ho ?? $team->id)
+            . ' | soThanhVien=' . $soThanhVien
+            . ' | soYeuCauDangXuLy=' . $soYeuCauDangXuLy
+            . ' | sucChuaToiDa=' . $sucChuaToiDa
+            . ' | trang_thai_theo_nang_luc=' . $team->trang_thai_theo_nang_luc);
+
+        return $team;
     }
 
     /**
@@ -162,6 +204,8 @@ class DoiCuuHoController extends Controller
         try {
             $item = DoiCuuHo::with(['thanhViens', 'taiNguyens', 'viTris', 'nangLuc', 'loaiSuCos', 'phanCongs'])
                 ->findOrFail($id);
+
+            $this->appendCapacityFields($item);
 
             return Response::json([
                 'success' => true,
@@ -795,14 +839,26 @@ class DoiCuuHoController extends Controller
     public function getAvailableTeams(Request $request)
     {
         try {
-            $items = DoiCuuHo::where('trang_thai', 'SAN_SANG')
+            $items = DoiCuuHo::whereIn('trang_thai', ['SAN_SANG', 'SanSang', 'Sẵn sàng'])
                 ->with(['thanhViens', 'taiNguyens', 'nangLuc', 'phanCongs'])
                 ->get()
                 ->filter(function ($team) {
-                    $currentAssignments = $team->phanCongs()
-                        ->where('trang_thai_nhiem_vu', 'DANG_XU_LY')->count();
-                    $capacity = $team->nangLuc?->so_viec_toi_da ?? 999;
-                    return $currentAssignments < $capacity;
+                    $soThanhVien = $team->thanhViens ? $team->thanhViens->count() : 0;
+                    // sucChuaToiDa = soThanhVien * 3 (3 requests / 1 rescuer)
+                    $sucChuaToiDa = $soThanhVien * 3;
+
+                    // soYeuCauDangXuLy = count of assignments where status IN (DANG_XU_LY, DA_PHAN_CONG)
+                    $activeStatuses = ['DANG_XU_LY', 'DA_PHAN_CONG'];
+                    $soYeuCauDangXuLy = $team->phanCongs()
+                        ->whereIn('trang_thai_nhiem_vu', $activeStatuses)
+                        ->count();
+
+                    // available if below capacity; teams with 0 members are excluded
+                    return $soThanhVien > 0 && $soYeuCauDangXuLy < $sucChuaToiDa;
+                })
+                ->map(function ($team) {
+                    $this->appendCapacityFields($team);
+                    return $team;
                 });
 
             return Response::json([

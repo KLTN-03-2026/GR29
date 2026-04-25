@@ -69,8 +69,6 @@ export default {
         });
         const body = res.data;
         if (body.status && body.token) {
-          localStorage.removeItem("admin_token");
-          localStorage.removeItem("admin_user");
           localStorage.setItem("admin_token", body.token);
           localStorage.setItem("admin_user", JSON.stringify(body.data || {}));
           this.$toast.success(body.message || "Đăng nhập thành công");

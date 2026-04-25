@@ -4,6 +4,7 @@ use App\Models\User;
 use App\Models\Admin;
 use App\Models\NguoiDung;
 use App\Models\ThanhVienDoi;
+use App\Models\DoiCuuHo;
 
 return [
 
@@ -66,6 +67,11 @@ return [
             'driver' => 'sanctum',
             'provider' => 'thanh-vien-doi',
         ],
+
+        'doi-cuu-ho' => [
+            'driver' => 'sanctum',
+            'provider' => 'doi-cuu-ho',
+        ],
     ],
 
     /*
@@ -99,6 +105,11 @@ return [
         'nguoi-dung' => [
             'driver' => 'eloquent',
             'model' => NguoiDung::class,
+        ],
+
+        'doi-cuu-ho' => [
+            'driver' => 'eloquent',
+            'model' => DoiCuuHo::class,
         ],
 
         'thanh-vien-doi' => [

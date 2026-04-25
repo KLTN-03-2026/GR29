@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="completed-header px-4 py-3 d-flex align-items-center justify-content-between border-bottom bg-white shadow-sm">
       <div class="d-flex align-items-center">
-        <div class="header-icon me-3 d-flex align-items-center justify-content-center rounded-3 bg-success bg-opacity-10 text-success" style="width: 48px; height: 48px;">
+        <div class="header-icon me-3 d-flex align-items-center justify-content-center rounded-3 bg-success bg-opacity-10 text-white" style="width: 48px; height: 48px;">
           <i class="fa-solid fa-circle-check fs-4"></i>
         </div>
         <div>
@@ -23,7 +23,7 @@
       <div class="row g-3">
         <div class="col-6 col-md-3">
           <div class="stat-card bg-light rounded-4 p-3 text-center border border-light shadow-sm">
-            <div class="stat-icon mb-2 mx-auto d-flex align-items-center justify-content-center rounded-3 bg-success bg-opacity-10 text-success" style="width: 40px; height: 40px;">
+            <div class="stat-icon mb-2 mx-auto d-flex align-items-center justify-content-center rounded-3 bg-success bg-opacity-10 text-white" style="width: 40px; height: 40px;">
               <i class="fa-solid fa-check"></i>
             </div>
             <div class="fw-bold text-dark fs-4">{{ completedCount }}</div>
@@ -32,7 +32,7 @@
         </div>
         <div class="col-6 col-md-3">
           <div class="stat-card bg-light rounded-4 p-3 text-center border border-light shadow-sm">
-            <div class="stat-icon mb-2 mx-auto d-flex align-items-center justify-content-center rounded-3 bg-danger bg-opacity-10 text-danger" style="width: 40px; height: 40px;">
+            <div class="stat-icon mb-2 mx-auto d-flex align-items-center justify-content-center rounded-3 bg-danger bg-opacity-10 text-white" style="width: 40px; height: 40px;">
               <i class="fa-solid fa-triangle-exclamation"></i>
             </div>
             <div class="fw-bold text-dark fs-4">{{ failedCount }}</div>
@@ -41,7 +41,7 @@
         </div>
         <div class="col-6 col-md-3">
           <div class="stat-card bg-light rounded-4 p-3 text-center border border-light shadow-sm">
-            <div class="stat-icon mb-2 mx-auto d-flex align-items-center justify-content-center rounded-3 bg-danger bg-opacity-10 text-danger" style="width: 40px; height: 40px;">
+            <div class="stat-icon mb-2 mx-auto d-flex align-items-center justify-content-center rounded-3 bg-danger bg-opacity-10 text-white" style="width: 40px; height: 40px;">
               <i class="fa-solid fa-fire"></i>
             </div>
             <div class="fw-bold text-dark fs-4">{{ urgentCount }}</div>
@@ -102,14 +102,14 @@
             <!-- Top Row -->
             <div class="d-flex justify-content-between align-items-start mb-3">
               <div class="d-flex align-items-center gap-2 flex-wrap">
-                <span class="badge rounded-pill px-3 py-2 fw-bold border" :class="getPriorityClass(item)">
+                <span class="badge rounded-pill px-3 py-2 fw-bold border text-white" :class="getPriorityClass(item)">
                   <i class="fa-solid fa-circle-exclamation me-1" v-if="getPriority(item) === 'urgent'"></i>
                   {{ getPriorityText(item) }}
                 </span>
-                <span v-if="item.trang_thai_nhiem_vu === 'HOAN_THANH'" class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-2 fw-bold">
+                <span v-if="item.trang_thai_nhiem_vu === 'HOAN_THANH'" class="badge bg-success bg-opacity-10 text-white border border-success border-opacity-25 rounded-pill px-3 py-2 fw-bold">
                   <i class="fa-solid fa-check me-1"></i> HOÀN THÀNH
                 </span>
-                <span v-else-if="item.trang_thai_nhiem_vu === 'THAT_BAI'" class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-3 py-2 fw-bold">
+                <span v-else-if="item.trang_thai_nhiem_vu === 'THAT_BAI'" class="badge bg-danger bg-opacity-10 text-white border border-danger border-opacity-25 rounded-pill px-3 py-2 fw-bold">
                   <i class="fa-solid fa-times me-1"></i> THẤT BẠI
                 </span>
               </div>
@@ -121,7 +121,7 @@
             <!-- Title & Type -->
             <h5 class="fw-bold text-dark mb-2">{{ getIncidentTypeName(item) }}</h5>
             <p class="text-muted small mb-3">
-              <i class="fa-solid fa-layer-group me-1 text-danger"></i>
+              <i class="fa-solid fa-layer-group me-1 text-white"></i>
               {{ item.yeu_cau && item.yeu_cau.muc_do_khan_cap ? item.yeu_cau.muc_do_khan_cap : '-' }}
             </p>
 
@@ -169,7 +169,7 @@
             <!-- Actions -->
             <div class="rating-row d-flex align-items-center justify-content-between bg-light rounded-3 p-3 border border-light">
               <div class="d-flex align-items-center">
-                <div class="text-muted fw-bold me-3" style="font-size: 10px; letter-spacing: 0.5px;">TRẠNG THÁI</div>
+                <div class="text-muted fw-bold me-3" style="font-size: 10px; letter-spacing: 0.5px;">TRẠNG THÁi</div>
                 <span class="badge rounded-pill px-3 py-1" :class="item.trang_thai_nhiem_vu === 'HOAN_THANH' ? 'bg-success' : 'bg-danger'">{{ item.trang_thai_nhiem_vu }}</span>
               </div>
               <div class="d-flex gap-2">

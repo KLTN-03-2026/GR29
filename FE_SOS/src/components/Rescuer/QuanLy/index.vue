@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="members-header px-4 py-3 d-flex align-items-center justify-content-between border-bottom bg-white shadow-sm">
       <div class="d-flex align-items-center">
-        <div class="header-icon me-3 d-flex align-items-center justify-content-center rounded-3 bg-primary bg-opacity-10 text-primary" style="width: 48px; height: 48px;">
+        <div class="header-icon me-3 d-flex align-items-center justify-content-center rounded-3 bg-primary bg-opacity-10 text-white" style="width: 48px; height: 48px;">
           <i class="fa-solid fa-users fs-4"></i>
         </div>
         <div>
@@ -55,17 +55,17 @@
                       {{ getInitials(member.ho_ten) }}
                     </div>
                     <div>
-                      <div class="fw-bold text-dark">{{ member.ho_ten }}</div>
+                      <div class="fw-bold text-dark ">{{ member.ho_ten }}</div>
                     </div>
                   </div>
                 </td>
                 <td>
-                  <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-2">{{ member.vai_tro_trong_doi || '-' }}</span>
+                  <span class="badge bg-primary bg-opacity-10 text-white rounded-pill px-3 py-2">{{ member.vai_tro_trong_doi || '-' }}</span>
                 </td>
                 <td class="text-secondary">{{ member.email }}</td>
                 <td class="text-secondary">{{ member.so_dien_thoai || '-' }}</td>
                 <td>
-                  <span class="badge rounded-pill px-3 py-2 fw-bold" :class="member.trang_thai === 1 ? 'bg-success bg-opacity-10 text-success' : 'bg-secondary bg-opacity-10 text-secondary'">
+                  <span class="badge rounded-pill px-3 py-2 fw-bold" :class="member.trang_thai === 1 ? 'bg-success bg-opacity-10 text-white' : 'bg-secondary bg-opacity-10 text-secondary'">
                     {{ member.trang_thai === 1 ? 'Hoạt động' : 'Tạm khóa' }}
                   </span>
                 </td>
@@ -74,7 +74,7 @@
                     <button class="btn btn-sm btn-outline-primary rounded-3" @click="editMember(member)" title="Sửa">
                       <i class="fa-solid fa-pen"></i>
                     </button>
-                    <button class="btn btn-sm rounded-3" :class="member.trang_thai === 1 ? 'btn-outline-warning' : 'btn-outline-success'" @click="toggleStatus(member)" :title="member.trang_thai === 1 ? 'Khóa' : 'Mở khóa'">
+                    <button class="btn btn-sm rounded-3 " :class="member.trang_thai === 1 ? 'btn-outline-warning' : 'btn-outline-success'" @click="toggleStatus(member)" :title="member.trang_thai === 1 ? 'Khóa' : 'Mở khóa'">
                       <i :class="member.trang_thai === 1 ? 'fa-solid fa-lock' : 'fa-solid fa-unlock'"></i>
                     </button>
                     <button class="btn btn-sm btn-outline-danger rounded-3" @click="removeMember(member)" title="Xóa">

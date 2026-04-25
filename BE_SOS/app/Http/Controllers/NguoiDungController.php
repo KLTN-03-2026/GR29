@@ -80,7 +80,7 @@ class NguoiDungController extends Controller
 
     public function checkClient()
     {
-        $user = Auth::guard('sanctum')->user();
+        $user = Auth::guard('nguoi-dung')->user();
 
         if (!$user || !($user instanceof NguoiDung)) {
             return response()->json([
@@ -97,7 +97,7 @@ class NguoiDungController extends Controller
 
     public function getProfile()
     {
-        $user = Auth::guard('sanctum')->user();
+        $user = Auth::guard('nguoi-dung')->user();
 
         if (!$user || !($user instanceof NguoiDung)) {
             return response()->json([
@@ -114,7 +114,7 @@ class NguoiDungController extends Controller
 
     public function updateProfile(Request $request)
     {
-        $user = Auth::guard('sanctum')->user();
+        $user = Auth::guard('nguoi-dung')->user();
 
         if (!$user || !($user instanceof NguoiDung)) {
             return response()->json([

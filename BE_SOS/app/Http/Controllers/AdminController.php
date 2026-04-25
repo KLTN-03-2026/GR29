@@ -52,7 +52,7 @@ class AdminController extends Controller
 
     public function checkAdmin()
     {
-        $user = Auth::guard('sanctum')->user();
+        $user = Auth::guard('admin')->user();
 
         if (!$user || !($user instanceof Admin)) {
             return response()->json([
@@ -64,13 +64,14 @@ class AdminController extends Controller
         return response()->json([
             'status' => true,
             'message' => 'Token valid',
+            'ho_ten' => $user->ho_ten,
             'data' => $user->load('chucVu')->makeHidden(['mat_khau', 'api_token']),
         ]);
     }
 
     public function getProfile()
     {
-        $user = Auth::guard('sanctum')->user();
+        $user = Auth::guard('admin')->user();
 
         if (!$user || !($user instanceof Admin)) {
             return response()->json([

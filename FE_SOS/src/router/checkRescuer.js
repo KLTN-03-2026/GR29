@@ -18,7 +18,6 @@ export default function (to, from, next) {
         })
         .then((res) => {
             if (res.data?.status) {
-                // Lưu thông tin user nếu chưa có
                 if (res.data.ho_ten) {
                     localStorage.setItem("rescuer_name", res.data.ho_ten);
                 }

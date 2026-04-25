@@ -175,7 +175,7 @@
                       class="info-box bg-white border border-light h-100 p-4 rounded-4 d-flex flex-column justify-content-center align-items-center text-center shadow-sm">
                       <div
                         class="box-label text-muted small fw-bolder text-uppercase tracking-wider mb-3 w-100 text-start">
-                        <i class="fa-solid fa-user me-1"></i> Người Tới Báo</div>
+                        <i class="fa-solid fa-user me-1"></i> Người Gửi Yêu Cầu </div>
                       <div
                         class="reporter-avatar bg-primary text-white fw-bolder rounded-circle d-flex align-items-center justify-content-center mb-3 shadow"
                         style="width: 56px; height: 56px; font-size: 24px;">
@@ -236,11 +236,44 @@
                         <div class="flex-grow-1 min-w-0">
                           <div class="d-flex justify-content-between align-items-start">
                             <h6 class="fw-bold text-dark mb-0 text-truncate pe-2">{{ team.ten_co }}</h6>
-                            <span class="status-dot" :class="getTeamStatusClass(team.trang_thai)"
-                              :title="getTeamStatusLabel(team.trang_thai)"></span>
+                            <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                              <span class="status-dot" :class="getTeamStatusClass(team)"
+                                :title="getTeamStatusLabel(team)"></span>
+                            </div>
                           </div>
                           <div class="text-muted small fw-medium mt-1 text-truncate"><i
                               class="fa-solid fa-map-location-dot me-1"></i>{{ team.khu_vuc_quan_ly || 'Hỗ trợ toàn khu vực' }}</div>
+
+                          <!-- Capacity progress bar -->
+                          <div class="capacity-wrapper mt-2">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                              <span class="capacity-label small fw-semibold" :class="isTeamBusy(team.id) ? 'text-danger' : 'text-secondary'">
+                                <i class="fa-solid fa-list-check me-1"></i>Nhiệm vụ đang xử lý
+                              </span>
+                              <div class="d-flex align-items-center gap-2">
+                                <!-- Pending: đã phân công nhưng chưa tiếp nhận -->
+                                <span v-if="(team.pending_count ?? 0) > 0" class="capacity-pending-badge small fw-bolder">
+                                  <i class="fa-regular fa-clock me-1"></i>{{ team.pending_count }} chờ
+                                </span>
+                                <!-- Active: đang xử lý -->
+                                <span class="capacity-badge small fw-bolder" :class="isTeamBusy(team.id) ? 'bg-danger-subtle text-danger' : 'bg-light text-secondary'">
+                                  {{ team.active_count ?? 0 }} / {{ team.capacity ?? 0 }}
+                                </span>
+                              </div>
+                            </div>
+                            <div class="capacity-bar-track">
+                              <div class="capacity-bar-fill" :class="getCapacityBarClass(team)"
+                                :style="{ width: getCapacityBarWidth(team) }"></div>
+                            </div>
+                            <div class="capacity-hint small mt-1" :class="isTeamBusy(team.id) ? 'text-danger' : 'text-muted'">
+                              <template v-if="isTeamBusy(team.id)">
+                                <i class="fa-solid fa-circle-exclamation me-1"></i>Đội đang xử lý hết công suất ({{ team.capacity - (team.active_count ?? 0) === 0 ? 'không còn chỗ' : (team.capacity - (team.active_count ?? 0)) + ' chỗ trống' }})
+                              </template>
+                              <template v-else>
+                                <i class="fa-solid fa-check-circle me-1"></i>Còn {{ team.capacity - (team.active_count ?? 0) }} chỗ trống
+                              </template>
+                            </div>
+                          </div>
 
                           <div class="d-flex flex-wrap gap-1 mt-2">
                             <span class="meta-tag"><i class="fa-solid fa-users text-primary me-1"></i>{{
@@ -251,12 +284,19 @@
                               v-if="team.khoang_cach_km !== null"><i class="fa-solid fa-location-arrow me-1"></i>{{
                               team.khoang_cach_km }} km</span>
                             <span class="meta-tag text-danger bg-danger-subtle bg-opacity-25"
-                              v-if="team.cung_loai_su_co"><i class="fa-solid fa-fire me-1"></i>Đúng loại</span>
+                              v-if="team.cung_loai_su_co === true"><i class="fa-solid fa-fire me-1"></i>Đúng loại</span>
+                            <span class="meta-tag text-secondary bg-secondary-subtle bg-opacity-25"
+                              v-if="team.cung_loai_su_co === false"><i class="fa-solid fa-fire me-1"></i>Khác loại</span>
+                            <span class="meta-tag text-muted bg-light"
+                              v-if="team.cung_loai_su_co === null"><i class="fa-solid fa-circle-question me-1"></i>Chưa rõ</span>
                           </div>
                           <div class="d-flex flex-wrap gap-1 mt-2" v-if="team.loai_su_co && team.loai_su_co.length > 0">
                             <span class="type-tag" v-for="(type, idx) in team.loai_su_co" :key="idx"
-                              :class="{ 'type-match': team.cung_loai_su_co && team.loai_su_co.length === 1, 'type-other': !team.cung_loai_su_co || team.loai_su_co.length > 1 }">{{
-                              type }}</span>
+                              :class="{
+                                'type-match': team.cung_loai_su_co === true,
+                                'type-mismatch': team.cung_loai_su_co === false,
+                                'type-unknown': team.cung_loai_su_co === null
+                              }">{{ type }}</span>
                           </div>
                         </div>
                       </div>
@@ -417,36 +457,54 @@ function parseRequests(payload) {
   });
 }
 
-function parseTeams(payload) {
-  const rawData = payload?.data?.data || payload?.data || payload || [];
-  const items = Array.isArray(rawData) ? rawData : [];
-  return items.map((item) => {
-    const loaiSuCoRaw = item.loai_su_co;
-    let loaiSuCo = [];
-    if (Array.isArray(loaiSuCoRaw)) {
-      loaiSuCo = loaiSuCoRaw
-        .map(s => (typeof s === 'string' ? s : (s?.ten || s?.ten_danh_muc || '')))
-        .filter(Boolean);
-    }
+    function parseTeams(payload) {
+      const rawData = payload?.data?.data || payload?.data || payload || [];
+      const items = Array.isArray(rawData) ? rawData : [];
+      return items.map((item) => {
+        const loaiSuCoRaw = item.loai_su_co;
+        let loaiSuCo = [];
+        if (Array.isArray(loaiSuCoRaw)) {
+          loaiSuCo = loaiSuCoRaw
+            .map(s => (typeof s === 'string' ? s : (s?.ten || s?.ten_danh_muc || '')))
+            .filter(Boolean);
+        }
 
-    return {
-      id: item.id_doi_cuu_ho || item.id,
-      raw: item,
-      ten_co: normalizeText(item.ten_co || item.ten_doi || item.name || "Đội cứu hộ"),
-      khu_vuc_quan_ly: normalizeText(item.khu_vuc_quan_ly || item.area || ""),
-      so_dien_thoai_hotline: item.so_dien_thoai_hotline || item.phone || "",
-      trang_thai: item.trang_thai || "SanSang",
-      thanh_viens: Array.isArray(item.thanh_viens) ? item.thanh_viens : [],
-      tai_nguyens: Array.isArray(item.tai_nguyens) ? item.tai_nguyens : [],
-      vi_tri_lat: item.vi_tri_lat || null,
-      vi_tri_lng: item.vi_tri_lng || null,
-      khoang_cach_km: item.khoang_cach_km !== undefined && item.khoang_cach_km !== null ? item.khoang_cach_km : null,
-      cung_loai_su_co: item.cung_loai_su_co === true || item.cung_loai_su_co === 1 || item.cung_loai_su_co === '1',
-      cung_quan: item.cung_quan === true || item.cung_quan === 1 || item.cung_quan === '1',
-      loai_su_co: loaiSuCo,
-    };
-  });
-}
+        // phan_congs: backend returns this; fallback to item.raw.phan_congs if set
+        const phanCongRaw = item.phan_congs ?? item.raw?.phan_congs ?? [];
+        const phanCongs = Array.isArray(phanCongRaw) ? phanCongRaw : [];
+
+        return {
+          id: item.id_doi_cuu_ho || item.id,
+          raw: item,
+          ten_co: normalizeText(item.ten_co || item.ten_doi || item.name || "Đội cứu hộ"),
+          khu_vuc_quan_ly: normalizeText(item.khu_vuc_quan_ly || item.area || ""),
+          so_dien_thoai_hotline: item.so_dien_thoai_hotline || item.phone || "",
+          trang_thai: item.trang_thai || "SanSang",
+          thanh_viens: Array.isArray(item.thanh_viens) ? item.thanh_viens : [],
+          tai_nguyens: Array.isArray(item.tai_nguyens) ? item.tai_nguyens : [],
+          vi_tri_lat: item.vi_tri_lat || null,
+          vi_tri_lng: item.vi_tri_lng || null,
+          khoang_cach_km: item.khoang_cach_km !== undefined && item.khoang_cach_km !== null ? item.khoang_cach_km : null,
+          cung_loai_su_co: (() => {
+            const v = item.cung_loai_su_co;
+            if (v === true || v === 1 || v === '1') return true;
+            if (v === false || v === 0 || v === '0') return false;
+            return null; // chưa xác định (backend trả về null)
+          })(),
+          cung_quan: item.cung_quan === true || item.cung_quan === 1 || item.cung_quan === '1',
+          loai_su_co: loaiSuCo,
+          // Capacity fields — backend is the single source of truth
+          phan_congs: phanCongs,
+          // active_count: task thực sự đang xử lý (DANG_XU_LY / DA_DEN_HIEN_TRUONG)
+          active_count: item.active_count ?? 0,
+          // pending_count: task mới phân công chưa tiếp nhận (MOI)
+          pending_count: item.pending_count ?? 0,
+          // capacity: tổng số task tối đa = số thành viên
+          capacity: item.capacity ?? 0,
+          trang_thai_theo_nang_luc: item.trang_thai_theo_nang_luc || 'available',
+        };
+      });
+    }
 
 export default {
   name: "AdminAssignments",
@@ -500,25 +558,9 @@ export default {
       return this.teams;
     },
     busyTeams() {
-      // Determine which teams are fully occupied (all members busy with active assignments).
-      // A team is considered "busy" (cannot select) when ALL of its members
-      // are currently assigned to active requests (DANG_XU_LY or DA_DEN_HIEN_TRUONG).
-      return this.teams.filter(t => {
-        const totalMembers = t.thanh_viens ? t.thanh_viens.length : 0;
-        if (totalMembers === 0) {
-          // No members = cannot take assignments, treat as busy
-          return true;
-        }
-        // Count how many of this team's assignments are still active
-        const activeAssignments = t.raw && t.raw.phan_congs
-          ? t.raw.phan_congs.filter(pc => {
-              const st = (pc.trang_thai_nhiem_vu || '').toUpperCase().replace(/\s+/g, '_');
-              return st === 'DANG_XU_LY' || st === 'DA_DEN_HIEN_TRUONG';
-            }).length
-          : 0;
-        // If active assignments >= total members, team is fully occupied
-        return activeAssignments >= totalMembers;
-      });
+      // Source of truth: trang_thai_theo_nang_luc comes from the backend.
+      // 'overload' means the team has reached or exceeded its capacity (rescuers × 3).
+      return this.teams.filter(t => t.trang_thai_theo_nang_luc === 'overload');
     },
     availableTeamsCount() {
       return this.teams.length - this.busyTeams.length;
@@ -531,8 +573,11 @@ export default {
       // Teams that are fully occupied (busy) are shown but not selectable.
       if (!this.selectedReq) {
         return [...this.availableTeams].sort((a, b) => {
-          const aScore = (a.cung_loai_su_co ? 2 : 0) + (a.cung_quan ? 1 : 0);
-          const bScore = (b.cung_loai_su_co ? 2 : 0) + (b.cung_quan ? 1 : 0);
+          // Score: true=2, null=1, false=0 cho cung_loai_su_co
+          const aTypeScore = a.cung_loai_su_co === true ? 2 : (a.cung_loai_su_co === false ? 0 : 1);
+          const bTypeScore = b.cung_loai_su_co === true ? 2 : (b.cung_loai_su_co === false ? 0 : 1);
+          const aScore = aTypeScore + (a.cung_quan ? 1 : 0);
+          const bScore = bTypeScore + (b.cung_quan ? 1 : 0);
           if (aScore !== bScore) return bScore - aScore;
           const aDist = a.khoang_cach_km ?? Infinity;
           const bDist = b.khoang_cach_km ?? Infinity;
@@ -541,8 +586,11 @@ export default {
       }
 
       return [...this.availableTeams].sort((a, b) => {
-        const aScore = (a.cung_loai_su_co ? 2 : 0) + (a.cung_quan ? 1 : 0);
-        const bScore = (b.cung_loai_su_co ? 2 : 0) + (b.cung_quan ? 1 : 0);
+        // Score: true=2, null=1, false=0 cho cung_loai_su_co
+        const aTypeScore = a.cung_loai_su_co === true ? 2 : (a.cung_loai_su_co === false ? 0 : 1);
+        const bTypeScore = b.cung_loai_su_co === true ? 2 : (b.cung_loai_su_co === false ? 0 : 1);
+        const aScore = aTypeScore + (a.cung_quan ? 1 : 0);
+        const bScore = bTypeScore + (b.cung_quan ? 1 : 0);
 
         if (aScore !== bScore) {
           return bScore - aScore;
@@ -632,6 +680,14 @@ export default {
     async initData() {
       this.error = '';
       await Promise.all([this.loadRequests(), this.loadTeams()]);
+      // Fix timing bug: after data loads, check if a request was navigated to via ?id=
+      const queryId = this.$route.query.id;
+      if (queryId && !this.selectedReq) {
+        const found = this.pendingRequests.find(r => String(r.id) === String(queryId));
+        if (found) {
+          this.selectedReq = found;
+        }
+      }
     },
     async loadRequests() {
       this.loadingRequests = true;
@@ -677,21 +733,47 @@ export default {
         }
       }
     },
-    getTeamStatusClass(status) {
-      if (!status) return 'st-unknown';
-      const st = String(status).toUpperCase().replace(/\s+/g, '_');
-      if (st === 'SAN_SANG' || st === 'SẴN_SÀNG' || status === 'Sẵn sàng') return 'st-ready';
-      if (st === 'DANG_BAN' || st === 'ĐANG_BẬN' || status === 'Đang bận') return 'st-busy';
-      if (st === 'DANG_XU_LY' || st === 'ĐANG_XỬ_LÝ') return 'st-processing';
-      return 'st-unknown';
+    getTeamStatusClass(team) {
+      // Dot color is determined by capacity-based status from backend.
+      // trang_thai_theo_nang_luc: 'available' | 'overload'
+      // Falls back to raw trang_thai only when capacity field is absent.
+      const capacityStatus = team?.trang_thai_theo_nang_luc;
+      if (capacityStatus === 'overload') return 'st-overload';
+      if (capacityStatus === 'available') return 'st-ready';
+      // Fallback: use raw trang_thai when capacity field not present
+      const st = String(team?.trang_thai || '').toUpperCase().replace(/\s+/g, '_');
+      if (st === 'SAN_SANG' || st === 'SẴN_SÀNG') return 'st-ready';
+      if (st === 'DANG_CUU_HO') return 'st-processing';
+      if (st === 'DANG_BAN' || st === 'ĐANG_BẬN') return 'st-overload';
+      return 'st-ready';
     },
-    getTeamStatusLabel(status) {
-      if (!status) return 'Offline';
-      const st = String(status).toUpperCase().replace(/\s+/g, '_');
-      if (st === 'SAN_SANG' || st === 'SẴN_SÀNG' || status === 'Sẵn sàng') return 'Sẵn sàng';
-      if (st === 'DANG_BAN' || st === 'ĐANG_BẬN' || status === 'Đang bận') return 'Đang bận';
-      if (st === 'DANG_XU_LY' || st === 'ĐANG_XỬ_LÝ') return 'Đang xử lý';
-      return normalizeText(status, 'Offline');
+    getTeamStatusLabel(team) {
+      // Label reflects capacity-based status from backend.
+      const capacityStatus = team?.trang_thai_theo_nang_luc;
+      if (capacityStatus === 'overload') return 'Đội quá tải, chọn đội khác';
+      if (capacityStatus === 'available') return 'Sẵn sàng';
+      // Fallback
+      const st = String(team?.trang_thai || '').toUpperCase().replace(/\s+/g, '_');
+      if (st === 'SAN_SANG' || st === 'SẴN_SÀNG') return 'Sẵn sàng';
+      if (st === 'DANG_CUU_HO') return 'Đang xử lý';
+      if (st === 'DANG_BAN' || st === 'ĐANG_BẬN') return 'Đang bận';
+      return 'Sẵn sàng';
+    },
+    getCapacityBarWidth(team) {
+      const active = team.active_count ?? 0;
+      const capacity = team.capacity ?? 0;
+      if (capacity === 0) return '0%';
+      const pct = Math.min((active / capacity) * 100, 100);
+      return pct + '%';
+    },
+    getCapacityBarClass(team) {
+      const active = team.active_count ?? 0;
+      const capacity = team.capacity ?? 0;
+      if (capacity === 0) return 'bar-empty';
+      const ratio = active / capacity;
+      if (ratio >= 1) return 'bar-full';
+      if (ratio >= 0.67) return 'bar-warning';
+      return 'bar-normal';
     },
     isTeamSelected(teamId) {
       return this.selectedTeams.some(t => t.id === teamId);
@@ -727,13 +809,7 @@ export default {
             mo_ta: `Chỉ thị đội ${team.ten_co} xử lý sự cố cấp độ ${this.selectedReq.severityLabel}`,
             trang_thai_nhiem_vu: 'MOI',
           });
-
-          await rescueTeamAPI.update(team.id, { trang_thai: 'DANG_CUU_HO' });
-
-          const teamIdx = this.teams.findIndex(t => t.id === team.id);
-          if (teamIdx !== -1) {
-            this.teams[teamIdx].trang_thai = 'DangCuuHo';
-          }
+          // Team capacity and status are calculated by the backend — do NOT set manually here.
         }
 
         await rescueRequestAPI.changeStatus(reqId, { trang_thai: 'DA_PHAN_CONG' });
@@ -746,6 +822,13 @@ export default {
         this.pendingRequests = this.pendingRequests.filter(r => r.id !== reqId);
         this.selectedReq = null;
         this.selectedTeams = [];
+
+        // Reload team data so capacity fields reflect the new assignment
+        await this.loadTeams();
+        // Re-fetch nearest teams to update cung_loai_su_co, cung_quan, khoang_cach_km
+        if (reqId) {
+          await this.fetchNearestTeams({ id: reqId, idLoaiSuCo: this.selectedReq?.idLoaiSuCo });
+        }
       } catch (error) {
         console.error('Lỗi chuyển phân công:', error);
         this.$toast?.error?.('Không thể phát lệnh! Vui lòng kiểm tra lại đường truyền.', {
@@ -1055,9 +1138,9 @@ export default {
   box-shadow: 0 0 0 3px #dcfce7;
 }
 
-.st-busy {
-  background: #f59e0b;
-  box-shadow: 0 0 0 3px #fef3c7;
+.st-overload {
+  background: #dc2626;
+  box-shadow: 0 0 0 3px #fecaca;
 }
 
 .st-processing {
@@ -1083,9 +1166,15 @@ export default {
   border: 1px solid #fecaca;
 }
 
-.type-tag.type-other {
-  background: #f1f5f9;
-  color: #475569;
+.type-tag.type-mismatch {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+.type-tag.type-unknown {
+  background: #f8fafc;
+  color: #64748b;
   border: 1px solid #e2e8f0;
 }
 
@@ -1096,6 +1185,55 @@ export default {
   font-weight: 600;
   padding: 4px 8px;
   border-radius: 6px;
+}
+
+/* Capacity Bar */
+.capacity-wrapper {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.capacity-bar-track {
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.capacity-bar-fill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.4s ease, background 0.3s ease;
+}
+
+.bar-empty { background: #e2e8f0; }
+.bar-normal { background: #16a34a; }
+.bar-warning { background: #f59e0b; }
+.bar-full { background: #dc2626; }
+
+.capacity-badge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  letter-spacing: 0.3px;
+}
+
+.capacity-pending-badge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  letter-spacing: 0.3px;
+  background-color: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fcd34d;
+}
+
+.bg-danger-subtle { background-color: #fef2f2; }
+
+.capacity-hint {
+  font-size: 11px;
+  line-height: 1.3;
 }
 
 .selected-overlay {

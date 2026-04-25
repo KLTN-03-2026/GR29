@@ -41,7 +41,7 @@
         <div class="incident-card card panel-card h-100 flex-column overflow-hidden">
           <!-- Image Area (Top) -->
           <div class="image-wrapper position-relative bg-light">
-            <img v-if="request.imageUrl" :src="request.imageUrl" class="incident-img w-100 h-100 object-fit-cover position-absolute top-0 start-0" alt="Hình ảnh sự cố" crossorigin="anonymous" />
+            <img v-if="request.imageUrl" :src="request.imageUrl" class="incident-img w-100 h-100 object-fit-cover position-absolute top-0 start-0" alt="Hình ảnh sự cố" />
             <div v-else class="empty-image w-100 h-100 position-absolute d-flex flex-column align-items-center justify-content-center text-muted" style="top:0; left:0;">
               <i class="fa-regular fa-image fs-1 mb-2 opacity-25"></i>
               <span class="small fw-medium opacity-50">Không đính kèm ảnh</span>
@@ -108,7 +108,8 @@
 <script>
 import { rescueRequestAPI } from "../../../services/api";
 
-const BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+const BASE_URL = API_BASE_URL.replace(/\/api\/?$/, "");
 
 const SEVERITY_MAP = {
   'CRITICAL': { label: 'CRITICAL', badge: 'lv-critical' },
@@ -161,32 +162,55 @@ function formatTime(value) {
 function getImageUrl(image) {
   const raw = normalizeText(image);
   if (!raw) return null;
-  if (/^(https?:|data:)/i.test(raw)) return raw;
-  // Issue #7 fix: handle paths starting with "uploads/" (backend stores in public/uploads/hinh_anh/)
-  if (raw.startsWith('uploads/')) {
-    return BASE_URL + '/' + raw;
+  if (/^(https?:|data:|blob:)/i.test(raw)) return raw;
+
+  const clean = raw.replace(/^\/+/, "");
+
+  if (clean.startsWith("uploads/") || clean.startsWith("storage/")) {
+    return `${BASE_URL}/${clean}`;
   }
-  if (raw.startsWith('/uploads/')) {
-    return BASE_URL + raw;
+
+  if (!clean.includes("/") && /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(clean)) {
+    return `${BASE_URL}/uploads/${clean}`;
   }
+
+  if (clean.includes("/")) {
+    return `${BASE_URL}/${clean}`;
+  }
+
   return null;
 }
 
 function parseRequests(payload) {
   const rawData = payload;
-  const items = Array.isArray(rawData) ? rawData : Array.isArray(rawData?.data) ? rawData.data : Array.isArray(rawData?.data?.data) ? rawData.data.data : [];
+  const items = Array.isArray(rawData) ? rawData
+    : Array.isArray(rawData?.data) ? rawData.data
+    : Array.isArray(rawData?.data?.data) ? rawData.data.data : [];
 
   return items.map((item) => {
+    const flatItem = item.yeu_cau || item;
+    console.log("[AdminQueue] flatItem", flatItem);
+
     const id = item.id_yeu_cau || item.id || item.request_id || "-";
-    const type = normalizeText(item.loai_su_co?.ten_danh_muc || item.loai_su_co?.ten_loai || item.loai || "Sự cố khẩn cấp");
-    const description = normalizeText(item.mo_ta || item.moTa || "Không có mô tả chi tiết");
-    const address = normalizeText(item.vi_tri_dia_chi || item.dia_chi || "Không xác định vị trí");
-    const time = formatTime(item.thoi_gian_gui || item.created_at || item.updated_at || item.thoi_gian || item.time);
-    const people = parseInt(item.so_nguoi_bi_anh_huong) || 0;
-    
-    // Determine severity
-    const sevValue = item.muc_do_khan_cap || item.muc_do || item.diem_uu_tien || 2;
+    const type = normalizeText(
+      flatItem.loai_su_co?.ten_danh_muc || flatItem.loai_su_co?.ten_loai
+      || flatItem.loai || "Sự cố khẩn cấp"
+    );
+    const description = normalizeText(flatItem.mo_ta || flatItem.moTa || "Không có mô tả chi tiết");
+    const address = normalizeText(flatItem.vi_tri_dia_chi || flatItem.dia_chi || "Không xác định vị trí");
+    const time = formatTime(flatItem.thoi_gian_gui || flatItem.created_at || flatItem.updated_at || flatItem.thoi_gian || item.time);
+    const people = parseInt(flatItem.so_nguoi_bi_anh_huong) || 0;
+
+    const sevValue = flatItem.muc_do_khan_cap || flatItem.muc_do || flatItem.diem_uu_tien || 2;
     const sevInfo = getSeverityInfo(sevValue);
+
+    const imageRaw = flatItem.hinh_anh || null;
+    const hasApiImageField =
+      Object.prototype.hasOwnProperty.call(flatItem, "hinhAnhUrl")
+      || Object.prototype.hasOwnProperty.call(flatItem, "imageUrl");
+    const imageUrl = hasApiImageField
+      ? (flatItem.hinhAnhUrl || flatItem.imageUrl || null)
+      : getImageUrl(imageRaw);
 
     return {
       key: `${id}-${Math.random()}`,
@@ -199,7 +223,7 @@ function parseRequests(payload) {
       mucDoKhanCap: sevValue,
       severityLabel: sevInfo.label,
       status: String(item.trang_thai || item.status || 'CHO_XU_LY').toUpperCase().replace(/\s+/g, '_'),
-      imageUrl: getImageUrl(item.hinh_anh),
+      imageUrl: imageUrl,
       raw: item,
       updating: false,
     };

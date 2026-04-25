@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="report-header px-4 py-3 d-flex align-items-center justify-content-between border-bottom bg-white shadow-sm">
       <div class="d-flex align-items-center">
-        <div class="header-icon me-3 d-flex align-items-center justify-content-center rounded-3 bg-success bg-opacity-10 text-success" style="width: 48px; height: 48px;">
+        <div class="header-icon me-3 d-flex align-items-center justify-content-center rounded-3 bg-success bg-opacity-10 text-white" style="width: 48px; height: 48px;">
           <i class="fa-solid fa-chart-line fs-4"></i>
         </div>
         <div>
@@ -31,7 +31,7 @@
         <div class="row g-3">
           <div class="col-6 col-md-3">
             <div class="stat-card bg-white rounded-4 p-4 text-center border border-light shadow-sm hover-lift">
-              <div class="stat-icon mb-3 mx-auto d-flex align-items-center justify-content-center rounded-3 bg-primary bg-opacity-10 text-primary" style="width: 56px; height: 56px;">
+              <div class="stat-icon mb-3 mx-auto d-flex align-items-center justify-content-center rounded-3 bg-primary bg-opacity-10 text-white" style="width: 56px; height: 56px;">
                 <i class="fa-solid fa-clipboard-list fs-4"></i>
               </div>
               <div class="fw-bold text-dark fs-2 mb-1">{{ totalMissions }}</div>
@@ -49,7 +49,7 @@
           </div>
           <div class="col-6 col-md-3">
             <div class="stat-card bg-white rounded-4 p-4 text-center border border-light shadow-sm hover-lift">
-              <div class="stat-icon mb-3 mx-auto d-flex align-items-center justify-content-center rounded-3 bg-success bg-opacity-10 text-success" style="width: 56px; height: 56px;">
+              <div class="stat-icon mb-3 mx-auto d-flex align-items-center justify-content-center rounded-3 bg-success bg-opacity-10 text-white" style="width: 56px; height: 56px;">
                 <i class="fa-solid fa-check-circle fs-4"></i>
               </div>
               <div class="fw-bold text-dark fs-2 mb-1">{{ completionRate }}%</div>
@@ -58,7 +58,7 @@
           </div>
           <div class="col-6 col-md-3">
             <div class="stat-card bg-white rounded-4 p-4 text-center border border-light shadow-sm hover-lift">
-              <div class="stat-icon mb-3 mx-auto d-flex align-items-center justify-content-center rounded-3 bg-danger bg-opacity-10 text-danger" style="width: 56px; height: 56px;">
+              <div class="stat-icon mb-3 mx-auto d-flex align-items-center justify-content-center rounded-3 bg-danger bg-opacity-10 text-white" style="width: 56px; height: 56px;">
                 <i class="fa-solid fa-star fs-4"></i>
               </div>
               <div class="fw-bold text-dark fs-2 mb-1">{{ avgRating }}/5</div>
@@ -155,7 +155,7 @@
                     </span>
                   </td>
                   <td>
-                    <span class="badge rounded-pill px-3 py-2 fw-bold" :class="getStatusClass(mission.trang_thai_nhiem_vu)">
+                    <span class="badge rounded-pill px-3 py-2 fw-bold text-white" :class="getStatusClass(mission.trang_thai_nhiem_vu)">
                       {{ getStatusText(mission.trang_thai_nhiem_vu) }}
                     </span>
                   </td>

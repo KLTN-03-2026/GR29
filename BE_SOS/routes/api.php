@@ -41,11 +41,15 @@ Route::get('/debug/token', function (Request $request) {
 });
 
 // =========================================
-// USER AUTH
+// USER AUTH (client)
 // =========================================
 Route::post('nguoi-dung/login', [NguoiDungController::class, 'login']);
 Route::post('nguoi-dung/register', [NguoiDungController::class, 'register']);
-Route::get('/nguoi-dung/check-client', [NguoiDungController::class, 'checkClient']);
+Route::middleware(['auth:nguoi-dung'])->group(function () {
+    Route::get('/nguoi-dung/check-client', [NguoiDungController::class, 'checkClient']);
+    Route::get('/client/profile/data', [NguoiDungController::class, 'getProfile']);
+    Route::post('/client/profile/update', [NguoiDungController::class, 'updateProfile']);
+});
 
 // =========================================
 // PASSWORD RESET
@@ -76,6 +80,9 @@ Route::put('loai-su-co/{id}/trang-thai', [LoaiSuCoController::class, 'updateStat
 Route::apiResource('yeu-cau-cuu-ho', YeuCauCuuHoController::class);
 Route::get('yeu-cau-cuu-ho/{id}/phan-loai', [YeuCauCuuHoController::class, 'getPhanLoai']);
 Route::get('yeu-cau-cuu-ho/{id}/hang-doi', [YeuCauCuuHoController::class, 'getHangDoi']);
+Route::get('yeu-cau-cuu-ho/{id}/theo-doi', [YeuCauCuuHoController::class, 'theoDoi']);
+Route::get('yeu-cau-cuu-ho/theo-doi/danh-sach', [YeuCauCuuHoController::class, 'theoDoiDanhSach']);
+Route::get('yeu-cau-cuu-ho/theo-doi/thay-doi', [YeuCauCuuHoController::class, 'theoDoiCapNhat']);
 Route::get('yeu-cau-cuu-ho/theo-trang-thai/{trang_thai}', [YeuCauCuuHoController::class, 'getByStatus']);
 Route::get('yeu-cau-cuu-ho/theo-muc-do-khan-cap/{muc_do}', [YeuCauCuuHoController::class, 'getByUrgency']);
 Route::post('yeu-cau-cuu-ho/tim-doi-gan-nhat', [YeuCauCuuHoController::class, 'timDoiGanNhat']);
@@ -124,7 +131,7 @@ Route::get('tim-kiem/doi-cuu-ho', [DoiCuuHoController::class, 'search']);
 // =========================================
 // ADMIN ONLY (requires admin auth)
 // =========================================
-Route::middleware(['auth:sanctum', 'check.admin'])->group(function () {
+Route::middleware(['auth:admin', 'check.admin'])->group(function () {
     Route::get('admin/profile', [AdminController::class, 'getProfile']);
     Route::post('admin/logout', [AdminController::class, 'logout']);
     Route::get('admin/list', [AdminController::class, 'index']);
@@ -136,8 +143,6 @@ Route::middleware(['auth:sanctum', 'check.admin'])->group(function () {
     Route::put('admin/change-status/{id}', [AdminController::class, 'changeStatus']);
     Route::put('admin/active/{id}', [AdminController::class, 'active']);
 
-    Route::get('/client/profile/data', [NguoiDungController::class, 'getProfile']);
-    Route::post('/client/profile/update', [NguoiDungController::class, 'updateProfile']);
     Route::get('nguoi-dung/list', [NguoiDungController::class, 'index']);
     Route::get('nguoi-dung/chi-tiet/{id}', [NguoiDungController::class, 'show']);
     Route::post('nguoi-dung/create', [NguoiDungController::class, 'store']);
@@ -159,9 +164,7 @@ Route::middleware(['auth:sanctum', 'check.admin'])->group(function () {
 
     Route::put('phan-cong-cuu-ho/{id}', [PhanCongCuuHoController::class, 'update']);
     Route::delete('phan-cong-cuu-ho/{id}', [PhanCongCuuHoController::class, 'destroy']);
-    Route::put('phan-cong-cuu-ho/{id}/trang-thai', [PhanCongCuuHoController::class, 'updateStatus']);
     Route::get('phan-cong-cuu-ho/theo-yeu-cau/{id_yeu_cau}', [PhanCongCuuHoController::class, 'getByYeuCau']);
-    Route::get('phan-cong-cuu-ho/theo-doi/{id_doi_cuu_ho}', [PhanCongCuuHoController::class, 'getByDoi']);
     Route::get('phan-cong-cuu-ho/theo-trang-thai/{trang_thai}', [PhanCongCuuHoController::class, 'getByStatus']);
 
     Route::put('doi-cuu-ho/{id}', [DoiCuuHoController::class, 'update']);
@@ -177,9 +180,11 @@ Route::middleware(['auth:sanctum', 'check.admin'])->group(function () {
 // =========================================
 // RESCUER / TEAM AUTH (requires rescuer or admin)
 // =========================================
-Route::middleware(['auth:sanctum', 'check.rescuer'])->group(function () {
+Route::middleware(['auth:thanh-vien-doi', 'check.rescuer'])->group(function () {
     // Rescue team operations
     Route::get('phan-cong-cuu-ho/theo-doi/{id_doi_cuu_ho}', [PhanCongCuuHoController::class, 'getByDoi']);
+    Route::get('phan-cong-cuu-ho/active/{id_doi_cuu_ho}', [PhanCongCuuHoController::class, 'getActiveAssignment']);
+    Route::put('phan-cong-cuu-ho/{id}/trang-thai', [PhanCongCuuHoController::class, 'updateStatus']);
 
     // Rescuer tiếp nhận nhiệm vụ
     Route::post('yeu-cau-cuu-ho/rescuer-nhan-yeu-cau', [YeuCauCuuHoController::class, 'resNhanYeuCau']);

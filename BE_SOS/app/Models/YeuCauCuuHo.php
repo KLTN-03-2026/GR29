@@ -96,4 +96,57 @@ class YeuCauCuuHo extends Model
     {
         return $this->vi_tri_dia_chi;
     }
+
+    /**
+     * Full image URL for frontend rendering.
+     * Handles both old path (uploads/hinh_anh/) and new path (uploads/anh_su_co/).
+     */
+    public function getHinhAnhUrlAttribute()
+    {
+        $path = $this->attributes['hinh_anh'] ?? null;
+
+        if (empty($path)) {
+            return null;
+        }
+
+        if (preg_match('/^https?:\/\//i', $path)) {
+            return $path;
+        }
+
+        $normalized = ltrim((string) $path, '/');
+
+        // Legacy rows may store only filename (e.g. image_5.jpg).
+        if (!str_contains($normalized, '/')) {
+            $candidates = [
+                'uploads/anh_su_co/' . $normalized,
+                'uploads/hinh_anh/' . $normalized,
+                $normalized,
+            ];
+
+            foreach ($candidates as $candidate) {
+                if (is_file(public_path($candidate))) {
+                    return url($candidate);
+                }
+            }
+
+            return null;
+        }
+
+        if (!is_file(public_path($normalized))) {
+            return null;
+        }
+
+        return url($normalized);
+    }
+
+    public function toArray()
+    {
+        $data = parent::toArray();
+
+        $fullUrl = $this->hinhAnhUrl;
+        $data['hinhAnhUrl'] = $fullUrl;
+        $data['imageUrl'] = $fullUrl;
+
+        return $data;
+    }
 }

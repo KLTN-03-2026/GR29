@@ -125,7 +125,36 @@ class PhanCongCuuHoController extends Controller
         ]);
 
         $newStatus = strtoupper(trim($validated['trang_thai_nhiem_vu']));
+
+        // BUSINESS RULE: prevent rescuer from accepting a second active request
+        // Only allow if transitioning from MOI/CHUA_TIEP_NHAN to DANG_XU_LY
+        $currentStatus = strtoupper(trim($item->trang_thai_nhiem_vu ?? ''));
+        if ($newStatus === 'DANG_XU_LY' && in_array($currentStatus, ['MOI', 'CHUA_TIEP_NHAN'])) {
+            $teamId = $item->id_doi_cuu_ho;
+
+            // Check if this team already has another active assignment
+            $hasActiveRequest = PhanCongCuuHo::where('id_doi_cuu_ho', $teamId)
+                ->whereIn('trang_thai_nhiem_vu', ['DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'])
+                ->where('id_phan_cong', '!=', $item->id_phan_cong)
+                ->exists();
+
+            if ($hasActiveRequest) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bạn đang có yêu cầu cần xử lí, hãy hoàn thành'
+                ], 400);
+            }
+        }
+
         $item->update(['trang_thai_nhiem_vu' => $newStatus]);
+
+        // When a team accepts (DANG_XU_LY), cancel all other pending assignments for the same request
+        if ($newStatus === 'DANG_XU_LY') {
+            PhanCongCuuHo::where('id_yeu_cau', $item->id_yeu_cau)
+                ->where('id_phan_cong', '!=', $item->id_phan_cong)
+                ->whereIn('trang_thai_nhiem_vu', ['MOI', 'CHUA_TIEP_NHAN', 'DA_PHAN_CONG'])
+                ->update(['trang_thai_nhiem_vu' => 'HUY_BO']);
+        }
 
         // Sync yeu_cau status based on assignment status transitions
         $yeuCau = $item->yeuCau;
@@ -165,6 +194,9 @@ class PhanCongCuuHoController extends Controller
     private function releaseTeamAfterCompletion(int $teamId)
     {
         // Count remaining active assignments for this team (excluding the one we just completed)
+        // Active = any status NOT in the terminal/completed statuses
+        // Terminal: MOI (mới phân công, chưa tiếp nhận), HOAN_THANH, THAT_BAI, HUY_BO
+        // Active: DANG_XU_LY, DA_PHAN_CONG, DA_DEN_HIEN_TRUONG
         $activeCount = PhanCongCuuHo::where('id_doi_cuu_ho', $teamId)
             ->whereNotIn('trang_thai_nhiem_vu', ['MOI', 'HOAN_THANH', 'THAT_BAI', 'HUY_BO'])
             ->count();
@@ -174,6 +206,31 @@ class PhanCongCuuHoController extends Controller
             DoiCuuHo::where('id_doi_cuu_ho', $teamId)
                 ->update(['trang_thai' => 'SAN_SANG']);
         }
+    }
+
+    /**
+     * Check if rescuer team already has an active assignment.
+     * Used by frontend to disable "Tiếp nhận" buttons when already handling a request.
+     *
+     * Route: GET phan-cong-cuu-ho/active/{teamId}
+     */
+    public function getActiveAssignment($teamId)
+    {
+        $active = PhanCongCuuHo::with([
+            'yeuCau.nguoiDung',
+            'yeuCau.loaiSuCo',
+            'doiCuuHo',
+            'ketQua'
+        ])
+            ->where('id_doi_cuu_ho', $teamId)
+            ->whereIn('trang_thai_nhiem_vu', ['DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'])
+            ->first();
+
+        return response()->json([
+            'success' => true,
+            'has_active' => $active !== null,
+            'active' => $active
+        ]);
     }
 
     /**

@@ -5,18 +5,23 @@ namespace App\Http\Controllers;
 use App\Http\Requests\YeuCauCuuHoRequest;
 use App\Models\{DoiCuuHo, YeuCauCuuHo, HangDoiXuLy, PhanLoaiAis, DuLieuHeatmap, PhanCongCuuHo, NguoiDung, LoaiSuCo};
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\DB;
 
 class YeuCauCuuHoController extends Controller
 {
     /**
-     * Tính khoảng cách Haversine giữa 2 điểm (lat/lng) theo km
+     * Tính khoảng cách Haversine giữa 2 điểm (lat/lng) theo km.
+     * Trả về số km (>= 0) nếu đủ tọa độ, hoặc null nếu thiếu dữ liệu.
      */
     private function haversineDistance(?float $lat1, ?float $lng1, ?float $lat2, ?float $lng2): ?float
     {
         if ($lat1 === null || $lng1 === null || $lat2 === null || $lng2 === null) {
             return null;
+        }
+        if ($lat1 == $lat2 && $lng1 == $lng2) {
+            return 0.0;
         }
         $R = 6371; // Bán kính trái đất km
         $dLat = deg2rad($lat2 - $lat1);
@@ -45,13 +50,17 @@ class YeuCauCuuHoController extends Controller
             }
         }
 
-        // Lấy tọa độ sự cố
-        $reqLat = $yeuCau ? floatval($yeuCau->vi_tri_lat ?? 0) : null;
-        $reqLng = $yeuCau ? floatval($yeuCau->vi_tri_lng ?? 0) : null;
+        // Lấy tọa độ sự cố — dùng null thay vì 0 để haversineDistance trả về null khi thiếu tọa độ
+        $reqLat = $yeuCau ? floatval($yeuCau->vi_tri_lat) : null;
+        $reqLng = $yeuCau ? floatval($yeuCau->vi_tri_lng) : null;
 
-        $allTeams = DoiCuuHo::with(['thanhViens', 'taiNguyens', 'loaiSuCos', 'viTris'])
-            ->whereIn('trang_thai', ['SAN_SANG', 'SanSang', 'Sẵn sàng'])
-            ->get();
+        $allTeams = DoiCuuHo::with([
+            'thanhViens',
+            'taiNguyens',
+            'loaiSuCos',
+            'viTris',
+            'phanCongs',
+        ])->get();
 
         // Hàm normalize quận
         $normalizeDistrict = function($value) {
@@ -75,28 +84,73 @@ class YeuCauCuuHoController extends Controller
             $loaiSuCoNames = $loaiSuCoList->map(fn($lsc) => $lsc->ten_danh_muc ?? $lsc->ten_loai_su_co ?? $lsc->ten_loai ?? '')->filter()->values()->toArray();
             $loaiSuCoIds = $loaiSuCoList->map(fn($lsc) => $lsc->id_loai_su_co ?? $lsc->id ?? null)->filter()->values()->toArray();
 
-            $cungLoaiSuCo = false;
-            if ($idLoaiSuCo) {
-                $idNum = is_numeric($idLoaiSuCo) ? (int) $idLoaiSuCo : null;
-                $cungLoaiSuCo = $idNum !== null && in_array($idNum, $loaiSuCoIds);
+            // Xác định cùng loại sự cố: true/false/null (null = chưa xác định)
+            $cungLoaiSuCo = null;
+            if ($idLoaiSuCo && is_numeric($idLoaiSuCo)) {
+                $idNum = (int) $idLoaiSuCo;
+                $cungLoaiSuCo = in_array($idNum, array_map('intval', $loaiSuCoIds), true);
             }
 
             // Tính cung_quan: so sánh quận của đội với quận của sự cố
+            // Fix: so sánh bằng normalized string để tránh lỗi encoding/khoảng trắng
             $cungQuan = false;
             if ($reqDistrict) {
                 $teamDistrict = $normalizeDistrict($team->khu_vuc_quan_ly ?? '');
-                $cungQuan = $teamDistrict === $reqDistrict;
+                // Ép về cùng 1 dạng chuẩn: lowercase + remove dấu + khoảng trắng
+                $normReq = $normalizeDistrict($reqDistrict);
+                $normTeam = $normalizeDistrict($teamDistrict);
+                $cungQuan = $normReq === $normTeam;
             }
 
             $teamLat = floatval($team->vi_tri_lat ?? null);
             $teamLng = floatval($team->vi_tri_lng ?? null);
 
-            // Ưu tiên vị trí mới nhất từ bảng vi_tri_doi_cuu_ho (đội di chuyển)
+            // Tính khoảng cách cho TẤT CẢ viTri và lấy MIN (đội có thể di chuyển nhiều điểm)
+            // Nếu chỉ lấy viTri mới nhất (sortByDesc id) → sẽ sai khi viTri mới nhất lại ở xa hơn
             if ($team->viTris && $team->viTris->count() > 0) {
-                $latestViTri = $team->viTris->sortByDesc('id')->first();
-                $teamLat = floatval($latestViTri->vi_tri_lat ?? $teamLat);
-                $teamLng = floatval($latestViTri->vi_tri_lng ?? $teamLng);
+                $khoangCachs = $team->viTris->map(function ($vt) use ($reqLat, $reqLng) {
+                    return $this->haversineDistance($reqLat, $reqLng, floatval($vt->vi_tri_lat), floatval($vt->vi_tri_lng));
+                })->filter(fn($d) => $d !== null);
+                $khoangCachMin = $khoangCachs->min();
+                // Ưu tiên khoảng cách từ viTri, fallback về HQ
+                $teamLat = floatval($team->vi_tris_first?->vi_tri_lat ?? $teamLat);
+                $teamLng = floatval($team->vi_tris_first?->vi_tri_lng ?? $teamLng);
+                if ($khoangCachMin !== null) {
+                    $teamLat = null; // đánh dấu đã dùng viTri
+                    $teamLng = null;
+                }
             }
+            // $khoang_cach_km sẽ dùng MIN khoảng cách từ tất cả viTri
+            $khoangCachTuViTri = null;
+            if ($team->viTris && $team->viTris->count() > 0) {
+                $khoangCachTuViTri = $team->viTris
+                    ->map(fn($vt) => $this->haversineDistance($reqLat, $reqLng, floatval($vt->vi_tri_lat), floatval($vt->vi_tri_lng)))
+                    ->filter(fn($d) => $d !== null)
+                    ->min();
+            }
+            $khoangCachTuHQ = $this->haversineDistance($reqLat, $reqLng, $team->vi_tri_lat, $team->vi_tri_lng);
+            $khoangCachCuoi = $khoangCachTuViTri !== null ? $khoangCachTuViTri : $khoangCachTuHQ;
+
+            $soThanhVien = $team->thanhViens ? $team->thanhViens->count() : 0;
+            $sucChuaToiDa = $soThanhVien * 3;
+
+            // soYeuCauDangXuLy: count of assignments where status IN (DANG_XU_LY, DA_PHAN_CONG)
+            $activeStatuses = ['DANG_XU_LY', 'DA_PHAN_CONG'];
+            $phanCongList = $team->phanCongs ?? collect();
+            $soYeuCauDangXuLy = $phanCongList
+                ->filter(fn($pc) => in_array(strtoupper(trim($pc->trang_thai_nhiem_vu ?? '')), $activeStatuses, true))
+                ->count();
+
+            // Determine team capacity status: 'overload' if soYeuCauDangXuLy >= sucChuaToiDa, else 'available'
+            $trangThaiTheoNangLuc = $soYeuCauDangXuLy >= $sucChuaToiDa && $sucChuaToiDa > 0 ? 'overload' : 'available';
+
+            // DEBUG LOG
+            Log::channel('daily')->info('[TIMDOI-CAPACITY] teamId=' . $team->id_doi_cuu_ho
+                . ' | soThanhVien=' . $soThanhVien
+                . ' | soYeuCauDangXuLy=' . $soYeuCauDangXuLy
+                . ' | sucChuaToiDa=' . $sucChuaToiDa
+                . ' | trangThaiTheoNangLuc=' . $trangThaiTheoNangLuc
+                . ' | statuses=' . json_encode($phanCongList->pluck('trang_thai_nhiem_vu')->toArray()));
 
             $teamData = [
                 'id'                     => $team->id_doi_cuu_ho,
@@ -106,13 +160,18 @@ class YeuCauCuuHoController extends Controller
                 'trang_thai'            => $trangThai,
                 'trang_thai_goc'        => $team->trang_thai,
                 'thanh_viens'           => $team->thanhViens,
+                'phan_congs'            => $phanCongList->toArray(),
                 'tai_nguyens'           => $team->taiNguyens->map(fn($t) => [
                     'ten_tai_nguyen' => $t->ten_tai_nguyen,
                 ]),
                 'loai_su_co'      => $loaiSuCoNames,
                 'cung_loai_su_co' => $cungLoaiSuCo,
                 'cung_quan'       => $cungQuan,
-                'khoang_cach_km'  => $this->haversineDistance($reqLat, $reqLng, $teamLat ?: null, $teamLng ?: null),
+                'khoang_cach_km'  => $khoangCachCuoi,
+                // Capacity fields — source of truth for frontend
+                'active_count'           => $soYeuCauDangXuLy,
+                'capacity'              => $sucChuaToiDa,
+                'trang_thai_theo_nang_luc' => $trangThaiTheoNangLuc,
             ];
 
             $allTeamsList[] = $teamData;
@@ -125,13 +184,16 @@ class YeuCauCuuHoController extends Controller
         // 4. Khác type + khác quận  (score 0)
         // Trong cùng score: gần nhất trước
         usort($allTeamsList, function($a, $b) {
-            $scoreA = ($a['cung_loai_su_co'] ? 2 : 0) + ($a['cung_quan'] ? 1 : 0);
-            $scoreB = ($b['cung_loai_su_co'] ? 2 : 0) + ($b['cung_quan'] ? 1 : 0);
+            $scoreA = ($a['cung_loai_su_co'] === true ? 2 : ($a['cung_loai_su_co'] === false ? 0 : 1))
+                    + ($a['cung_quan'] ? 1 : 0);
+            $scoreB = ($b['cung_loai_su_co'] === true ? 2 : ($b['cung_loai_su_co'] === false ? 0 : 1))
+                    + ($b['cung_quan'] ? 1 : 0);
 
             if ($scoreA !== $scoreB) {
                 return $scoreB - $scoreA; // cao hơn lên trước
             }
 
+            // null distance = chưa xác định → đẩy xuống cuối
             $distA = $a['khoang_cach_km'] ?? PHP_FLOAT_MAX;
             $distB = $b['khoang_cach_km'] ?? PHP_FLOAT_MAX;
             return $distA <=> $distB; // gần hơn lên trước
@@ -340,8 +402,8 @@ class YeuCauCuuHoController extends Controller
             if ($request->hasFile('hinh_anh')) {
                 $file = $request->file('hinh_anh');
                 $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                $file->move(public_path('uploads/hinh_anh'), $filename);
-                $hinhAnhPath = 'uploads/hinh_anh/' . $filename;
+                $file->move(public_path('uploads/anh_su_co'), $filename);
+                $hinhAnhPath = 'uploads/anh_su_co/' . $filename;
             }
 
             $item = YeuCauCuuHo::create([
@@ -495,6 +557,15 @@ class YeuCauCuuHoController extends Controller
     {
         try {
             $item = YeuCauCuuHo::findOrFail($id);
+
+            // Cannot cancel/delete if request is already being processed
+            $normalized = $this->normalizeTrangThaiYeuCau($item->trang_thai);
+            if (in_array($normalized, ['DA_PHAN_CONG', 'DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'], true)) {
+                return Response::json([
+                    'success' => false,
+                    'message' => 'Yêu cầu đang được xử lý, không thể hủy'
+                ], 422);
+            }
 
             // Delete related processing queue entries
             HangDoiXuLy::where('id_yeu_cau', $id)->delete();
@@ -1212,6 +1283,321 @@ class YeuCauCuuHoController extends Controller
                 'message' => 'Lỗi khi lấy dữ liệu: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Get real-time tracking data for a specific rescue request.
+     * Includes request details, assigned teams, their member statuses, and timeline.
+     *
+     * Route: GET api/yeu-cau-cuu-ho/{id}/theo-doi
+     *
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function theoDoi($id)
+    {
+        try {
+            $yeuCau = YeuCauCuuHo::with([
+                'nguoiDung',
+                'loaiSuCo',
+                'phanCongs.doiCuuHo.thanhViens',
+                'phanCongs.ketQua',
+            ])->findOrFail($id);
+
+            $phanCongs = $yeuCau->phanCongs ?? collect();
+
+            // Build timeline based on the rescue request's overall status
+            $overallStatus = $this->normalizeTrangThaiYeuCau($yeuCau->trang_thai);
+            $timeline = $this->buildTimeline($yeuCau, $phanCongs);
+
+            // Build per-team data
+            $teamsData = $phanCongs->map(function ($pc) {
+                $team = $pc->doiCuuHo;
+                $pcStatus = $this->normalizeTrangThaiNhiemVu($pc->trang_thai_nhiem_vu);
+
+                $members = [];
+                if ($team && $team->thanhViens) {
+                    foreach ($team->thanhViens as $thanhVien) {
+                        $members[] = [
+                            'id'           => $thanhVien->id_thanh_vien ?? $thanhVien->id,
+                            'ho_ten'       => $thanhVien->ho_ten ?? $thanhVien->name ?? 'N/A',
+                            'so_dien_thoai' => $thanhVien->so_dien_thoai ?? '',
+                            'trang_thai'   => $thanhVien->trang_thai ?? 'active',
+                        ];
+                    }
+                }
+
+                // Resolve location: use latest position if available
+                $viTriLat = $team->vi_tri_lat ?? null;
+                $viTriLng = $team->vi_tri_lng ?? null;
+                if ($team->viTris && $team->viTris->count() > 0) {
+                    $latest = $team->viTris->sortByDesc('id')->first();
+                    $viTriLat = $latest->vi_tri_lat ?? $viTriLat;
+                    $viTriLng = $latest->vi_tri_lng ?? $viTriLng;
+                }
+
+                return [
+                    'id_phan_cong'         => $pc->id_phan_cong ?? $pc->id,
+                    'id_doi'              => $team ? ($team->id_doi_cuu_ho ?? $team->id) : null,
+                    'ten_doi'             => $team ? ($team->ten_co ?? 'Đội không tên') : 'Không xác định',
+                    'sdt_hotline'         => $team ? ($team->so_dien_thoai_hotline ?? '') : '',
+                    'khu_vuc'            => $team ? ($team->khu_vuc_quan_ly ?? '') : '',
+                    'trang_thai_nhiem_vu' => $pcStatus,
+                    'thoi_gian_phan_cong' => $pc->created_at ? $pc->created_at->toISOString() : null,
+                    'thoi_gian_tiep_nhan' => $pc->thoi_gian_tiep_nhan ?? null,
+                    'thanh_viens'         => $members,
+                    'vi_tri_lat'          => $viTriLat,
+                    'vi_tri_lng'          => $viTriLng,
+                    'ket_qua'            => $pc->ketQua ? [
+                        'noi_dung'      => $pc->ketQua->noi_dung ?? '',
+                        'thoi_gian_hoan_thanh' => $pc->ketQua->thoi_gian_hoan_thanh ?? null,
+                    ] : null,
+                ];
+            });
+
+            // Determine current step in timeline
+            $currentStepIndex = $this->getCurrentStepIndex($overallStatus, $phanCongs);
+
+            $result = [
+                'id'                          => $yeuCau->id_yeu_cau ?? $yeuCau->id,
+                'id_yeu_cau'                  => $yeuCau->id_yeu_cau ?? $yeuCau->id,
+                'loai_su_co'                  => $yeuCau->loaiSuCo ? [
+                    'id'   => $yeuCau->loaiSuCo->id_loai_su_co ?? $yeuCau->loaiSuCo->id,
+                    'ten'  => $yeuCau->loaiSuCo->ten_danh_muc ?? $yeuCau->loaiSuCo->ten_loai_su_co ?? $yeuCau->loaiSuCo->ten_loai ?? 'N/A',
+                ] : null,
+                'vi_tri_dia_chi'              => $yeuCau->vi_tri_dia_chi ?? '',
+                'vi_tri_lat'                  => $yeuCau->vi_tri_lat ? floatval($yeuCau->vi_tri_lat) : null,
+                'vi_tri_lng'                  => $yeuCau->vi_tri_lng ? floatval($yeuCau->vi_tri_lng) : null,
+                'muc_do_khan_cap'            => $yeuCau->muc_do_khan_cap ?? 'MEDIUM',
+                'mo_ta'                      => $yeuCau->mo_ta ?? '',
+                'chi_tiet'                   => $yeuCau->chi_tiet ?? '',
+                'trang_thai'                 => $overallStatus,
+                'thoi_gian_tao'             => $yeuCau->created_at ? $yeuCau->created_at->toISOString() : null,
+                'thoi_gian_cap_nhat'         => $yeuCau->updated_at ? $yeuCau->updated_at->toISOString() : null,
+                'nguoi_yeu_cau'             => $yeuCau->nguoiDung ? [
+                    'id'    => $yeuCau->nguoiDung->id_nguoi_dung ?? $yeuCau->nguoiDung->id,
+                    'ho_ten' => $yeuCau->nguoiDung->ho_ten ?? $yeuCau->nguoiDung->name ?? 'N/A',
+                    'so_dien_thoai' => $yeuCau->nguoiDung->so_dien_thoai ?? '',
+                ] : null,
+                'phan_congs'                  => $teamsData,
+                'timeline'                   => $timeline,
+                'current_step_index'         => $currentStepIndex,
+            ];
+
+            return Response::json([
+                'success' => true,
+                'message' => 'Dữ liệu theo dõi cứu hộ',
+                'data'    => $result,
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Yêu cầu cứu hộ không tồn tại',
+            ], 404);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi khi lấy dữ liệu theo dõi: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get delta updates since a given timestamp.
+     * Returns only items that have been created or modified after `since`.
+     * Items that have disappeared (completed/cancelled) are flagged with `removed: true`.
+     * Optimized for real-time UI sync with minimal bandwidth.
+     *
+     * Route: GET api/yeu-cau-cuu-ho/theo-doi/thay-doi
+     *
+     * @param Request $request  ?since=ISO8601 timestamp
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function theoDoiCapNhat(Request $request)
+    {
+        try {
+            $since = $request->get('since');
+
+            // Full active list (for comparison / initial load fallback)
+            $items = YeuCauCuuHo::with([
+                'nguoiDung',
+                'loaiSuCo',
+                'phanCongs.doiCuuHo',
+            ])
+                ->whereIn('trang_thai', ['DA_PHAN_CONG', 'DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'])
+                ->orderBy('updated_at', 'desc')
+                ->get();
+
+            $data = $items->map(function ($item) {
+                $phanCong = $item->phanCongs->first();
+                $team = $phanCong?->doiCuuHo;
+
+                return [
+                    'id'                  => $item->id_yeu_cau ?? $item->id,
+                    'id_yeu_cau'         => $item->id_yeu_cau ?? $item->id,
+                    'loai_su_co'         => $item->loaiSuCo ? ($item->loaiSuCo->ten_danh_muc ?? 'N/A') : 'N/A',
+                    'vi_tri_dia_chi'     => $item->vi_tri_dia_chi ?? '',
+                    'trang_thai'         => $item->trang_thai,
+                    'muc_do_khan_cap'    => $item->muc_do_khan_cap ?? 'MEDIUM',
+                    'thoi_gian_tao'      => $item->created_at ? $item->created_at->toISOString() : null,
+                    'thoi_gian_cap_nhat' => $item->updated_at ? $item->updated_at->toISOString() : null,
+                    'nguoi_yeu_cau'    => $item->nguoiDung ? [
+                        'ho_ten'       => $item->nguoiDung->ho_ten ?? $item->nguoiDung->name ?? 'N/A',
+                        'so_dien_thoai' => $item->nguoiDung->so_dien_thoai ?? '',
+                    ] : null,
+                    'doi_cuu_ho'       => $team ? [
+                        'id'    => $team->id_doi_cuu_ho ?? $team->id,
+                        'ten_co' => $team->ten_co ?? 'N/A',
+                        'sdt'   => $team->so_dien_thoai_hotline ?? '',
+                    ] : null,
+                    'phan_cong_count'   => $item->phanCongs->count(),
+                ];
+            });
+
+            $serverTime = now()->toISOString();
+            $currentIds = $data->pluck('id')->toArray();
+
+            // If caller provided `since`, compute which items disappeared
+            $removedIds = [];
+            if ($since) {
+                $beforeIds = YeuCauCuuHo::with('phanCongs.doiCuuHo')
+                    ->whereIn('trang_thai', ['DA_PHAN_CONG', 'DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'])
+                    ->where('updated_at', '<', $since)
+                    ->pluck('id_yeu_cau')
+                    ->toArray();
+
+                // Items that existed before but aren't in the current list → they completed/cancelled
+                $currentIdSet = array_flip($currentIds);
+                $removedIds = array_values(array_filter($beforeIds, fn($id) => !isset($currentIdSet[$id])));
+            }
+
+            return Response::json([
+                'success' => true,
+                'message' => 'Cập nhật theo dõi',
+                'server_time' => $serverTime,
+                'items' => $data,
+                'removed_ids' => $removedIds,
+            ], 200);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi khi lấy cập nhật: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get rescue requests actively being processed (for the tracking list).
+     *
+     * Route: GET api/yeu-cau-cuu-ho/theo-doi/danh-sach
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function theoDoiDanhSach()
+    {
+        try {
+            $items = YeuCauCuuHo::with([
+                'nguoiDung',
+                'loaiSuCo',
+                'phanCongs.doiCuuHo',
+            ])
+                ->whereIn('trang_thai', ['DA_PHAN_CONG', 'DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'])
+                ->orderBy('updated_at', 'desc')
+                ->get();
+
+            $data = $items->map(function ($item) {
+                $phanCong = $item->phanCongs->first();
+                $team = $phanCong?->doiCuuHo;
+
+                return [
+                    'id'                => $item->id_yeu_cau ?? $item->id,
+                    'id_yeu_cau'        => $item->id_yeu_cau ?? $item->id,
+                    'loai_su_co'        => $item->loaiSuCo ? ($item->loaiSuCo->ten_danh_muc ?? 'N/A') : 'N/A',
+                    'vi_tri_dia_chi'    => $item->vi_tri_dia_chi ?? '',
+                    'trang_thai'        => $item->trang_thai,
+                    'muc_do_khan_cap'   => $item->muc_do_khan_cap ?? 'MEDIUM',
+                    'thoi_gian_tao'     => $item->created_at ? $item->created_at->toISOString() : null,
+                    'thoi_gian_cap_nhat' => $item->updated_at ? $item->updated_at->toISOString() : null,
+                    'nguoi_yeu_cau'    => $item->nguoiDung ? [
+                        'ho_ten'       => $item->nguoiDung->ho_ten ?? $item->nguoiDung->name ?? 'N/A',
+                        'so_dien_thoai' => $item->nguoiDung->so_dien_thoai ?? '',
+                    ] : null,
+                    'doi_cuu_ho'       => $team ? [
+                        'id'    => $team->id_doi_cuu_ho ?? $team->id,
+                        'ten_co' => $team->ten_co ?? 'N/A',
+                        'sdt'   => $team->so_dien_thoai_hotline ?? '',
+                    ] : null,
+                    'phan_cong_count'   => $item->phanCongs->count(),
+                ];
+            });
+
+            return Response::json([
+                'success' => true,
+                'message' => 'Danh sách yêu cầu đang theo dõi',
+                'data'    => $data,
+            ], 200);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi khi lấy danh sách theo dõi: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function normalizeTrangThaiNhiemVu(?string $value): string
+    {
+        if ($value === null) return 'MOI';
+        $v = strtoupper(trim($value));
+        return match ($v) {
+            'MOI'                => 'MOI',
+            'DANG_XU_LY'        => 'DANG_XU_LY',
+            'DA_DEN_HIEN_TRUONG' => 'DA_DEN_HIEN_TRUONG',
+            'HOAN_THANH'        => 'HOAN_THANH',
+            'HUY_BO'            => 'HUY_BO',
+            default              => $value,
+        };
+    }
+
+    private function buildTimeline($yeuCau, $phanCongs)
+    {
+        $createdAt = $yeuCau->created_at;
+        $pc = $phanCongs->first();
+        $pcCreatedAt = $pc?->created_at;
+        $pcAcceptedAt = isset($pc->thoi_gian_tiep_nhan) ? new \DateTime($pc->thoi_gian_tiep_nhan) : null;
+        $pcArriveAt = null;
+        $pcCompleteAt = null;
+
+        $pcStatus = $this->normalizeTrangThaiNhiemVu($pc?->trang_thai_nhiem_vu);
+
+        if ($pcStatus === 'DA_DEN_HIEN_TRUONG' || $yeuCau->trang_thai === 'DA_DEN_HIEN_TRUONG') {
+            $pcArriveAt = $pc?->updated_at;
+        }
+        if ($pcStatus === 'HOAN_THANH' || $yeuCau->trang_thai === 'HOAN_THANH') {
+            $pcCompleteAt = $pc?->ketQua?->thoi_gian_hoan_thanh
+                ? new \DateTime($pc->ketQua->thoi_gian_hoan_thanh)
+                : $pc?->updated_at;
+        }
+
+        $f = fn($dt) => $dt ? $dt->format('H:i - d/m/Y') : '';
+
+        return [
+            ['title' => 'Tiếp nhận yêu cầu',   'time' => $f($createdAt),             'status' => 'done'],
+            ['title' => 'Đã phân công cứu hộ',  'time' => $f($pcCreatedAt),           'status' => 'done'],
+            ['title' => 'Đang di chuyển',       'time' => $pcAcceptedAt ? $f($pcAcceptedAt) : '',   'status' => 'current'],
+            ['title' => 'Đã tới hiện trường',    'time' => $pcArriveAt ? $f($pcArriveAt) : '',      'status' => 'pending'],
+            ['title' => 'Hoàn thành sự cố',      'time' => $pcCompleteAt ? $f($pcCompleteAt) : '',   'status' => 'pending'],
+        ];
+    }
+
+    private function getCurrentStepIndex(string $overallStatus, $phanCongs)
+    {
+        $pcStatus = $this->normalizeTrangThaiNhiemVu($phanCongs->first()?->trang_thai_nhiem_vu);
+
+        if ($overallStatus === 'HOAN_THANH' || $pcStatus === 'HOAN_THANH') return 4;
+        if ($overallStatus === 'DA_DEN_HIEN_TRUONG' || $pcStatus === 'DA_DEN_HIEN_TRUONG') return 3;
+        if ($pcStatus === 'DANG_XU_LY' || $overallStatus === 'DANG_XU_LY') return 2;
+        if ($pcStatus === 'MOI' || $overallStatus === 'DA_PHAN_CONG') return 1;
+        return 0;
     }
 
     /**

@@ -8,17 +8,17 @@
           <div class="bg-shape bg-danger rounded-circle position-absolute opacity-10" style="width: 180px; height: 180px; top: -80px; right: -60px;"></div>
           <div class="d-flex align-items-center justify-content-between position-relative z-1">
             <div class="d-flex align-items-center">
-              <div class="icon-box bg-danger bg-opacity-10 text-danger me-3 d-flex align-items-center justify-content-center rounded-3" style="width: 48px; height: 48px;">
+              <div class="icon-box bg-danger bg-opacity-10 text-white me-3 d-flex align-items-center justify-content-center rounded-3" style="width: 48px; height: 48px;">
                 <i class="fa-solid fa-spinner fa-spin fs-5"></i>
               </div>
               <div>
                 <h5 class="fw-bolder mb-1 text-dark">Nhiệm Vụ Đang Xử Lý</h5>
-                <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-3 py-1 small fw-bold">
+                <span class="badge bg-danger bg-opacity-10 text-white rounded-pill px-3 py-1 small fw-bold">
                   <span class="pulse-dot bg-danger me-1"></span> ĐANG XỬ LÝ
                 </span>
               </div>
             </div>
-            <router-link to="/rescuer/home" class="btn btn-sm btn-outline-secondary rounded-circle">
+            <router-link to="/rescuer/home" class="btn btn-sm btn-outline-secondary text-white rounded-circle">
               <i class="fa-solid fa-arrow-left"></i>
             </router-link>
           </div>
@@ -287,6 +287,8 @@ export default {
       reinforceMessage: '',
       submittingReinforce: false,
       teamId: null,
+      pollInterval: null,
+      isSyncing: false,
     };
   },
   async mounted() {
@@ -299,13 +301,78 @@ export default {
         this.reinforceModalEl = document.getElementById('reinforceModal');
       }
     });
+    this.startPolling();
   },
   beforeUnmount() {
+    this.stopPolling();
     if (this.map) {
       this.map.remove();
     }
   },
   methods: {
+    // ─── Smart Delta Polling (15s) ─────────────────────────────────────────────
+    // Only polls while a mission is active. Fetches the single active assignment
+    // by team ID (targeted call, not the full list), then updates in-place.
+    startPolling() {
+      this.stopPolling();
+      // Poll every 15s — only matters while there's an active mission
+      this.pollInterval = setInterval(() => {
+        this.pollMissionStatus();
+      }, 15000);
+    },
+    stopPolling() {
+      if (this.pollInterval) {
+        clearInterval(this.pollInterval);
+        this.pollInterval = null;
+      }
+    },
+    async pollMissionStatus() {
+      if (this.isSyncing || !this.currentMission) return;
+      this.isSyncing = true;
+      try {
+        const teamId = this.teamId;
+        if (!teamId) {
+          this.stopPolling();
+          return;
+        }
+
+        // Dùng getActiveAssignment — endpoint rescuer chuyên dụng
+        let assignment = null;
+        try {
+          const resp = await rescuerAPI.getActiveAssignment(teamId);
+          const d = resp?.data;
+          // Hỗ trợ format { has_active, data } hoặc trực tiếp object
+          if (d?.has_active === true && d?.active?.id_phan_cong) {
+            assignment = d.active;
+          } else if (d?.id_phan_cong) {
+            assignment = d;
+          }
+        } catch {
+          assignment = null;
+        }
+
+        if (!assignment) {
+          // Mission completed / cancelled by admin — navigate away
+          this.stopPolling();
+          this.currentMission = null;
+          toaster.info("Nhiệm vụ đã hoàn thành hoặc bị hủy.");
+          return;
+        }
+
+        // Detect status changes
+        const newStatus = assignment.trang_thai_nhiem_vu || "";
+        const oldStatus = this.currentMission.trang_thai_nhiem_vu || "";
+        if (newStatus !== oldStatus) {
+          this.currentMission = assignment;
+          this.updateMissionStep();
+          this.updateMapMission();
+        }
+      } catch (e) {
+        // Silent — don't interrupt user
+      } finally {
+        this.isSyncing = false;
+      }
+    },
     loadTeamData() {
       const teamStr = localStorage.getItem("rescuer_team");
       if (teamStr) {
@@ -319,74 +386,98 @@ export default {
         }
       }
     },
-    async loadActiveMission() {
-      this.loading = true;
+    async loadActiveMission(silent = false) {
+      if (!silent) this.loading = true;
       try {
         let teamId = this.teamId;
         if (!teamId) {
           const teamStr = localStorage.getItem("rescuer_team");
           if (teamStr) {
-            const team = JSON.parse(teamStr);
-            teamId = team.id_doi_cuu_ho || team.id;
-          }
-        }
-
-        let assignments = [];
-        if (teamId) {
-          const res = await rescuerAPI.getAssignmentByTeam(teamId, { per_page: 100 });
-          if (res.data && res.data.data) {
-            assignments = res.data.data.data || res.data.data;
-          }
-        } else {
-          const res = await rescuerAPI.getAssignments({ per_page: 100 });
-          if (res.data && res.data.data) {
-            assignments = res.data.data.data || res.data.data;
+            try {
+              const team = JSON.parse(teamStr);
+              teamId = team.id_doi_cuu_ho || team.id;
+              this.teamId = teamId;
+            } catch (e) {
+              console.error('Lỗi parse team data:', e);
+            }
           }
         }
 
         this.currentMission = null;
         this.missionStep = 1;
 
-        if (Array.isArray(assignments)) {
-          for (let i = 0; i < assignments.length; i++) {
-            const item = assignments[i];
-            const status = item.trang_thai_nhiem_vu || '';
-            if (status === 'DANG_XU_LY') {
-              this.currentMission = item;
-              this.missionStep = 2;
-              break;
-            } else if (status === 'DA_DEN_HIEN_TRUONG' && !this.currentMission) {
-              this.currentMission = item;
-              this.missionStep = 3;
-              break;
-            }
+        if (!teamId) {
+          console.warn('[DangXuLy] Không có teamId — không thể tải nhiệm vụ');
+          return;
+        }
+
+        // Bước 1: thử dùng getActiveAssignment (API rescuer chuyên dụng)
+        try {
+          const activeRes = await rescuerAPI.getActiveAssignment(teamId);
+          const activeData = activeRes?.data;
+          console.log('[DangXuLy] getActiveAssignment response:', activeData);
+
+          // Backend trả về { success, has_active, active: {...} }
+          let activeAssignment = null;
+          if (activeData?.has_active === true && activeData?.active) {
+            activeAssignment = activeData.active;
+          } else if (activeData?.id_phan_cong) {
+            activeAssignment = activeData;
+          }
+
+          if (activeAssignment && activeAssignment.id_phan_cong) {
+            const status = activeAssignment.trang_thai_nhiem_vu || '';
+            this.currentMission = activeAssignment;
+            if (status === 'DANG_XU_LY') this.missionStep = 2;
+            else if (status === 'DA_DEN_HIEN_TRUONG') this.missionStep = 3;
+            else this.missionStep = 2;
+            console.log('[DangXuLy] currentMission (from active):', this.currentMission);
+            return; // Tìm được — không cần fallback
+          }
+        } catch (activeErr) {
+          console.warn('[DangXuLy] getActiveAssignment failed, thử fallback:', activeErr?.response?.status);
+        }
+
+        // Bước 2: fallback — lấy danh sách theo team rồi filter theo trạng thái
+        const res = await rescuerAPI.getAssignmentByTeam(teamId, { per_page: 100 });
+        console.log('[DangXuLy] getAssignmentByTeam raw response:', res?.data);
+
+        // Hỗ trợ cả 2 format: paginated { data: { data: [...] } } hoặc { data: [...] }
+        let assignments = [];
+        const rd = res?.data;
+        if (Array.isArray(rd)) {
+          assignments = rd;
+        } else if (Array.isArray(rd?.data)) {
+          assignments = rd.data;
+        } else if (rd?.data && Array.isArray(rd.data.data)) {
+          assignments = rd.data.data;
+        } else if (rd?.data?.data) {
+          assignments = rd.data.data;
+        }
+
+        console.log('[DangXuLy] assignments parsed:', assignments.length, assignments.map(a => ({ id: a.id_phan_cong, status: a.trang_thai_nhiem_vu })));
+
+        for (const item of assignments) {
+          const status = (item.trang_thai_nhiem_vu || '').trim();
+          if (status === 'DANG_XU_LY') {
+            this.currentMission = item;
+            this.missionStep = 2;
+            break;
+          } else if (status === 'DA_DEN_HIEN_TRUONG') {
+            this.currentMission = item;
+            this.missionStep = 3;
+            break;
           }
         }
 
-        if (!this.currentMission) {
-          const allRes = await rescuerAPI.getAssignments({ per_page: 100 });
-          if (allRes.data && allRes.data.data) {
-            const all = allRes.data.data.data || allRes.data.data;
-            for (let i = 0; i < all.length; i++) {
-              const item = all[i];
-              const status = item.trang_thai_nhiem_vu || '';
-              if (status === 'DANG_XU_LY') {
-                this.currentMission = item;
-                this.missionStep = 2;
-                break;
-              } else if (status === 'DA_DEN_HIEN_TRUONG' && !this.currentMission) {
-                this.currentMission = item;
-                this.missionStep = 3;
-                break;
-              }
-            }
-          }
-        }
+        console.log('[DangXuLy] currentMission (from list):', this.currentMission);
       } catch (e) {
         console.error("Lỗi tải nhiệm vụ:", e);
       } finally {
         this.loading = false;
-        this.updateMapMission();
+        if (!silent) {
+          this.updateMapMission();
+        }
       }
     },
     async markArrived() {
@@ -395,12 +486,19 @@ export default {
         await rescuerAPI.updateAssignmentStatus(this.currentMission.id_phan_cong, {
           trang_thai_nhiem_vu: 'DA_DEN_HIEN_TRUONG'
         });
-        this.missionStep = 3;
+        this.currentMission = { ...this.currentMission, trang_thai_nhiem_vu: 'DA_DEN_HIEN_TRUONG' };
+        this.updateMissionStep();
         toaster.success("Đã cập nhật: Đã đến hiện trường");
       } catch (e) {
         console.error("Lỗi cập nhật:", e);
         toaster.error("Không thể cập nhật trạng thái");
       }
+    },
+    updateMissionStep() {
+      const status = this.currentMission?.trang_thai_nhiem_vu || "";
+      if (status === "DANG_XU_LY") this.missionStep = 2;
+      else if (status === "DA_DEN_HIEN_TRUONG") this.missionStep = 3;
+      else this.missionStep = 1;
     },
     openReportModal() {
       this.reportResult = 'success';
@@ -539,7 +637,7 @@ export default {
       this.teamMarker = L.marker([lat, lng], { icon: icon }).addTo(this.map);
       this.teamMarker.bindPopup('<b>Vị trí đội của bạn</b>');
     },
-    updateMapMission() {
+    async updateMapMission() {
       if (!this.map || !this.currentMission) return;
 
       const lat = this.currentMission.yeu_cau && this.currentMission.yeu_cau.vi_tri_lat;
@@ -570,13 +668,41 @@ export default {
         `);
 
         if (this.teamLat && this.teamLng) {
-          if (this.routeLine) this.map.removeLayer(this.routeLine);
-          this.routeLine = L.polyline([[this.teamLat, this.teamLng], [lat, lng]], {
-            color: '#2563eb', weight: 4, opacity: 0.7, dashArray: '10, 10',
-          }).addTo(this.map);
+          await this.drawRoute(this.teamLat, this.teamLng, lat, lng);
         }
 
         this.map.flyTo([lat, lng], 15);
+      }
+    },
+    async drawRoute(lat1, lng1, lat2, lng2) {
+      if (this.routeLine) {
+        this.map.removeLayer(this.routeLine);
+        this.routeLine = null;
+      }
+      try {
+        const response = await fetch(
+          `https://router.project-osrm.org/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=full&geometries=geojson`
+        );
+        const data = await response.json();
+        if (data.routes && data.routes.length > 0) {
+          const coordinates = data.routes[0].geometry.coordinates;
+          const routeCoords = coordinates.map(coord => [coord[1], coord[0]]);
+          this.routeLine = L.polyline(routeCoords, {
+            color: '#2563eb',
+            weight: 5,
+            opacity: 0.8,
+          }).addTo(this.map);
+        } else {
+          // Fallback: straight dashed line
+          this.routeLine = L.polyline([[lat1, lng1], [lat2, lng2]], {
+            color: '#2563eb', weight: 4, opacity: 0.8, dashArray: '10, 10',
+          }).addTo(this.map);
+        }
+      } catch (error) {
+        // Fallback: straight dashed line
+        this.routeLine = L.polyline([[lat1, lng1], [lat2, lng2]], {
+          color: '#2563eb', weight: 4, opacity: 0.8, dashArray: '10, 10',
+        }).addTo(this.map);
       }
     },
     zoomIn() { if (this.map) this.map.zoomIn(); },
