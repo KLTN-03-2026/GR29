@@ -185,6 +185,7 @@ export const rescueTeamAPI = {
   getResources: (id) => api.get(`/doi-cuu-ho/tai-nguyen/${id}`),
   addResource: (id, data) => api.post(`/doi-cuu-ho/tai-nguyen/${id}`, data),
   updateResource: (id, resourceId, data) => api.put(`/doi-cuu-ho/tai-nguyen/${id}/${resourceId}`, data),
+  deleteResource: (id, resourceId) => api.delete(`/doi-cuu-ho/tai-nguyen/${id}/${resourceId}`),
   getLocations: (id) => api.get(`/doi-cuu-ho/vi-tri/${id}`),
   addLocation: (id, data) => api.post(`/doi-cuu-ho/vi-tri/${id}`, data),
   getCapabilities: (id) => api.get(`/doi-cuu-ho/nang-luc/${id}`),

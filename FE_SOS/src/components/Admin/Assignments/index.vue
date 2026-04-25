@@ -231,11 +231,11 @@
                       <div class="d-flex gap-3">
                         <div class="team-avatar fw-bold icon-box"
                           :class="isTeamSelected(team.id) ? 'bg-primary text-white' : 'bg-light text-secondary border'">
-                          {{ team.ten_co.charAt(0).toUpperCase() }}
+                          {{ team.ten_doi.charAt(0).toUpperCase() }}
                         </div>
                         <div class="flex-grow-1 min-w-0">
                           <div class="d-flex justify-content-between align-items-start">
-                            <h6 class="fw-bold text-dark mb-0 text-truncate pe-2">{{ team.ten_co }}</h6>
+                            <h6 class="fw-bold text-dark mb-0 text-truncate pe-2">{{ team.ten_doi }}</h6>
                             <div class="d-flex align-items-center gap-2 flex-shrink-0">
                               <span class="status-dot" :class="getTeamStatusClass(team)"
                                 :title="getTeamStatusLabel(team)"></span>
@@ -374,7 +374,7 @@ function normalizeText(value, fallback = "") {
   if (value === null || value === undefined) return fallback;
   if (typeof value === "object") {
     return normalizeText(
-      value.ten_danh_muc || value.ten_loai_su_co || value.ten_co || value.title || value.name || fallback,
+      value.ten_danh_muc || value.ten_loai_su_co || value.ten_doi || value.title || value.name || fallback,
       fallback
     );
   }
@@ -476,7 +476,7 @@ function parseRequests(payload) {
         return {
           id: item.id_doi_cuu_ho || item.id,
           raw: item,
-          ten_co: normalizeText(item.ten_co || item.ten_doi || item.name || "Đội cứu hộ"),
+          ten_doi: normalizeText(item.ten_doi || item.ten_doi || item.name || "Đội cứu hộ"),
           khu_vuc_quan_ly: normalizeText(item.khu_vuc_quan_ly || item.area || ""),
           so_dien_thoai_hotline: item.so_dien_thoai_hotline || item.phone || "",
           trang_thai: item.trang_thai || "SanSang",
@@ -806,7 +806,7 @@ export default {
           await assignmentAPI.create({
             id_yeu_cau: reqId,
             id_doi_cuu_ho: team.id,
-            mo_ta: `Chỉ thị đội ${team.ten_co} xử lý sự cố cấp độ ${this.selectedReq.severityLabel}`,
+            mo_ta: `Chỉ thị đội ${team.ten_doi} xử lý sự cố cấp độ ${this.selectedReq.severityLabel}`,
             trang_thai_nhiem_vu: 'MOI',
           });
           // Team capacity and status are calculated by the backend — do NOT set manually here.

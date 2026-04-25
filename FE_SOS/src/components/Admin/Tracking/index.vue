@@ -96,10 +96,10 @@
                     <div class="d-flex align-items-center gap-3">
                       <div class="team-initial border text-dark fw-bolder bg-white shadow-sm d-flex align-items-center justify-content-center rounded-circle"
                            style="width: 42px; height: 42px; font-size: 1.1rem;">
-                        {{ (team.ten_co || team.name || 'Đ').charAt(0) }}
+                        {{ (team.ten_doi || team.name || 'Đ').charAt(0) }}
                       </div>
                       <div>
-                        <h6 class="mb-0 fw-bold">{{ team.ten_co || team.name }}</h6>
+                        <h6 class="mb-0 fw-bold">{{ team.ten_doi || team.name }}</h6>
                         <div class="small fw-medium mt-1 d-flex align-items-center" :class="getStatusTextColor(team.status)">
                           <span class="status-dot-tracking me-2" :class="getStatusDotClass(team.status)"></span>
                           {{ getStatusLabel(team.status) }}
@@ -146,7 +146,7 @@
                 </span>
                 <button class="btn-close" @click="selectedTeam = null" style="font-size: 0.75rem;"></button>
               </div>
-              <h5 class="fw-bolder mb-1">{{ selectedTeam.ten_co || selectedTeam.name }}</h5>
+              <h5 class="fw-bolder mb-1">{{ selectedTeam.ten_doi || selectedTeam.name }}</h5>
               <p class="text-muted small mb-3"><i class="fa-solid fa-location-dot me-1 text-primary"></i> Tọa độ GPS: {{ selectedTeam.lat.toFixed(4) }}, {{ selectedTeam.lng.toFixed(4) }}</p>
 
               <div class="border-top pt-3 mt-2">
@@ -239,7 +239,7 @@ export default {
       if (this.searchQuery) {
         const query = this.searchQuery.toLowerCase();
         result = result.filter(t => {
-          const name = (t.tenCo || t.ten_co || t.name || "").toLowerCase();
+          const name = (t.tenCo || t.ten_doi || t.name || "").toLowerCase();
           const assigned = (t.assignedTitle || t.assigned_title || t.assigned || "").toLowerCase();
           const location = (t.khuVuc || t.khu_vuc || t.location || "").toLowerCase();
           return name.includes(query) || assigned.includes(query) || location.includes(query);
@@ -308,8 +308,8 @@ export default {
           });
           return {
             id: item.id_doi_cuu_ho || item.id,
-            name: item.ten_co || item.ten_doi || item.name || "Đội cứu hộ",
-            ten_co: item.ten_co || item.ten_doi || item.name || "Đội cứu hộ",
+            name: item.ten_doi || item.ten_doi || item.name || "Đội cứu hộ",
+            ten_doi: item.ten_doi || item.ten_doi || item.name || "Đội cứu hộ",
             status: actualStatus,
             trangThai: actualStatus,
             lat: lat ? parseFloat(lat) : 16.0544,

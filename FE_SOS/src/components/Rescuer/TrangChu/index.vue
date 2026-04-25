@@ -173,7 +173,7 @@
                             <div class="mb-3" v-if="selectedMission.doi_cuu_ho">
                                 <div class="text-muted fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">ĐỘI
                                     CHỈ THỊ</div>
-                                <div class="text-dark small fw-medium">{{ selectedMission.doi_cuu_ho.ten_co }}</div>
+                                <div class="text-dark small fw-medium">{{ selectedMission.doi_cuu_ho.ten_doi }}</div>
                             </div>
 
                             <button v-if="selectedMission.trang_thai_nhiem_vu === 'MOI'"

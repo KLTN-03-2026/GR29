@@ -70,7 +70,7 @@
               </div>
               <div v-if="item.doi_cuu_ho" class="mt-2">
                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 small fw-medium">
-                  <i class="fa-solid fa-truck-medical me-1"></i>{{ item.doi_cuu_ho.ten_co }}
+                  <i class="fa-solid fa-truck-medical me-1"></i>{{ item.doi_cuu_ho.ten_doi }}
                 </span>
               </div>
             </div>

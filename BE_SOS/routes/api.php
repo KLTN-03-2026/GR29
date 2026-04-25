@@ -157,6 +157,10 @@ Route::middleware(['auth:admin', 'check.admin'])->group(function () {
 
     Route::put('doi-cuu-ho/{id}', [DoiCuuHoController::class, 'update']);
     Route::delete('doi-cuu-ho/{id}', [DoiCuuHoController::class, 'destroy']);
+    Route::get('doi-cuu-ho/tai-nguyen/{id}', [DoiCuuHoController::class, 'getTaiNguyen']);
+    Route::post('doi-cuu-ho/tai-nguyen/{id}', [DoiCuuHoController::class, 'addTaiNguyen']);
+    Route::put('doi-cuu-ho/tai-nguyen/{id}/{id_tai_nguyen}', [DoiCuuHoController::class, 'updateTaiNguyen']);
+    Route::delete('doi-cuu-ho/tai-nguyen/{id}/{id_tai_nguyen}', [DoiCuuHoController::class, 'destroyTaiNguyen']);
 
     Route::put('ket-qua-cuu-ho/{id}', [KetQuaCuuHoController::class, 'update']);
 

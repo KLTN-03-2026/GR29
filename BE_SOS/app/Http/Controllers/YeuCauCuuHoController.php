@@ -154,7 +154,7 @@ class YeuCauCuuHoController extends Controller
 
             $teamData = [
                 'id'                     => $team->id_doi_cuu_ho,
-                'ten_doi'               => $team->ten_co,
+                'ten_doi'               => $team->ten_doi,
                 'khu_vuc_quan_ly'       => $team->khu_vuc_quan_ly,
                 'so_dien_thoai_hotline' => $team->so_dien_thoai_hotline,
                 'trang_thai'            => $trangThai,
@@ -1339,7 +1339,7 @@ class YeuCauCuuHoController extends Controller
                 return [
                     'id_phan_cong'         => $pc->id_phan_cong ?? $pc->id,
                     'id_doi'              => $team ? ($team->id_doi_cuu_ho ?? $team->id) : null,
-                    'ten_doi'             => $team ? ($team->ten_co ?? 'Đội không tên') : 'Không xác định',
+                    'ten_doi'             => $team ? ($team->ten_doi ?? 'Đội không tên') : 'Không xác định',
                     'sdt_hotline'         => $team ? ($team->so_dien_thoai_hotline ?? '') : '',
                     'khu_vuc'            => $team ? ($team->khu_vuc_quan_ly ?? '') : '',
                     'trang_thai_nhiem_vu' => $pcStatus,
@@ -1447,7 +1447,7 @@ class YeuCauCuuHoController extends Controller
                     ] : null,
                     'doi_cuu_ho'       => $team ? [
                         'id'    => $team->id_doi_cuu_ho ?? $team->id,
-                        'ten_co' => $team->ten_co ?? 'N/A',
+                        'ten_doi' => $team->ten_doi ?? 'N/A',
                         'sdt'   => $team->so_dien_thoai_hotline ?? '',
                     ] : null,
                     'phan_cong_count'   => $item->phanCongs->count(),
@@ -1524,7 +1524,7 @@ class YeuCauCuuHoController extends Controller
                     ] : null,
                     'doi_cuu_ho'       => $team ? [
                         'id'    => $team->id_doi_cuu_ho ?? $team->id,
-                        'ten_co' => $team->ten_co ?? 'N/A',
+                        'ten_doi' => $team->ten_doi ?? 'N/A',
                         'sdt'   => $team->so_dien_thoai_hotline ?? '',
                     ] : null,
                     'phan_cong_count'   => $item->phanCongs->count(),

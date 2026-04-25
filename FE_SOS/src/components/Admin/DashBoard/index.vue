@@ -676,7 +676,7 @@ export default {
         : Array.isArray(rawData?.data?.data) ? rawData.data.data
         : [];
       return items.map(item => {
-        const name = normalizeText(item.ten_co || item.name || "Đội không tên");
+        const name = normalizeText(item.ten_doi || item.name || "Đội không tên");
         const area = normalizeText(item.khu_vuc_quan_ly || item.area || "");
         const st = item.trang_thai || "SanSang";
         const stNorm = normalizeStatus(st);

@@ -22,7 +22,7 @@ class DoiCuuHoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'ten_co' => 'required|string|max:255',
+            'ten_doi' => 'required|string|max:255',
             'khu_vuc_quan_ly' => 'required|string|max:255',
             'so_dien_thoai_hotline' => 'required|digits:10|unique:doi_cuu_ho,so_dien_thoai_hotline',
             'vi_tri_lat' => 'required|numeric',
@@ -35,8 +35,8 @@ class DoiCuuHoRequest extends FormRequest
     public function messages()
     {
         return [
-            'ten_co.required' => 'Tên đội không được để trống',
-            'ten_co.max' => 'Tên đội không được quá 255 ký tự',
+            'ten_doi.required' => 'Tên đội không được để trống',
+            'ten_doi.max' => 'Tên đội không được quá 255 ký tự',
             'khu_vuc_quan_ly.required' => 'Khu vực quản lý không được để trống',
             'khu_vuc_quan_ly.max' => 'Khu vực quản lý không được quá 255 ký tự',
             'so_dien_thoai_hotline.required' => 'Số điện thoại hotline không được để trống',

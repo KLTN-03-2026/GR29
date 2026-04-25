@@ -46,7 +46,7 @@ class DoiCuuHoController extends Controller
         if ($user) {
             return response()->json([
                 'status' => true,
-                'ho_ten' => $user->ten_co,
+                'ho_ten' => $user->ten_doi,
             ]);
         } else {
             return response()->json([
@@ -165,7 +165,7 @@ class DoiCuuHoController extends Controller
     {
         try {
             $validated = $request->validate([
-                'ten_co' => 'required|string|max:255',
+                'ten_doi' => 'required|string|max:255',
                 'khu_vuc_quan_ly' => 'required|string|max:255',
                 'so_dien_thoai_hotline' => 'nullable|string|max:20',
                 'vi_tri_lat' => 'nullable|numeric',
@@ -234,7 +234,7 @@ class DoiCuuHoController extends Controller
             $item = DoiCuuHo::findOrFail($id);
 
             $validated = $request->validate([
-                'ten_co' => 'sometimes|string|max:255',
+                'ten_doi' => 'sometimes|string|max:255',
                 'khu_vuc_quan_ly' => 'sometimes|string|max:255',
                 'so_dien_thoai_hotline' => 'nullable|string|max:20',
                 'vi_tri_lat' => 'nullable|numeric',
@@ -840,7 +840,7 @@ class DoiCuuHoController extends Controller
                 ->map(function ($team) {
                     return [
                         'id_doi_cuu_ho' => $team->id_doi_cuu_ho,
-                        'ten_co' => $team->ten_co,
+                        'ten_doi' => $team->ten_doi,
                         'so_nhan_su' => $team->thanhViens()->count(),
                         'so_tai_nguyen' => $team->taiNguyens()->count(),
                         'so_nhiem_vu_dang_xy_ly' => $team->phanCongs()
@@ -912,7 +912,7 @@ class DoiCuuHoController extends Controller
         try {
             $keyword = $request->get('noi_dung_tim', '');
 
-            $items = DoiCuuHo::where('ten_co', 'like', '%' . $keyword . '%')
+            $items = DoiCuuHo::where('ten_doi', 'like', '%' . $keyword . '%')
                 ->orWhere('khu_vuc_quan_ly', 'like', '%' . $keyword . '%')
                 ->with(['thanhViens', 'taiNguyens', 'nangLuc'])
                 ->paginate(15);
