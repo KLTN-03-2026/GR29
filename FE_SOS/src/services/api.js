@@ -29,6 +29,7 @@ api.interceptors.request.use((config) => {
     match('/rescuer/check-token') ||
     match('/rescuer/gui-bao-cao') ||
     match('/rescuer/bao-cao') ||
+    match('/rescuer/members') ||
     match('/doi-cuu-ho/login') ||
     match('/doi-cuu-ho/check-token') ||
     match('/get-doi-cuu-ho') ||
@@ -173,6 +174,9 @@ export const rescueRequestAPI = {
   getTrackingDetail: (id) => api.get(`/yeu-cau-cuu-ho/${id}/theo-doi`),
   getTrackingList: () => api.get('/yeu-cau-cuu-ho/theo-doi/danh-sach'),
   getTrackingDelta: (since) => api.get('/yeu-cau-cuu-ho/theo-doi/thay-doi', { params: { since } }),
+  // Client review
+  submitRating: (yeuCauId, data) =>
+    api.post('/post-danh-gia-cuu-ho/yeu-cau/' + yeuCauId, data),
 };
 
 // Rescue Teams (Đội Cứu hộ)
@@ -303,8 +307,8 @@ export const rescuerAPI = {
   // Đánh giá cứu hộ
   getRatings: (yeuCauId) => api.get('/get-danh-gia-cuu-ho/yeu-cau/' + yeuCauId),
 
-  // Thành viên đội (quản lý)
-  getMembers: () => api.get('/thanh-vien-doi/list'),
+  // Thành viên đội (quản lý - role-filtered via API)
+  getMembers: () => api.get('/rescuer/members'),
   addMember: (data) => api.post('/thanh-vien-doi/create', data),
   updateMember: (id, data) => api.put('/thanh-vien-doi/update/' + id, data),
   toggleMemberStatus: (id) => api.put('/thanh-vien-doi/change-status/' + id),

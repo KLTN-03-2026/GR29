@@ -11,23 +11,20 @@
             <span class="pulse-dot me-2"></span>CÁC YÊU CẦU ĐANG TRONG QUÁ TRÌNH XỬ LÝ
           </p>
         </div>
-        
+
         <!-- Thanh tìm kiếm -->
         <div class="position-relative" style="min-width: 280px;">
           <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3"
-             style="color: #6b7280; font-size: 1rem;"></i>
-          <input
-            type="text"
-            class="form-control ps-5 py-2.5 rounded-pill border-0 shadow-sm"
-            style="font-size: 0.95rem; background: #ffffff;"
-            placeholder="Tìm theo ID, loại sự cố..."
-            v-model="searchQuery"
-          >
+            style="color: #6b7280; font-size: 1rem;"></i>
+          <input type="text" class="form-control ps-5 py-2.5 rounded-pill border-0 shadow-sm"
+            style="font-size: 0.95rem; background: #ffffff;" placeholder="Tìm theo ID, loại sự cố..."
+            v-model="searchQuery">
         </div>
       </div>
 
       <!-- Loading state -->
-      <div v-if="loading" class="d-flex flex-column align-items-center justify-content-center py-5" style="min-height: 40vh;">
+      <div v-if="loading" class="d-flex flex-column align-items-center justify-content-center py-5"
+        style="min-height: 40vh;">
         <div class="spinner-grow text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
           <span class="visually-hidden">Đang tải...</span>
         </div>
@@ -42,15 +39,19 @@
       </div>
 
       <!-- Không có yêu cầu đang xử lý -->
-      <div v-else-if="filteredList.length === 0" class="d-flex flex-column align-items-center justify-content-center py-5 text-center" style="min-height: 40vh;">
-        <div class="empty-state-icon mb-4 rounded-circle bg-white shadow-sm d-flex align-items-center justify-content-center" style="width: 100px; height: 100px;">
+      <div v-else-if="filteredList.length === 0"
+        class="d-flex flex-column align-items-center justify-content-center py-5 text-center" style="min-height: 40vh;">
+        <div
+          class="empty-state-icon mb-4 rounded-circle bg-white shadow-sm d-flex align-items-center justify-content-center"
+          style="width: 100px; height: 100px;">
           <i class="bi bi-shield-check text-success" style="font-size: 3rem;"></i>
         </div>
         <h3 class="fw-bold text-dark mb-2">Bạn đang an toàn!</h3>
         <p class="text-secondary mb-4" style="max-width: 400px;">
           Hiện tại bạn không có yêu cầu cứu hộ nào đang chờ hoặc đang được xử lý.
         </p>
-        <button class="btn btn-primary rounded-pill px-4 py-2.5 fw-bold shadow-sm" @click="$router.push('/gui-yeu-cau')">
+        <button class="btn btn-primary rounded-pill px-4 py-2.5 fw-bold shadow-sm"
+          @click="$router.push('/gui-yeu-cau')">
           <i class="bi bi-plus-circle me-2"></i>Tạo Yêu Cầu Mới
         </button>
       </div>
@@ -58,22 +59,24 @@
       <!-- Danh sách yêu cầu đang xử lý -->
       <div v-else class="row g-4">
         <div v-for="item in filteredList" :key="item.id" class="col-12 col-xl-6">
-          <div class="active-card rounded-4 p-4 position-relative overflow-hidden bg-white shadow-sm h-100 d-flex flex-column flex-sm-row gap-4">
+          <div
+            class="active-card rounded-4 p-4 position-relative overflow-hidden bg-white shadow-sm h-100 d-flex flex-column flex-sm-row gap-4">
             <!-- Dải màu trạng thái bên trái -->
-            <div class="position-absolute top-0 bottom-0 start-0" :style="{ width: '5px', backgroundColor: item.trangThaiColor }"></div>
+            <div class="position-absolute top-0 bottom-0 start-0"
+              :style="{ width: '5px', backgroundColor: item.trangThaiColor }"></div>
 
             <!-- Cột Trái: Ảnh & Icons -->
             <div class="shrink-0 position-relative">
               <div class="rounded-4 overflow-hidden position-relative shadow-sm" style="width: 150px; height: 150px;">
-                <img v-if="item.anh_hien_truong"
-                     :src="item.anh_hien_truong"
-                     class="w-100 h-100 object-fit-cover"
-                     alt="Ảnh hiện trường">
-                <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center" :style="{ backgroundColor: item.iconBg }">
+                <img v-if="item.anh_hien_truong" :src="item.anh_hien_truong" class="w-100 h-100 object-fit-cover"
+                  alt="Ảnh hiện trường">
+                <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center"
+                  :style="{ backgroundColor: item.iconBg }">
                   <i :class="['bi fs-1', item.icon]" :style="{ color: item.iconColor }"></i>
                 </div>
               </div>
-              <div class="position-absolute top-0 start-0 translate-middle badge rounded-pill shadow-sm bg-white border" style="padding: 0.4rem;">
+              <div class="position-absolute top-0 start-0 translate-middle badge rounded-pill shadow-sm bg-white border"
+                style="padding: 0.4rem;">
                 <i :class="['bi fs-5', item.icon]" :style="{ color: item.iconColor }"></i>
               </div>
             </div>
@@ -83,8 +86,11 @@
               <div>
                 <div class="d-flex justify-content-between align-items-start mb-2">
                   <div>
-                    <span class="badge bg-light text-dark border px-2 py-1 rounded-2 fw-bold font-monospace me-2">#{{ item.id }}</span>
-                    <span class="badge rounded-pill fw-bold text-white px-3 py-1 bg-primary d-inline-flex gap-2 align-items-center shadow-sm" :style="{ backgroundColor: item.trangThaiColor + ' !important' }">
+                    <span class="badge bg-light text-dark border px-2 py-1 rounded-2 fw-bold font-monospace me-2">#{{
+                      item.id }}</span>
+                    <span
+                      class="badge rounded-pill fw-bold text-white px-3 py-1 bg-primary d-inline-flex gap-2 align-items-center shadow-sm"
+                      :style="{ backgroundColor: item.trangThaiColor + ' !important' }">
                       <span class="pulse-dot-small bg-white"></span>
                       {{ item.trangThaiText }}
                     </span>
@@ -99,39 +105,40 @@
                 </h3>
 
                 <div class="d-flex align-items-center gap-2 text-secondary mb-3">
-                  <div class="bg-light p-2 rounded-circle d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
-                     <i class="bi bi-geo-alt-fill text-danger" style="font-size: 0.85rem;"></i>
+                  <div class="bg-light p-2 rounded-circle d-flex align-items-center justify-content-center"
+                    style="width: 28px; height: 28px;">
+                    <i class="bi bi-geo-alt-fill text-danger" style="font-size: 0.85rem;"></i>
                   </div>
-                  <span class="fw-medium text-truncate" style="font-size: 0.9rem; max-width: 300px;">{{ item.address }}</span>
+                  <span class="fw-medium text-truncate" style="font-size: 0.9rem; max-width: 300px;">{{ item.address
+                    }}</span>
                 </div>
               </div>
 
               <!-- Thanh Tiến Độ -->
               <div class="mt-auto">
                 <div class="progress mb-2 rounded-pill" style="height: 8px; background-color: #f1f5f9;">
-                  <div class="progress-bar progress-bar-striped progress-bar-animated rounded-pill"
-                       role="progressbar"
-                       :style="{ width: getProgress(item.trang_thai) + '%', backgroundColor: item.trangThaiColor }"></div>
+                  <div class="progress-bar progress-bar-striped progress-bar-animated rounded-pill" role="progressbar"
+                    :style="{ width: getProgress(item.trang_thai) + '%', backgroundColor: item.trangThaiColor }"></div>
                 </div>
                 <div class="d-flex justify-content-between text-secondary small fw-bold" style="font-size: 0.75rem;">
                   <span :class="getStepClass(0, getStepIndex(item.trang_thai))">Chờ Xử Lý</span>
                   <span :class="getStepClass(1, getStepIndex(item.trang_thai))">Đã Phân Công</span>
                   <span :class="getStepClass(2, getStepIndex(item.trang_thai))">Đã Tiếp Nhận</span>
                   <span :class="getStepClass(3, getStepIndex(item.trang_thai))">Đã Đến Hiện Trường</span>
-               
+
                 </div>
               </div>
-              
+
 
               <!-- Buttons -->
               <div class="d-flex gap-2 mt-4 pt-3 border-top">
-                <button class="btn btn-outline-secondary rounded-pill px-4 fw-bold flex-grow-1 flex-sm-grow-0" style="font-size: 0.85rem;" @click="showDetailModal(item)">
+                <button class="btn btn-outline-secondary rounded-pill px-4 fw-bold flex-grow-1 flex-sm-grow-0"
+                  style="font-size: 0.85rem;" @click="showDetailModal(item)">
                   <i class="bi bi-info-circle me-1"></i>Chi Tiết
                 </button>
-                <button class="btn text-white rounded-pill px-4 fw-bold flex-grow-1 flex-sm-grow-0" 
-                        style="font-size: 0.85rem;"
-                        :style="{ backgroundColor: item.trangThaiColor, border: 'none' }"
-                        disabled>
+                <button class="btn text-white rounded-pill px-4 fw-bold flex-grow-1 flex-sm-grow-0"
+                  style="font-size: 0.85rem;" :style="{ backgroundColor: item.trangThaiColor, border: 'none' }"
+                  disabled>
                   <i class="bi bi-telephone me-1"></i>Liên hệ Đội Cứu Hộ
                 </button>
               </div>
@@ -154,15 +161,17 @@
 
         <!-- Modal Body -->
         <div class="p-4" style="background-color: #f9fafb;">
-          
+
           <!-- Request ID & Map Preview Placeholder -->
           <div class="bg-white p-3 rounded-4 shadow-sm mb-4 border d-flex gap-3 align-items-center">
-            <div class="map-placeholder rounded-3 bg-light d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
-               <i class="bi bi-map text-secondary fs-3"></i>
+            <div class="map-placeholder rounded-3 bg-light d-flex align-items-center justify-content-center"
+              style="width: 80px; height: 80px;">
+              <i class="bi bi-map text-secondary fs-3"></i>
             </div>
             <div>
-               <div class="fw-bold font-monospace bg-light border px-2 py-1 rounded d-inline-block mb-1">Mã Yêu Cầu: #{{ selectedItem?.id }}</div>
-               <div class="fw-bold fs-5 text-dark">{{ selectedItem?.loai }}</div>
+              <div class="fw-bold font-monospace bg-light border px-2 py-1 rounded d-inline-block mb-1">Mã Yêu Cầu: #{{
+                selectedItem?.id }}</div>
+              <div class="fw-bold fs-5 text-dark">{{ selectedItem?.loai }}</div>
             </div>
           </div>
 
@@ -299,28 +308,18 @@ function normalizeStatusCode(value) {
     .replace(/\s+/g, "_");
 }
 
-// ─── Progress Step Mapping (maps trang_thai → 4-step flow) ────────────────────
-// Backend canonical trang_thai values from yeu_cau_cuu_ho table:
-//   CHO_XU_LY       → step 0 (default/new request)
-//   DA_PHAN_CONG    → step 1 (admin dispatched a team)
-//   DANG_XU_LY      → step 2 (rescue team accepted / is handling)
-//   DA_DEN_HIEN_TRUONG → step 3 (team arrived at scene)
-//   HOAN_THANH      → step 4 (resolved)  -- filtered out in active list
-//   THAT_BAI        → step 4 (failed)    -- filtered out in active list
-//   HUY_BO          → step 4 (cancelled)-- filtered out in active list
-
 const STATUS_STEP_INDEX = {
-  CHO_XU_LY:            0,  // Đang điều phối
-  DA_PHAN_CONG:         1,  // Đã tiếp nhận
-  DANG_XU_LY:           2,  // Đội cứu hộ đã tới (accepted, en-route)
-  DA_DEN_HIEN_TRUONG:   3,  // Vấn đề đang được giải quyết (team on scene)
+  CHO_XU_LY: 0,
+  DA_PHAN_CONG: 1,
+  DANG_XU_LY: 2,
+  DA_DEN_HIEN_TRUONG: 3,
 };
 
 const STATUS_PROGRESS_PCT = {
-  0: 25,   // CHO_XU_LY          → Đang điều phối
-  1: 50,   // DA_PHAN_CONG       → Đã tiếp nhận
-  2: 75,   // DANG_XU_LY          → Đội cứu hộ đã tới
-  3: 100,  // DA_DEN_HIEN_TRUONG → Vấn đề đang được giải quyết
+  0: 25,
+  1: 50,
+  2: 75,
+  3: 100,
 };
 
 function getStepIndex(trangThai) {
@@ -406,8 +405,7 @@ export default {
       searchQuery: "",
       isModalOpen: false,
       selectedItem: null,
-      pollInterval: null,
-      lastSyncAt: null,
+      realtimeChannel: null,
     };
   },
   computed: {
@@ -426,139 +424,90 @@ export default {
   },
   async created() {
     await this.loadActiveRequests();
-    this.startSmartPolling();
+    this.subscribeToReverb();
   },
   beforeUnmount() {
-    this.stopPolling();
+    this.unsubscribeFromReverb();
   },
   methods: {
-    // ─── Smart Polling ────────────────────────────────────────────────────────────
-    startSmartPolling() {
-      this.stopPolling();
-      // Poll every 15 seconds — delta-based so only changed items are fetched
-      this.pollInterval = setInterval(() => {
-        this.smartPoll();
-      }, 15000);
-    },
-    stopPolling() {
-      if (this.pollInterval) {
-        clearInterval(this.pollInterval);
-        this.pollInterval = null;
-      }
-    },
-    async smartPoll() {
-      // Skip if already syncing or no active requests remain
-      if (this.isSyncing) return;
-      if (this.danhsach.length === 0) {
-        this.stopPolling();
+    // ─── Reverb WebSocket ────────────────────────────────────────────────────────
+    subscribeToReverb() {
+      if (!window.Echo) {
+        console.warn('[Reverb] Echo not available');
         return;
       }
 
-      this.isSyncing = true;
-      try {
-        const currentUserId = getCurrentUserId();
-        if (!currentUserId) return;
+      const connect = () => {
+        const channelName = 'rescue-requests';
+        this.realtimeChannel = window.Echo.channel(channelName);
 
-        // Use delta endpoint when we have a last sync time
-        if (this.lastSyncAt) {
-          const since = encodeURIComponent(this.lastSyncAt);
-          try {
-            const deltaResp = await rescueRequestAPI.getTrackingDelta(since);
-            const delta = deltaResp?.data;
-            if (delta) {
-              const hasChanges =
-                (delta.items?.length > 0 || delta.updated?.length > 0) ||
-                (delta.removed_ids?.length > 0 || delta.removed?.length > 0);
-              if (hasChanges) {
-                await this.applyDelta(delta, currentUserId);
-              }
-              // Update lastSyncAt from server_time so next poll is a true delta
-              if (delta.server_time) {
-                this.lastSyncAt = delta.server_time;
-              } else {
-                this.lastSyncAt = new Date().toISOString();
-              }
-              return;
-            }
-          } catch (e) {
-            // Fall through to full reload if delta fails
+        this.realtimeChannel.listen('RescueRequestUpdated', (data) => {
+          this.handleReverbEvent(data);
+        });
+
+        this.realtimeChannel.listen('.RescueRequestUpdated', (data) => {
+          console.log('REALTIME OK:', data)
+        });
+      };
+
+      const conn = window.Echo.connector?.pusher?.connection;
+      if (conn?.state === 'connected') {
+        connect();
+      } else if (conn) {
+        conn.bind('connected', () => connect());
+        // Timeout fallback — still try to connect after 5s even if event never fires
+        setTimeout(() => {
+          if (!this.realtimeChannel) connect();
+        }, 5000);
+      } else {
+        // Pusher not initialized yet — wait for Echo to boot
+        setTimeout(() => {
+          const retryConn = window.Echo?.connector?.pusher?.connection;
+          if (retryConn?.state === 'connected') {
+            connect();
+          } else if (retryConn) {
+            retryConn.bind('connected', () => connect());
           }
-        }
-
-        // Full reload as fallback
-        await this.loadActiveRequests(true);
-      } catch (e) {
-        // Silently ignore polling errors
-      } finally {
-        this.isSyncing = false;
+        }, 2000);
       }
     },
-    async applyDelta(delta, currentUserId) {
-      // Handle removed items (backend uses 'removed_ids' key)
-      const removedIds = delta.removed || delta.removed_ids || [];
-      if (removedIds.length > 0) {
-        const removedSet = new Set(removedIds.map(i => String(i.id_yeu_cau || i.id)));
-        this.danhsach = this.danhsach.filter(item => !removedSet.has(String(item.id)));
+
+    unsubscribeFromReverb() {
+      if (this.realtimeChannel) {
+        this.realtimeChannel.stopListening('RescueRequestUpdated');
+        window.Echo.leave('rescue-requests');
+        this.realtimeChannel = null;
       }
+    },
 
-      // Handle updated/new items (backend uses 'items' key)
-      const updatedItems = delta.updated || delta.items || [];
-      if (updatedItems.length > 0) {
-        for (const raw of updatedItems) {
-          const itemId = String(raw.id_yeu_cau || raw.id);
+    handleReverbEvent(data) {
+      console.log('[Reverb] Event received:', data);
+      const currentUserId = getCurrentUserId();
+      if (!currentUserId) return;
 
-          // Verify this item belongs to current user
-          const itemUserId = extractUserId(raw) || extractUserId(raw?.nguoi_dung);
-          if (itemUserId !== currentUserId) continue;
+      const eventUserId = data.id_nguoi_dung ?? data.userId;
+      if (eventUserId !== currentUserId) return;
 
-          const reqStatus = normalizeStatusCode(raw.trang_thai || raw.status);
-          const closed = new Set(["HOAN_THANH", "DA_HOAN_THANH", "HUY_BO", "DA_HUY", "TU_CHOI", "THAT_BAI", "DONE"]);
-          if (closed.has(reqStatus)) {
-            // Remove completed item
-            this.danhsach = this.danhsach.filter(item => String(item.id) !== itemId);
-            continue;
-          }
+      const requestId = String(data.id_yeu_cau ?? data.id ?? '');
+      const closed = new Set(["HOAN_THANH", "DA_HOAN_THANH", "HUY_BO", "DA_HUY", "TU_CHOI", "THAT_BAI", "DONE"]);
 
-          // Find existing item and update in place
-          const idx = this.danhsach.findIndex(item => String(item.id) === itemId);
-          const trackingMap = {};
-          trackingMap[itemId] = raw;
-
-          if (idx >= 0) {
-            const normalized = this.normalizeResults([raw], trackingMap);
-            if (normalized.length > 0) {
-              this.danhsach.splice(idx, 1, normalized[0]);
-            }
-          } else {
-            // New item — add to list
-            const normalized = this.normalizeResults([raw], trackingMap);
-            if (normalized.length > 0) {
-              this.danhsach.unshift(normalized[0]);
-            }
-          }
-        }
-      }
-
-      // Update server_time so next poll is a true delta
-      if (delta.server_time) {
-        this.lastSyncAt = delta.server_time;
-      } else {
-        this.lastSyncAt = new Date().toISOString();
-      }
-      if (this.selectedItem?.id) {
-        const fresh = this.danhsach.find(item => String(item.id) === String(this.selectedItem.id));
-        if (fresh) {
-          this.selectedItem = fresh;
-        } else {
+      if (closed.has(data.trang_thai)) {
+        const idx = this.danhsach.findIndex(item => String(item.id) === requestId);
+        if (idx >= 0) this.danhsach.splice(idx, 1);
+        if (this.selectedItem && String(this.selectedItem.id) === requestId) {
           this.closeModal();
         }
+        return;
       }
 
-      // Stop polling when list is empty
-      if (this.danhsach.length === 0) {
-        this.stopPolling();
+      const idx = this.danhsach.findIndex(item => String(item.id) === requestId);
+      if (idx >= 0) {
+        this.danhsach.splice(idx, 1);
       }
+
+      this.loadActiveRequests(true);
     },
+
     // ─── Progress step helpers ────────────────────────────────────────────────
     getStepIndex,
     getProgress,
@@ -625,6 +574,7 @@ export default {
 
     async loadActiveRequests(silent = false) {
       if (!silent) this.loading = true;
+      if (silent) this.isSyncing = true;
       try {
         const currentUserId = getCurrentUserId();
         if (!currentUserId) {
@@ -643,10 +593,10 @@ export default {
         const items = Array.isArray(rawData)
           ? rawData
           : Array.isArray(rawData?.data)
-          ? rawData.data
-          : Array.isArray(rawData?.data?.data)
-          ? rawData.data.data
-          : [];
+            ? rawData.data
+            : Array.isArray(rawData?.data?.data)
+              ? rawData.data.data
+              : [];
 
         let trackingMap = {};
         try {
@@ -675,7 +625,6 @@ export default {
         });
 
         this.danhsach = this.normalizeResults(activeItems, trackingMap);
-        this.lastSyncAt = new Date().toISOString();
 
         if (this.selectedItem?.id) {
           const freshItem = this.danhsach.find((item) => String(item.id) === String(this.selectedItem.id));
@@ -685,6 +634,7 @@ export default {
         console.error("Loi khi tai yeu cau dang xu ly:", error);
       } finally {
         if (!silent) this.loading = false;
+        if (silent) this.isSyncing = false;
       }
     },
 
@@ -705,22 +655,46 @@ export default {
 
 <style scoped>
 /* Typography */
-h1, h2, h3, h4, h5, .font-headline {
+h1,
+h2,
+h3,
+h4,
+h5,
+.font-headline {
   font-family: 'Manrope', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   letter-spacing: -0.02em;
 }
 
 /* Animations */
 @keyframes pulse-dot {
-  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-  70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+  }
+
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
 }
 
 @keyframes pulse-light {
-  0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
-  70% { box-shadow: 0 0 0 6px rgba(255, 255, 255, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+  }
+
+  70% {
+    box-shadow: 0 0 0 6px rgba(255, 255, 255, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
 }
 
 .pulse-dot {
@@ -743,13 +717,13 @@ h1, h2, h3, h4, h5, .font-headline {
 /* Cards */
 .active-card {
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  border: 1px solid rgba(0,0,0,0.05);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .active-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.08) !important;
-  border-color: rgba(0,0,0,0.1);
+  border-color: rgba(0, 0, 0, 0.1);
 }
 
 .object-fit-cover {
@@ -796,12 +770,27 @@ h1, h2, h3, h4, h5, .font-headline {
 }
 
 @keyframes modal-enter {
-  from { opacity: 0; transform: translateY(20px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* Utilities */
-.tracking-wider { letter-spacing: 0.05em; }
-.tracking-tight { letter-spacing: -0.02em; }
-.shrink-0 { flex-shrink: 0; }
+.tracking-wider {
+  letter-spacing: 0.05em;
+}
+
+.tracking-tight {
+  letter-spacing: -0.02em;
+}
+
+.shrink-0 {
+  flex-shrink: 0;
+}
 </style>

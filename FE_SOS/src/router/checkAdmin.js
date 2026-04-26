@@ -18,6 +18,9 @@ export default function (to, from, next) {
         .then((res) => {
             if (res.data?.status) {
                 localStorage.setItem("ho_ten", res.data.ho_ten);
+                if (res.data.data) {
+                    localStorage.setItem("admin_user", JSON.stringify(res.data.data));
+                }
                 next();
             } else {
                 if (res.data?.message) {
