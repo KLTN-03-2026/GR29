@@ -2,11 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\RescueRequestUpdated;
 use App\Models\{PhanCongCuuHo, DoiCuuHo};
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class PhanCongCuuHoController extends Controller
 {
+    private function safeBroadcastRescueUpdate($yeuCau, string $action): void
+    {
+        try {
+            event(new RescueRequestUpdated($yeuCau, $action));
+        } catch (\Throwable $exception) {
+            Log::warning('[broadcast] Failed to send RescueRequestUpdated', [
+                'action' => $action,
+                'request_id' => $yeuCau->id_yeu_cau ?? $yeuCau->id ?? null,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
+
     /**
      * Append nested relations as root-level properties for frontend compatibility.
      * Maps:
@@ -53,6 +68,7 @@ class PhanCongCuuHoController extends Controller
             'id_doi_cuu_ho' => 'required|integer|exists:doi_cuu_ho,id_doi_cuu_ho',
             'id_chi_tiet_su_co' => 'nullable|integer|exists:chi_tiet_loai_su_co,id_chi_tiet',
             'mo_ta' => 'nullable|string',
+            'nguoi_dieu_phoi' => 'nullable|string|max:255',
             'thoi_gian_phan_cong' => 'nullable|date',
             'trang_thai_nhiem_vu' => 'nullable|string|max:20'
         ]);
@@ -64,9 +80,16 @@ class PhanCongCuuHoController extends Controller
             'yeuCau.baoCao',
             'yeuCau.loaiSuCo',
             'doiCuuHo',
-            'ketQua'
+            'ketQua',
+            'yeuCau.phanCongs.doiCuuHo',
         ]);
         $this->appendNestedRelations($item);
+
+        // Broadcast to all connected clients that a rescue team was assigned
+        if ($item->yeuCau) {
+            $this->safeBroadcastRescueUpdate($item->yeuCau, 'assigned');
+        }
+
         return response()->json($item, 201);
     }
 
@@ -91,6 +114,7 @@ class PhanCongCuuHoController extends Controller
             'id_doi_cuu_ho' => 'nullable|integer|exists:doi_cuu_ho,id_doi_cuu_ho',
             'id_chi_tiet_su_co' => 'nullable|integer|exists:chi_tiet_loai_su_co,id_chi_tiet',
             'mo_ta' => 'nullable|string',
+            'nguoi_dieu_phoi' => 'nullable|string|max:255',
             'thoi_gian_phan_cong' => 'nullable|date',
             'trang_thai_nhiem_vu' => 'nullable|string|max:20'
         ]);
@@ -100,7 +124,8 @@ class PhanCongCuuHoController extends Controller
             'yeuCau.baoCao',
             'yeuCau.loaiSuCo',
             'doiCuuHo',
-            'ketQua'
+            'ketQua',
+            'yeuCau.phanCongs.doiCuuHo',
         ]);
         $this->appendNestedRelations($item);
         return response()->json($item);
@@ -181,9 +206,16 @@ class PhanCongCuuHoController extends Controller
             'yeuCau.baoCao',
             'yeuCau.loaiSuCo',
             'doiCuuHo',
-            'ketQua'
+            'ketQua',
+            'yeuCau.phanCongs.doiCuuHo',
         ]);
         $this->appendNestedRelations($item);
+
+        // Broadcast rescue request status update to all connected clients
+        if ($item->yeuCau) {
+            $this->safeBroadcastRescueUpdate($item->yeuCau, 'assignment_updated');
+        }
+
         return response()->json($item);
     }
 
@@ -274,23 +306,35 @@ class PhanCongCuuHoController extends Controller
     }
 
     /**
-     * Get assignments by status
-     * Route: GET phan-cong-cuu-ho/theo-trang-thai/{trang_thai}
+     * Get suggested teams for assignment to a rescue request
+     * Route: GET admin/assignments/suggested/{id_yeu_cau}
      */
-    public function getByStatus(Request $request, $trang_thai)
+    public function getSuggestedTeamsForRequest(Request $request, $id_yeu_cau)
     {
-        $perPage = $request->get('per_page', 15);
-        $normalized = strtoupper(trim((string) $trang_thai));
-        $items = PhanCongCuuHo::with([
-            'yeuCau.nguoiDung',
-            'yeuCau.baoCao',
-            'yeuCau.loaiSuCo',
-            'doiCuuHo',
-            'ketQua'
-        ])
-            ->where('trang_thai_nhiem_vu', $normalized)
-            ->paginate($perPage);
-        $items->setCollection($this->transformCollection($items->getCollection()));
-        return response()->json($items);
+        try {
+            // Call the timDoiGanNhat method from YeuCauCuuHoController
+            $yeuCauController = app(\App\Http\Controllers\YeuCauCuuHoController::class);
+            $response = $yeuCauController->timDoiGanNhat(new Request([
+                'id_yeu_cau' => (int) $id_yeu_cau,
+                'id_loai_su_co' => $request->id_loai_su_co,
+            ]));
+
+            // Extract the teams data from the response
+            $data = json_decode($response->getContent(), true);
+            $teams = $data['teams'] ?? [];
+
+            return response()->json([
+                'success' => true,
+                'teams' => $teams,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('[getSuggestedTeamsForRequest] Lỗi: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi khi lấy danh sách đội gợi ý: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

@@ -46,7 +46,7 @@ class DatabaseSeeder extends Seeder
         echo "\n✅ Database seeding completed successfully!\n";
         echo "📊 Total sample records created: 135+\n";
         echo "   - 10 Chức năng (Functions)\n";
-        echo "   - 4 Chức vụ (Positions)\n";
+        echo "   - 5 Chức vụ (Positions)\n";
         echo "   - 5 Admin accounts\n";
         echo "   - 10 Người dùng (Users)\n";
         echo "   - 8 Loại sự cố (Incident Types)\n";

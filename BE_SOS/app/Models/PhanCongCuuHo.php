@@ -8,7 +8,7 @@ class PhanCongCuuHo extends Model
 {
     protected $table = 'phan_cong_cuu_ho';
     protected $primaryKey = 'id_phan_cong';
-    protected $fillable = ['id_yeu_cau', 'id_doi_cuu_ho', 'id_chi_tiet_su_co', 'mo_ta', 'thoi_gian_phan_cong', 'trang_thai_nhiem_vu'];
+    protected $fillable = ['id_yeu_cau', 'id_doi_cuu_ho', 'id_chi_tiet_su_co', 'mo_ta', 'nguoi_dieu_phoi', 'thoi_gian_phan_cong', 'trang_thai_nhiem_vu'];
 
     /**
      * Relationship with YeuCauCuuHo
