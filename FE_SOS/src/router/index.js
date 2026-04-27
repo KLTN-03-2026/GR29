@@ -1,7 +1,98 @@
 import { createRouter, createWebHistory } from "vue-router";
-import checkAdmin from "./checkAdmin";
-import checkRescuer from "./checkRescuer";
 import checkClient from "./checkClient";
+import axios from "axios";
+import { createToaster } from "@meforma/vue-toaster";
+import {
+  canAccessAdminRoute,
+  canAccessRescuerRoute,
+  getAdminRole,
+  getRescuerRole,
+} from "../utils/permissions";
+
+const toaster = createToaster({ position: "top-right" });
+
+function fetchAdminUserAndProceed(to, from, next) {
+  const token = localStorage.getItem("admin_token");
+  if (!token) {
+    next("/admin/login");
+    return;
+  }
+
+  axios
+    .get("http://127.0.0.1:8000/api/admin/check-token", {
+      headers: { Authorization: "Bearer " + token },
+    })
+    .then((res) => {
+      if (res.data?.status) {
+        localStorage.setItem("ho_ten", res.data.ho_ten);
+        if (res.data.data) {
+          localStorage.setItem("admin_user", JSON.stringify(res.data.data));
+        }
+        const role = getAdminRole();
+        if (!canAccessAdminRoute(role, to.path)) {
+          toaster.error("Bạn không có quyền sử dụng chức năng này");
+          next(false);
+          return;
+        }
+        next();
+      } else {
+        if (res.data?.message) toaster.error(res.data.message);
+        localStorage.removeItem("admin_token");
+        localStorage.removeItem("admin_user");
+        next("/admin/login");
+      }
+    })
+    .catch(() => {
+      localStorage.removeItem("admin_token");
+      localStorage.removeItem("admin_user");
+      next("/admin/login");
+    });
+}
+
+function fetchRescuerUserAndProceed(to, from, next) {
+  const token = localStorage.getItem("rescuer_token");
+  if (!token) {
+    next("/rescuer/login");
+    return;
+  }
+
+  axios
+    .get("http://127.0.0.1:8000/api/rescuer/check-token", {
+      headers: { Authorization: "Bearer " + token },
+    })
+    .then((res) => {
+      if (res.data?.status) {
+        if (res.data.ho_ten) {
+          localStorage.setItem("rescuer_name", res.data.ho_ten);
+        }
+        if (res.data.data) {
+          localStorage.setItem("rescuer_user", JSON.stringify(res.data.data));
+          if (res.data.data.doi_cuu_ho || res.data.data.doiCuuHo) {
+            localStorage.setItem("rescuer_team", JSON.stringify(res.data.data.doi_cuu_ho || res.data.data.doiCuuHo));
+          }
+        }
+        const role = getRescuerRole();
+        if (!canAccessRescuerRoute(role, to.path)) {
+          toaster.error("Bạn không có quyền sử dụng chức năng này");
+          next(false);
+          return;
+        }
+        next();
+      } else {
+        if (res.data?.message) toaster.error(res.data.message);
+        localStorage.removeItem("rescuer_token");
+        localStorage.removeItem("rescuer_user");
+        localStorage.removeItem("rescuer_team");
+        next("/rescuer/login");
+      }
+    })
+    .catch(() => {
+      localStorage.removeItem("rescuer_token");
+      localStorage.removeItem("rescuer_user");
+      localStorage.removeItem("rescuer_team");
+      next("/rescuer/login");
+    });
+}
 
 const routes = [
     // client
@@ -68,7 +159,6 @@ const routes = [
         path: "/admin",
         component: () => import("../components/Admin/DashBoard/index.vue"),
         meta: { layout: "admin" },
-        beforeEnter: checkAdmin,
     },
     {
         path: "/admin/queue",
@@ -113,32 +203,32 @@ const routes = [
     {
         path: "/admin/incident-types",
         component: () => import("../components/Admin/IncidentTypes/index.vue"),
-        meta: { layout: "admin" },
+        meta: { layout: "admin", roles: ["admin", "manager_operator"] },
     },
     {
         path: "/admin/resources",
         component: () => import("../components/Admin/Resources/index.vue"),
-        meta: { layout: "admin" },
+        meta: { layout: "admin", roles: ["admin", "manager_operator"] },
     },
     {
         path: "/admin/ai-scoring",
         component: () => import("../components/Admin/AIScoring/index.vue"),
-        meta: { layout: "admin" },
+        meta: { layout: "admin", roles: ["admin", "manager_operator"] },
     },
     {
         path: "/admin/accounts/admin",
         component: () => import("../components/Admin/Accounts/Admin/index.vue"),
-        meta: { layout: "admin" },
+        meta: { layout: "admin", roles: ["admin"] },
     },
     {
         path: "/admin/accounts/user",
         component: () => import("../components/Admin/Accounts/User/index.vue"),
-        meta: { layout: "admin" },
+        meta: { layout: "admin", roles: ["admin"] },
     },
     {
         path: "/admin/accounts/rescuer",
         component: () => import("../components/Admin/Accounts/Rescuer/index.vue"),
-        meta: { layout: "admin" },
+        meta: { layout: "admin", roles: ["admin"] },
     },
 
     // 
@@ -156,49 +246,41 @@ const routes = [
         path: "/rescuer/home",
         component: () => import("../components/Rescuer/TrangChu/index.vue"),
         meta: { layout: "rescuer" },
-        beforeEnter: checkRescuer,
     },
     {
         path: "/rescuer/dang-xu-ly",
         component: () => import("../components/Rescuer/DangXuLy/index.vue"),
         meta: { layout: "rescuer" },
-        beforeEnter: checkRescuer,
     },
     {
         path: "/rescuer/da-xu-ly",
         component: () => import("../components/Rescuer/DaXuLy/index.vue"),
         meta: { layout: "rescuer" },
-        beforeEnter: checkRescuer,
     },
     {
         path: "/rescuer/thong-bao-nhiem-vu",
         component: () => import("../components/Rescuer/ThongBaoNhiemVu/index.vue"),
         meta: { layout: "rescuer" },
-        beforeEnter: checkRescuer,
     },
     {
         path: "/rescuer/tai-nguyen",
         component: () => import("../components/Rescuer/TaiNguyen/index.vue"),
         meta: { layout: "rescuer" },
-        beforeEnter: checkRescuer,
     },
     {
         path: "/rescuer/heatmap",
         component: () => import("../components/Rescuer/HeatMap/index.vue"),
         meta: { layout: "rescuer" },
-        beforeEnter: checkRescuer,
     },
     {
         path: "/rescuer/reports",
         component: () => import("../components/Rescuer/Report/index.vue"),
         meta: { layout: "rescuer" },
-        beforeEnter: checkRescuer,
     },
     {
         path: "/rescuer/quan-ly-thanh-vien",
         component: () => import("../components/Rescuer/QuanLy/index.vue"),
-        meta: { layout: "rescuer" },
-        beforeEnter: checkRescuer,
+        meta: { layout: "rescuer", roles: ["rescuer_non_member"] },
     },
 
 ];
@@ -210,10 +292,10 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
     if (to.path.startsWith("/admin") && to.path !== "/admin/login") {
-        return checkAdmin(to, from, next);
+        return fetchAdminUserAndProceed(to, from, next);
     }
     if (to.path.startsWith("/rescuer") && to.path !== "/rescuer/login") {
-        return checkRescuer(to, from, next);
+        return fetchRescuerUserAndProceed(to, from, next);
     }
     const clientProtected = ["/client/profile", "/client/change-password", "/client/history", "/client/dang-xu-ly", "/client/requests"];
     if (clientProtected.some(p => to.path === p)) {

@@ -61,8 +61,8 @@
                 <i class="fa-solid fa-helmet-safety me-2"></i>Tài Nguyên & Trang Thiết Bị
             </router-link>
 
-            <div class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mt-3 mb-2">Quản Lý</div>
-            <router-link class="nav-item-link" to="/rescuer/quan-ly-thanh-vien">
+            <div v-if="canViewManagement" class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mt-3 mb-2">Quản Lý</div>
+            <router-link v-if="canViewManagement" class="nav-item-link" to="/rescuer/quan-ly-thanh-vien">
                 <i class="fa-solid fa-shield-halved me-2"></i>Thành Viên
             </router-link>
 
@@ -79,6 +79,8 @@
 </template>
 
 <script>
+import { MANAGER_TEAM, TEAMLEAD, MEMBER } from "../../constants/roles.js";
+
 export default {
     name: "MenuRescuer",
     data() {
@@ -114,6 +116,19 @@ export default {
             const name = encodeURIComponent(this.rescuerName);
             const color = this.avatarColors[this.rescuerName.length % this.avatarColors.length];
             return `https://ui-avatars.com/api/?name=${name}&background=${color}&color=fff&bold=true`;
+        },
+        currentRole() {
+            try {
+                const raw = localStorage.getItem("rescuer_user");
+                if (!raw) return null;
+                const user = JSON.parse(raw);
+                return user.vai_tro_trong_doi ?? user.vaiTro ?? null;
+            } catch {
+                return null;
+            }
+        },
+        canViewManagement() {
+            return this.currentRole !== MEMBER;
         },
     },
     methods: {

@@ -10,6 +10,7 @@ use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\NguoiDungController;
 use App\Http\Controllers\LoaiSuCoController;
 use App\Http\Controllers\YeuCauCuuHoController;
+use App\Http\Controllers\GoogleMapsConfigController;
 use App\Http\Controllers\DoiCuuHoController;
 use App\Http\Controllers\PhanCongCuuHoController;
 use App\Http\Controllers\KetQuaCuuHoController;
@@ -65,6 +66,7 @@ Route::post('password/resend-otp', [PasswordResetController::class, 'guiLaiMaOtp
 Route::post('thanh-vien-doi/login', [ThanhVienDoiController::class, 'login']);
 Route::post('rescuer/login', [ThanhVienDoiController::class, 'login']);
 Route::get('rescuer/check-token', [ThanhVienDoiController::class, 'checkToken']);
+Route::get('config/google-maps', [GoogleMapsConfigController::class, 'show']);
 
 // =========================================
 // PUBLIC - No Auth Required
@@ -153,7 +155,7 @@ Route::middleware(['auth:admin', 'check.admin'])->group(function () {
     Route::put('phan-cong-cuu-ho/{id}', [PhanCongCuuHoController::class, 'update']);
     Route::delete('phan-cong-cuu-ho/{id}', [PhanCongCuuHoController::class, 'destroy']);
     Route::get('phan-cong-cuu-ho/theo-yeu-cau/{id_yeu_cau}', [PhanCongCuuHoController::class, 'getByYeuCau']);
-    Route::get('phan-cong-cuu-ho/theo-trang-thai/{trang_thai}', [PhanCongCuuHoController::class, 'getByStatus']);
+    Route::get('admin/assignments/suggested/{id_yeu_cau}', [PhanCongCuuHoController::class, 'getSuggestedTeamsForRequest']);
 
     Route::put('doi-cuu-ho/{id}', [DoiCuuHoController::class, 'update']);
     Route::delete('doi-cuu-ho/{id}', [DoiCuuHoController::class, 'destroy']);
@@ -177,6 +179,7 @@ Route::middleware(['auth:thanh-vien-doi', 'check.rescuer'])->group(function () {
     Route::get('phan-cong-cuu-ho/theo-doi/{id_doi_cuu_ho}', [PhanCongCuuHoController::class, 'getByDoi']);
     Route::get('phan-cong-cuu-ho/active/{id_doi_cuu_ho}', [PhanCongCuuHoController::class, 'getActiveAssignment']);
     Route::put('phan-cong-cuu-ho/{id}/trang-thai', [PhanCongCuuHoController::class, 'updateStatus']);
+    Route::post('phan-cong-cuu-ho/{id}/location', [PhanCongCuuHoController::class, 'updateLocation']);
 
     // Rescuer tiếp nhận nhiệm vụ
     Route::post('yeu-cau-cuu-ho/rescuer-nhan-yeu-cau', [YeuCauCuuHoController::class, 'resNhanYeuCau']);
@@ -206,6 +209,12 @@ Route::middleware(['auth:thanh-vien-doi', 'check.rescuer'])->group(function () {
         Route::put('put-doi-cuu-ho/{id}/tai-nguyen/{id_tai_nguyen}', [DoiCuuHoController::class, 'updateTaiNguyen']);
         Route::delete('delete-doi-cuu-ho/{id}/tai-nguyen/{id_tai_nguyen}', [DoiCuuHoController::class, 'destroyTaiNguyen']);
     });
+
+    // Quản lý thành viên (role-based filtering)
+    // MANAGER_TEAM(0): see all members
+    // TEAMLEAD(1): see only members of the same team
+    // MEMBER(2): see only members of the same team (route guard blocks access on FE)
+    Route::get('rescuer/members', [ThanhVienDoiController::class, 'getMembersFiltered']);
 });
 
 // =========================================

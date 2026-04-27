@@ -21,6 +21,12 @@ export default function (to, from, next) {
                 if (res.data.ho_ten) {
                     localStorage.setItem("rescuer_name", res.data.ho_ten);
                 }
+                if (res.data.data) {
+                    localStorage.setItem("rescuer_user", JSON.stringify(res.data.data));
+                    if (res.data.data.doi_cuu_ho || res.data.data.doiCuuHo) {
+                        localStorage.setItem("rescuer_team", JSON.stringify(res.data.data.doi_cuu_ho || res.data.data.doiCuuHo));
+                    }
+                }
                 next();
             } else {
                 if (res.data?.message) {

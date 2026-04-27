@@ -26,6 +26,11 @@ api.interceptors.request.use((config) => {
     match('/phan-cong-cuu-ho/active') ||           // GET active/{teamId}
     match('/rescuer/') ||
     match('/thanh-vien-doi/login') ||
+    match('/rescuer/login') ||
+    match('/rescuer/check-token') ||
+    match('/rescuer/gui-bao-cao') ||
+    match('/rescuer/bao-cao') ||
+    match('/rescuer/members') ||
     match('/doi-cuu-ho/login') ||
     match('/doi-cuu-ho/check-token') ||
     match('/get-doi-cuu-ho') ||
@@ -171,6 +176,9 @@ export const rescueRequestAPI = {
   getTrackingDetail: (id) => api.get(`/yeu-cau-cuu-ho/${id}/theo-doi`),
   getTrackingList: () => api.get('/yeu-cau-cuu-ho/theo-doi/danh-sach'),
   getTrackingDelta: (since) => api.get('/yeu-cau-cuu-ho/theo-doi/thay-doi', { params: { since } }),
+  // Client review
+  submitRating: (yeuCauId, data) =>
+    api.post('/post-danh-gia-cuu-ho/yeu-cau/' + yeuCauId, data),
 };
 
 // Rescue Teams (Đội Cứu hộ)

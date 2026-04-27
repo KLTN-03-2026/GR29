@@ -235,10 +235,8 @@ export default {
       searchDate: "",
       loading: false,
       error: "",
-      pollInterval: null,
-      isSyncing: false,
+      realtimeChannel: null,
       lastSyncAt: null,
-      // Stable key map: itemId → Vue key, so Vue can diff in-place
       itemKeyMap: {},
     };
   },
@@ -250,96 +248,85 @@ export default {
   },
   async created() {
     await this.loadRequests();
-    this.startPolling();
+    this.subscribeToRescueUpdates();
   },
   beforeUnmount() {
-    this.stopPolling();
+    this.unsubscribeFromRescueUpdates();
   },
   methods: {
-    // ─── Smart Delta Polling (15s) ─────────────────────────────────────────────
-    // Uses /theo-doi/thay-doi?since= to get only changed/removed items,
-    // then applies changes in-place without touching other DOM nodes.
-    startPolling() {
-      this.stopPolling();
-      this.pollInterval = setInterval(() => {
-        this.smartPoll();
-      }, 15000);
-    },
-    stopPolling() {
-      if (this.pollInterval) {
-        clearInterval(this.pollInterval);
-        this.pollInterval = null;
-      }
-    },
-    async smartPoll() {
-      if (this.isSyncing) return;
-      if (this.requests.length === 0) {
-        this.stopPolling();
+    // ─── Echo Real-time Subscription ─────────────────────────────────────────────
+    subscribeToRescueUpdates() {
+      if (!window.Echo) {
+        console.warn('[AdminDangXuLy] Echo chua san sang, thu lai sau...');
+        setTimeout(() => this.subscribeToRescueUpdates(), 3000);
         return;
       }
-      this.isSyncing = true;
-      try {
-        const since = this.lastSyncAt ? encodeURIComponent(this.lastSyncAt) : null;
-        const resp = await rescueRequestAPI.getTrackingDelta(since);
-        const data = resp?.data;
-        if (!data) return;
 
-        const hasChanges =
-          (data.items && data.items.length > 0) ||
-          (data.removed_ids && data.removed_ids.length > 0);
+      const connect = () => {
+        if (this.realtimeChannel) return;
 
-        if (!hasChanges) return;
+        this.realtimeChannel = window.Echo.channel('rescue-requests');
+        this.realtimeChannel.listen('RescueRequestUpdated', (event) => {
+          this.handleRescueUpdate(event);
+        });
+      };
 
-        // Apply removed (completed / cancelled)
-        if (data.removed_ids?.length > 0) {
-          const removedSet = new Set(data.removed_ids.map(id => String(id)));
-          this.requests = this.requests.filter(r => !removedSet.has(String(r.id)));
-        }
+      const conn = window.Echo.connector?.pusher?.connection;
+      if (conn?.state === 'connected') {
+        connect();
+      } else if (conn) {
+        conn.bind('connected', connect);
+        setTimeout(() => {
+          if (!this.realtimeChannel) connect();
+        }, 5000);
+      } else {
+        setTimeout(() => this.subscribeToRescueUpdates(), 2000);
+      }
+    },
 
-        // Apply updated items in-place
-        if (data.items?.length > 0) {
-          for (const raw of data.items) {
-            const itemId = String(raw.id || raw.id_yeu_cau || "");
+    unsubscribeFromRescueUpdates() {
+      if (this.realtimeChannel) {
+        this.realtimeChannel.stopListening('RescueRequestUpdated');
+        window.Echo.leave('rescue-requests');
+        this.realtimeChannel = null;
+      }
+    },
 
-            const reqStatus = String(raw.trang_thai || "").toUpperCase().replace(/\s+/g, "_");
-            const closed = new Set(["HOAN_THANH", "DA_HOAN_THANH", "HUY_BO", "DA_HUY", "TU_CHOI", "THAT_BAI", "DONE"]);
-            if (closed.has(reqStatus)) {
-              this.requests = this.requests.filter(r => String(r.id) !== itemId);
-              continue;
-            }
+    handleRescueUpdate(event) {
+      const requestId = String(event.id_yeu_cau ?? event.id ?? '');
+      if (!requestId) return;
 
-            // Filter: only keep DANG_XU_LY / PROCESSING
-            if (reqStatus !== "DANG_XU_LY" && reqStatus !== "PROCESSING" && reqStatus !== "DA_PHAN_CONG") continue;
+      const reqStatus = String(event.trang_thai || "").toUpperCase().replace(/\s+/g, "_");
+      const closed = new Set(["HOAN_THANH", "DA_HOAN_THANH", "HUY_BO", "DA_HUY", "TU_CHOI", "THAT_BAI", "DONE"]);
 
-            const parsed = parseRequests([raw]);
-            if (!parsed.length) continue;
-            const updated = parsed[0];
+      if (closed.has(reqStatus)) {
+        // Item completed or cancelled — remove from list
+        this.requests = this.requests.filter(r => String(r.id) !== requestId);
+        return;
+      }
 
-            const idx = this.requests.findIndex(r => String(r.id) === itemId);
-            if (idx >= 0) {
-              // Preserve stable key so Vue updates in-place without full re-render
-              updated.key = this.requests[idx].key;
-              this.requests.splice(idx, 1, updated);
-            } else {
-              // New item — allocate stable key, cache it
-              const stableKey = `admin-${itemId}`;
-              this.itemKeyMap[itemId] = stableKey;
-              updated.key = stableKey;
-              this.requests.unshift(updated);
-            }
-          }
-        }
+      // Only keep active statuses
+      if (reqStatus !== "DANG_XU_LY" && reqStatus !== "PROCESSING" && reqStatus !== "DA_PHAN_CONG") return;
 
-        // Stop polling when list empties
-        if (this.requests.length === 0) {
-          this.stopPolling();
-        }
-      } catch (e) {
-        // Silently ignore polling errors
-      } finally {
-        this.isSyncing = false;
-        // Always update lastSyncAt so next poll is a true delta
-        this.lastSyncAt = new Date().toISOString();
+      // Try to parse from event data
+      const parsed = parseRequests([{
+        ...event,
+        id: requestId,
+        id_yeu_cau: requestId,
+        trang_thai: reqStatus,
+      }]);
+      if (!parsed.length) return;
+      const updated = parsed[0];
+
+      const idx = this.requests.findIndex(r => String(r.id) === requestId);
+      if (idx >= 0) {
+        updated.key = this.requests[idx].key;
+        this.requests.splice(idx, 1, updated);
+      } else {
+        const stableKey = `admin-${requestId}`;
+        this.itemKeyMap[requestId] = stableKey;
+        updated.key = stableKey;
+        this.requests.unshift(updated);
       }
     },
     getSeverityBadge(sev) {
