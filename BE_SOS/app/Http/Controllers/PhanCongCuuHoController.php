@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Events\RescueRequestUpdated;
+use App\Events\RescuerLocationUpdated;
 use App\Models\{PhanCongCuuHo, DoiCuuHo};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -336,5 +337,38 @@ class PhanCongCuuHoController extends Controller
                 'message' => 'Lỗi khi lấy danh sách đội gợi ý: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Update rescuer team location for real-time tracking
+     * Route: POST phan-cong-cuu-ho/{id}/location
+     */
+    public function updateLocation(Request $request, $id)
+    {
+        $assignment = PhanCongCuuHo::findOrFail($id);
+
+        $validated = $request->validate([
+            'lat' => 'required|numeric|between:-90,90',
+            'lng' => 'required|numeric|between:-180,180',
+        ]);
+
+        $teamId = $assignment->id_doi_cuu_ho;
+
+        // Broadcast location update to all clients tracking this team
+        try {
+            event(new RescuerLocationUpdated($teamId, $validated['lat'], $validated['lng']));
+        } catch (\Throwable $exception) {
+            Log::warning('[broadcast] Failed to send RescuerLocationUpdated', [
+                'team_id' => $teamId,
+                'lat' => $validated['lat'],
+                'lng' => $validated['lng'],
+                'error' => $exception->getMessage(),
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Location updated successfully'
+        ]);
     }
 }

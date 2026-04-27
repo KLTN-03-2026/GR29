@@ -187,6 +187,7 @@ Route::middleware(['auth:thanh-vien-doi', 'check.rescuer'])->group(function () {
     Route::get('phan-cong-cuu-ho/theo-doi/{id_doi_cuu_ho}', [PhanCongCuuHoController::class, 'getByDoi']);
     Route::get('phan-cong-cuu-ho/active/{id_doi_cuu_ho}', [PhanCongCuuHoController::class, 'getActiveAssignment']);
     Route::put('phan-cong-cuu-ho/{id}/trang-thai', [PhanCongCuuHoController::class, 'updateStatus']);
+    Route::post('phan-cong-cuu-ho/{id}/location', [PhanCongCuuHoController::class, 'updateLocation']);
 
     // Rescuer tiếp nhận nhiệm vụ
     Route::post('yeu-cau-cuu-ho/rescuer-nhan-yeu-cau', [YeuCauCuuHoController::class, 'resNhanYeuCau']);
