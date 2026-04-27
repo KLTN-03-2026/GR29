@@ -495,7 +495,7 @@
 </template>
 
 <script>
-import { rescuerAPI } from "../../../services/api.js";
+import { rescuerAPI, assignmentAPI } from "../../../services/api.js";
 import { loadOpenMap, createOpenMap, createOpenMapMarker, createOpenMapPopup, fitBoundsToMap } from "../../../utils/openMap.js";
 import { createToaster } from "@meforma/vue-toaster";
 
@@ -533,6 +533,8 @@ export default {
             mapLoading: false,
             mapError: "",
             mapResizeObserver: null,
+            locationBroadcastInterval: null,
+            locationChannel: null,
         };
     },
     async mounted() {
@@ -548,11 +550,18 @@ export default {
             }
         });
         this.subscribeToRescueUpdates();
+        this.startLocationBroadcasting();
     },
     beforeUnmount() {
         this.unsubscribeFromRescueUpdates();
         this.disconnectMapObserver();
         this.cleanupRoute();
+        this.stopLocationBroadcasting();
+        if (this.locationChannel) {
+            this.locationChannel.stopListening('location.updated');
+            window.Echo.leave(`rescuer-location.${this.teamId}`);
+            this.locationChannel = null;
+        }
         if (this.teamMarker) { this.teamMarker.remove(); this.teamMarker = null; }
         if (this.gpsMarker) { this.gpsMarker.remove(); this.gpsMarker = null; }
         if (this.requestMarker) { this.requestMarker.remove(); this.requestMarker = null; }
@@ -603,10 +612,20 @@ export default {
             }
             const connect = () => {
                 if (this.realtimeChannel) return;
+
+                // Subscribe to rescue requests updates
                 this.realtimeChannel = window.Echo.channel('rescue-requests');
                 this.realtimeChannel.listen('RescueRequestUpdated', (event) => {
                     this.handleRescueUpdate(event);
                 });
+
+                // Subscribe to location updates for this team (if we have team data)
+                if (this.teamId) {
+                    this.locationChannel = window.Echo.channel(`rescuer-location.${this.teamId}`);
+                    this.locationChannel.listen('location.updated', (event) => {
+                        this.handleLocationUpdate(event);
+                    });
+                }
             };
             const conn = window.Echo.connector?.pusher?.connection;
             if (conn?.state === 'connected') {
@@ -643,6 +662,32 @@ export default {
             if (this.currentMission) {
                 this.refreshMissionData();
             }
+        },
+        handleLocationUpdate(event) {
+            // Update team marker position on map when receiving location updates
+            if (!this.map || !event.lat || !event.lng) return;
+
+            const newLat = parseFloat(event.lat);
+            const newLng = parseFloat(event.lng);
+
+            if (this.teamMarker) {
+                // Update existing marker position
+                this.teamMarker.setLngLat([newLng, newLat]);
+            } else {
+                // Create new marker if it doesn't exist
+                this.teamMarker = new mapboxgl.Marker({
+                    color: '#10b981', // Green for rescuer team
+                    draggable: false
+                })
+                .setLngLat([newLng, newLat])
+                .addTo(this.map);
+            }
+
+            // Update stored coordinates
+            this.teamLat = newLat;
+            this.teamLng = newLng;
+
+            console.log('[Location] Updated team marker position:', newLat, newLng);
         },
         async refreshMissionData() {
             if (!this.teamId) return;
@@ -1053,6 +1098,51 @@ export default {
             });
             this.routeSource = 'route';
             this.routeLayer = 'route-line';
+        },
+        startLocationBroadcasting() {
+            this.stopLocationBroadcasting(); // Clear any existing interval
+            if (!this.currentMission) return;
+
+            this.locationBroadcastInterval = setInterval(async () => {
+                if (!this.currentMission || !navigator.geolocation) return;
+
+                try {
+                    const position = await this.getCurrentPosition();
+                    if (position && this.currentMission.id_phan_cong) {
+                        await assignmentAPI.updateLocation(this.currentMission.id_phan_cong, {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        });
+                        console.log('[Location] Broadcasted:', position.coords.latitude, position.coords.longitude);
+                    }
+                } catch (error) {
+                    console.warn('[Location] Failed to broadcast location:', error);
+                }
+            }, 10000); // Broadcast every 10 seconds
+        },
+        stopLocationBroadcasting() {
+            if (this.locationBroadcastInterval) {
+                clearInterval(this.locationBroadcastInterval);
+                this.locationBroadcastInterval = null;
+            }
+        },
+        getCurrentPosition() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error('Geolocation not supported'));
+                    return;
+                }
+
+                navigator.geolocation.getCurrentPosition(
+                    resolve,
+                    reject,
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 10000
+                    }
+                );
+            });
         },
         cleanupRoute() {
             if (!this.map) return;

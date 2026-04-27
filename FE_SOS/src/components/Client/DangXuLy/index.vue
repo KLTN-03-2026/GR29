@@ -406,6 +406,7 @@ export default {
       isModalOpen: false,
       selectedItem: null,
       realtimeChannel: null,
+      fallbackPollingInterval: null,
     };
   },
   computed: {
@@ -425,9 +426,11 @@ export default {
   async created() {
     await this.loadActiveRequests();
     this.subscribeToReverb();
+    this.startFallbackPolling();
   },
   beforeUnmount() {
     this.unsubscribeFromReverb();
+    this.stopFallbackPolling();
   },
   methods: {
     // ─── Reverb WebSocket ────────────────────────────────────────────────────────
@@ -492,6 +495,7 @@ export default {
       const closed = new Set(["HOAN_THANH", "DA_HOAN_THANH", "HUY_BO", "DA_HUY", "TU_CHOI", "THAT_BAI", "DONE"]);
 
       if (closed.has(data.trang_thai)) {
+        // Remove completed requests from list
         const idx = this.danhsach.findIndex(item => String(item.id) === requestId);
         if (idx >= 0) this.danhsach.splice(idx, 1);
         if (this.selectedItem && String(this.selectedItem.id) === requestId) {
@@ -500,12 +504,78 @@ export default {
         return;
       }
 
-      const idx = this.danhsach.findIndex(item => String(item.id) === requestId);
-      if (idx >= 0) {
-        this.danhsach.splice(idx, 1);
+      // Update existing item status instead of reloading entire list
+      const existingIdx = this.danhsach.findIndex(item => String(item.id) === requestId);
+      if (existingIdx >= 0) {
+        // Update the existing item with new status from event
+        const existingItem = this.danhsach[existingIdx];
+        const updatedItem = {
+          ...existingItem,
+          status: data.trang_thai || existingItem.status,
+          assignmentStatus: data.trang_thai_nhiem_vu || data.assignmentStatus || existingItem.assignmentStatus,
+          teamName: data.ten_doi_cuu_ho || data.teamName || existingItem.teamName,
+          teamId: data.id_doi_cuu_ho || data.teamId || existingItem.teamId,
+          // Update progress based on status
+          progress: getProgress(data.trang_thai, data.trang_thai_nhiem_vu || data.assignmentStatus),
+          updated_at: new Date().toISOString()
+        };
+
+        // Rebuild status metadata
+        const statusMeta = buildStatusMeta(updatedItem.status, updatedItem.assignmentStatus);
+        updatedItem.statusMeta = statusMeta;
+        updatedItem.stepIndex = getStepIndex(updatedItem.status, updatedItem.assignmentStatus);
+
+        this.danhsach.splice(existingIdx, 1, updatedItem);
+
+        // Update selected item if it's the current one
+        if (this.selectedItem && String(this.selectedItem.id) === requestId) {
+          this.selectedItem = updatedItem;
+        }
+
+        // Show toast notification for status updates
+        this.showStatusUpdateToast(updatedItem);
+      } else {
+        // If item not in current list, it might be newly assigned to this user
+        // For now, we'll skip reloading to avoid polling - the item will appear on next manual refresh
+        console.log('[Reverb] Item not in current list, skipping reload to avoid polling:', requestId);
+      }
+    },
+    showStatusUpdateToast(item) {
+      if (!this.$toast) return;
+
+      const statusText = this.getStatusDisplayText(item.status, item.assignmentStatus);
+      const message = `Yêu cầu #${item.id}: ${statusText}`;
+
+      // Different toast types based on status
+      if (item.status === 'DA_PHAN_CONG') {
+        this.$toast.success(message, { duration: 5000 });
+      } else if (item.status === 'DANG_XU_LY') {
+        this.$toast.info(message, { duration: 4000 });
+      } else if (item.status === 'DA_DEN_HIEN_TRUONG') {
+        this.$toast.warning(message, { duration: 4000 });
+      } else if (item.status === 'HOAN_THANH') {
+        this.$toast.success(message, { duration: 6000 });
+      } else {
+        this.$toast.info(message, { duration: 3000 });
+      }
+    },
+    getStatusDisplayText(requestStatus, assignmentStatus) {
+      const statusMap = {
+        'CHO_XU_LY': 'Chờ xử lý',
+        'DA_PHAN_CONG': 'Đã phân công đội cứu hộ',
+        'DANG_XU_LY': 'Đội cứu hộ đang xử lý',
+        'DA_DEN_HIEN_TRUONG': 'Đội cứu hộ đã đến hiện trường',
+        'HOAN_THANH': 'Đã hoàn thành',
+        'HUY_BO': 'Đã hủy bỏ',
+        'THAT_BAI': 'Xử lý thất bại'
+      };
+
+      // Prioritize assignment status if available
+      if (assignmentStatus && statusMap[assignmentStatus]) {
+        return statusMap[assignmentStatus];
       }
 
-      this.loadActiveRequests(true);
+      return statusMap[requestStatus] || 'Cập nhật trạng thái';
     },
 
     // ─── Progress step helpers ────────────────────────────────────────────────
@@ -648,6 +718,31 @@ export default {
       this.isModalOpen = false;
       this.selectedItem = null;
       document.body.style.overflow = "";
+    },
+
+    // Fallback polling when realtime is unavailable
+    startFallbackPolling() {
+      this.stopFallbackPolling(); // Clear any existing interval
+
+      this.fallbackPollingInterval = setInterval(async () => {
+        // Only poll if realtime is disconnected
+        const connectionStatus = window.realtimeConnectionStatus || 'connecting';
+        if (connectionStatus === 'connected') return;
+
+        console.log('[Fallback] Polling for updates...');
+        try {
+          await this.loadActiveRequests(true); // Silent reload
+        } catch (error) {
+          console.warn('[Fallback] Polling failed:', error);
+        }
+      }, 30000); // Poll every 30 seconds when offline
+    },
+
+    stopFallbackPolling() {
+      if (this.fallbackPollingInterval) {
+        clearInterval(this.fallbackPollingInterval);
+        this.fallbackPollingInterval = null;
+      }
     },
   },
 };
