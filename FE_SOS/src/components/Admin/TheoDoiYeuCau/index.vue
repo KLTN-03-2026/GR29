@@ -70,7 +70,7 @@
               </div>
               <div v-if="item.doi_cuu_ho" class="mt-2">
                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 small fw-medium">
-                  <i class="fa-solid fa-truck-medical me-1"></i>{{ item.doi_cuu_ho.ten_co }}
+                  <i class="fa-solid fa-truck-medical me-1"></i>{{ item.doi_cuu_ho.ten_doi || item.doi_cuu_ho.ten_co }}
                 </span>
               </div>
             </div>
@@ -127,7 +127,7 @@
                         <i class="fa-solid fa-user-shield"></i>
                       </div>
                       <div class="flex-grow-1">
-                        <h5 class="mb-1 fw-bold">{{ pc.ten_doi }}</h5>
+                        <h5 class="mb-1 fw-bold">{{ pc.ten_doi || 'Chưa xác định' }}</h5>
                         <p class="text-muted mb-0 small">
                           <i class="fa-solid fa-phone me-1"></i> {{ pc.sdt_hotline || 'N/A' }}
                           <span v-if="pc.khu_vuc"> &bull; {{ pc.khu_vuc }}</span>
@@ -139,13 +139,18 @@
                     </div>
 
                     <!-- Members -->
-                    <div v-if="pc.thanh_viens && pc.thanh_viens.length > 0" class="mb-3">
+                    <div class="mb-3">
                       <small class="text-muted fw-semibold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">
-                        <i class="fa-solid fa-users me-1"></i> Thành viên ({{ pc.thanh_viens.length }})
+                        <i class="fa-solid fa-user-check me-1"></i> Người tiếp nhận
                       </small>
                       <div class="d-flex flex-wrap gap-2 mt-2">
-                        <span v-for="m in pc.thanh_viens" :key="m.id" class="badge bg-light text-dark border px-2 py-1 fw-medium">
-                          <i class="fa-solid fa-user me-1 text-primary"></i>{{ m.ho_ten }}
+                        <template v-if="pc.thanh_viens && pc.thanh_viens.length > 0">
+                          <span v-for="m in pc.thanh_viens" :key="m.id" class="badge bg-success-subtle text-success border border-success px-2 py-1 fw-medium">
+                            <i class="fa-solid fa-user-check me-1"></i>{{ m.ho_ten }}
+                          </span>
+                        </template>
+                        <span v-else class="badge bg-warning-subtle text-warning border border-warning px-2 py-1 fw-medium">
+                          <i class="fa-solid fa-hourglass-half me-1"></i>Chưa tiếp nhận
                         </span>
                       </div>
                     </div>
@@ -560,6 +565,8 @@ export default {
           trang_thai: data.trang_thai,
           trang_thai_nhiem_vu: data.trang_thai_nhiem_vu,
           thoi_gian_cap_nhat: data.updated_at,
+          doi_cuu_ho: data.ten_doi ? { ten_co: data.ten_doi } : this.trackingList[idx].doi_cuu_ho,
+          phan_congs: data.phan_congs || this.trackingList[idx].phan_congs,
         });
         this.prevStatusMap[requestId] = newStatus;
 
@@ -575,6 +582,7 @@ export default {
           loai_su_co: data.loai_su_co,
           vi_tri_dia_chi: data.vi_tri_dia_chi,
           doi_cuu_ho: data.ten_doi ? { ten_co: data.ten_doi } : null,
+          phan_congs: data.phan_congs || [],
         });
         this.prevStatusMap[requestId] = data.trang_thai;
       }
