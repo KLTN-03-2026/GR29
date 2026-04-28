@@ -288,13 +288,13 @@
                                 Gọi ngay
                             </a>
                             <a v-if="getRequestAddress(selectedMission)"
-                                :href="'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(getRequestAddress(selectedMission))"
+                                :href="getRoadNavigationUrl(selectedMission)"
                                 target="_blank"
                                 class="action-btn action-btn-nav">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                                     <polygon points="3 11 22 2 13 21 11 13 3 11"/>
                                 </svg>
-                                Chỉ đường
+                                Đường bộ
                             </a>
                         </div>
 
@@ -389,6 +389,7 @@
 <script>
 import { rescuerAPI } from "../../../services/api.js";
 import { loadOpenMap, createOpenMap, createOpenMapMarker, createOpenMapPopup, fitBoundsToMap } from "../../../utils/openMap.js";
+import { loadGoogleMaps } from "../../../utils/googleMaps.js";
 import { createToaster } from "@meforma/vue-toaster";
 
 const toaster = createToaster({ position: "top-right" });
@@ -746,37 +747,89 @@ export default {
                 const srcLat = this.memberLat;
                 const srcLng = this.memberLng;
                 if (srcLat && srcLng) {
-                    await this.drawFlightRoute(srcLat, srcLng, item.yeu_cau.vi_tri_lat, item.yeu_cau.vi_tri_lng);
+                    await this.drawDrivingRoute(srcLat, srcLng, item.yeu_cau.vi_tri_lat, item.yeu_cau.vi_tri_lng);
                 }
-                this.map.flyTo({
-                    center: [Number(item.yeu_cau.vi_tri_lng), Number(item.yeu_cau.vi_tri_lat)],
-                    zoom: 15,
-                    essential: true,
-                });
             }
         },
-        async drawFlightRoute(lat1, lng1, lat2, lng2) {
+        async drawDrivingRoute(lat1, lng1, lat2, lng2) {
             this.cleanupRoute();
-            this.drawStraightLine(lat1, lng1, lat2, lng2);
-            this.fitBoundsToMap(this.map, [
-                [lng1, lat1],
-                [lng2, lat2]
-            ]);
+            try {
+                // Try Google Directions first if API key is available
+                const googleApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim();
+                if (googleApiKey) {
+                    try {
+                        await loadGoogleMaps();
+                        const directionsService = new google.maps.DirectionsService();
+                        const request = {
+                            origin: { lat: lat1, lng: lng1 },
+                            destination: { lat: lat2, lng: lng2 },
+                            travelMode: google.maps.TravelMode.DRIVING,
+                        };
+                        const response = await new Promise((resolve, reject) => {
+                            directionsService.route(request, (result, status) => {
+                                if (status === google.maps.DirectionsStatus.OK) {
+                                    resolve(result);
+                                } else {
+                                    reject(new Error(`Google Directions failed: ${status}`));
+                                }
+                            });
+                        });
+                        if (response.routes && response.routes.length > 0) {
+                            const route = response.routes[0];
+                            const path = [];
+                            route.overview_path.forEach(point => {
+                                path.push([point.lng(), point.lat()]);
+                            });
+                            this.addDrivingRouteToMap(path);
+                            this.fitBoundsToMap(this.map, [[lng1, lat1], ...path, [lng2, lat2]]);
+                            return;
+                        }
+                    } catch (googleError) {
+                        console.warn('Google Directions failed, falling back to OSRM:', googleError);
+                    }
+                }
+
+                // Fallback to OSRM
+                const response = await fetch(
+                    `https://router.project-osrm.org/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=full&geometries=geojson`
+                );
+                const data = await response.json();
+                if (data.routes && data.routes.length > 0) {
+                    const coordinates = data.routes[0].geometry.coordinates.map(coord => [coord[0], coord[1]]);
+                    this.addDrivingRouteToMap(coordinates);
+                    this.fitBoundsToMap(this.map, [[lng1, lat1], ...coordinates, [lng2, lat2]]);
+                } else {
+                    this.drawDrivingFallback(lat1, lng1, lat2, lng2);
+                }
+            } catch (error) {
+                console.warn('OSRM failed, using fallback:', error);
+                this.drawDrivingFallback(lat1, lng1, lat2, lng2);
+            }
         },
-        drawStraightLine(lat1, lng1, lat2, lng2) {
-            const coords = [[Number(lng1), Number(lat1)], [Number(lng2), Number(lat2)]];
-            const routeGeoJSON = { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } };
+        addDrivingRouteToMap(coordinates) {
+            const routeGeoJSON = { type: 'Feature', geometry: { type: 'LineString', coordinates } };
             this.map.addSource('route', { type: 'geojson', data: routeGeoJSON });
             this.map.addLayer({
                 id: 'route-line',
                 type: 'line',
                 source: 'route',
-                paint: {
-                    'line-color': '#ef4444',
-                    'line-width': 3,
-                    'line-opacity': 0.7,
-                    'line-dasharray': [2, 2],
-                },
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: { 'line-color': '#ef4444', 'line-width': 4, 'line-opacity': 0.8 },
+            });
+            this.routeSource = 'route';
+            this.routeLayer = 'route-line';
+        },
+        drawDrivingFallback(lat1, lng1, lat2, lng2) {
+            const coords = [[Number(lng1), Number(lat1)], [Number(lng2), Number(lat2)]];
+            const routeGeoJSON = { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } };
+            if (this.map.getLayer('route-line')) this.map.removeLayer('route-line');
+            if (this.map.getSource('route')) this.map.removeSource('route');
+            this.map.addSource('route', { type: 'geojson', data: routeGeoJSON });
+            this.map.addLayer({
+                id: 'route-line',
+                type: 'line',
+                source: 'route',
+                paint: { 'line-color': '#ef4444', 'line-width': 4, 'line-opacity': 0.6, 'line-dasharray': [2, 2] },
             });
             this.routeSource = 'route';
             this.routeLayer = 'route-line';
@@ -911,6 +964,15 @@ export default {
                 }
             }
             return '';
+        },
+        getRoadNavigationUrl(item) {
+            const dest = this.getRequestAddress(item);
+            let url = 'https://www.google.com/maps/dir/?api=1';
+            if (this.memberLat && this.memberLng) {
+                url += `&origin=${this.memberLat},${this.memberLng}`;
+            }
+            url += `&destination=${encodeURIComponent(dest)}&travelmode=driving`;
+            return url;
         },
     },
 };

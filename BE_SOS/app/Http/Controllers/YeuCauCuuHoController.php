@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Events\RescueRequestUpdated;
 use App\Http\Requests\YeuCauCuuHoRequest;
 use App\Models\{DoiCuuHo, YeuCauCuuHo, HangDoiXuLy, PhanLoaiAis, DuLieuHeatmap, PhanCongCuuHo, NguoiDung, LoaiSuCo};
+use App\Services\DistanceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Response;
@@ -13,6 +14,12 @@ use Illuminate\Support\Facades\Http;
 
 class YeuCauCuuHoController extends Controller
 {
+    protected DistanceService $distanceService;
+
+    public function __construct(DistanceService $distanceService)
+    {
+        $this->distanceService = $distanceService;
+    }
     private function safeBroadcastRescueUpdate($yeuCau, string $action): void
     {
         try {
@@ -27,147 +34,35 @@ class YeuCauCuuHoController extends Controller
     }
 
     /**
-     * Tính khoảng cách đường bộ bằng Google Maps Distance Matrix API.
-     * Fallback về Haversine nếu lỗi.
+     * Tính khoảng cách từ vị trí yêu cầu tới vị trí đội sử dụng Google Distance Matrix API
      *
-     * @param float|null $fromLat
-     * @param float|null $fromLng
-     * @param float|null $toLat
-     * @param float|null $toLng
-     * @return float|null km (làm tròn 2 chữ số), hoặc null nếu thiếu tọa độ
+     * @param float|null $requestLat Vĩ độ vị trí yêu cầu
+     * @param float|null $requestLng Kinh độ vị trí yêu cầu
+     * @param float|null $teamLat Vĩ độ vị trí đội
+     * @param float|null $teamLng Kinh độ vị trí đội
+     * @return float|null Khoảng cách tính bằng km (2 chữ số thập phân), hoặc null nếu thiếu tọa độ hoặc lỗi API
      */
-    private function googleDistance(?float $fromLat, ?float $fromLng, ?float $toLat, ?float $toLng): ?float
+    private function tinhKhoangCach(?float $requestLat, ?float $requestLng, ?float $teamLat, ?float $teamLng): ?float
     {
-        if ($fromLat === null || $fromLng === null || $toLat === null || $toLng === null) {
-            return null;
-        }
-
-        $apiKey = config('services.google_maps.key');
-        if (empty($apiKey)) {
-            return $this->haversineDistance($fromLat, $fromLng, $toLat, $toLng);
-        }
-
-        try {
-            $url = 'https://maps.googleapis.com/maps/api/distancematrix/json';
-            $response = Http::timeout(5)->get($url, [
-                'origins' => "{$fromLat},{$fromLng}",
-                'destinations' => "{$toLat},{$toLng}",
-                'mode' => 'driving',
-                'key' => $apiKey,
-            ]);
-
-            if ($response->successful()) {
-                $data = $response->json();
-                $element = $data['rows'][0]['elements'][0] ?? null;
-                if ($element && ($element['status'] ?? '') === 'OK') {
-                    return round($element['distance']['value'] / 1000, 2);
-                }
-            }
-        } catch (\Throwable) {
-            // fallback sang Haversine
-        }
-
-        return $this->haversineDistance($fromLat, $fromLng, $toLat, $toLng);
+        return $this->distanceService->calculateDistance($requestLat, $requestLng, $teamLat, $teamLng);
     }
 
     /**
-     * Tính khoảng cách Haversine giữa 2 điểm (lat/lng) theo km.
-     * Trả về số km (>= 0) nếu đủ tọa độ, hoặc null nếu thiếu dữ liệu.
-     */
-    private function haversineDistance(?float $lat1, ?float $lng1, ?float $lat2, ?float $lng2): ?float
-    {
-        if ($lat1 === null || $lng1 === null || $lat2 === null || $lng2 === null) {
-            return null;
-        }
-        if ($lat1 == $lat2 && $lng1 == $lng2) {
-            return 0.0;
-        }
-        $R = 6371; // Bán kính trái đất km
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLng = deg2rad($lng2 - $lng1);
-        $a = sin($dLat / 2) ** 2
-           + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
-        $c = 2 * asin(sqrt($a));
-        return round($R * $c, 2);
-    }
-
-    /**
-     * Tính khoảng cách cho NHIỀU đội cùng lúc bằng Google Distance Matrix API (1 HTTP request).
-     * Fallback về Haversine nếu lỗi.
+     * Format khoảng cách để hiển thị trên badge
+     * Trả về chuỗi "X.XX km" hoặc "N/A" nếu không có dữ liệu
      *
-     * @param float|null $reqLat    Tọa độ sự cố
-     * @param float|null $reqLng    Tọa độ sự cố
-     * @param array      $locations Mảng [['lat' => float, 'lng' => float, 'key' => string]]
-     * @return array    ['key' => distance_km, ...]
+     * @param float|null $distance Khoảng cách tính bằng km
+     * @return string
      */
-    private function googleDistanceMatrix(?float $reqLat, ?float $reqLng, array $locations): array
+    private function formatKhoangCach(?float $distance): string
     {
-        if ($reqLat === null || $reqLng === null || empty($locations)) {
-            return [];
+        if ($distance === null) {
+            return 'N/A';
         }
-
-        $validLocations = array_values(array_filter($locations, fn($loc) =>
-            $loc['lat'] !== null && $loc['lng'] !== null
-        ));
-
-        if (empty($validLocations)) {
-            return [];
+        if (!is_numeric($distance)) {
+            return 'N/A';
         }
-
-        $apiKey = config('services.google_maps.key');
-        if (empty($apiKey)) {
-            $results = [];
-            foreach ($validLocations as $loc) {
-                $dist = $this->haversineDistance($reqLat, $reqLng, $loc['lat'], $loc['lng']);
-                if ($dist !== null) {
-                    $results[$loc['key']] = $dist;
-                }
-            }
-            return $results;
-        }
-
-        // Build origins = sự cố, destinations = tất cả điểm đội
-        $origins = "{$reqLat},{$reqLng}";
-        $destinations = implode('|', array_map(fn($loc) => "{$loc['lat']},{$loc['lng']}", $validLocations));
-
-        try {
-            $url = 'https://maps.googleapis.com/maps/api/distancematrix/json';
-            $response = Http::timeout(10)->get($url, [
-                'origins' => $origins,
-                'destinations' => $destinations,
-                'mode' => 'driving',
-                'key' => $apiKey,
-            ]);
-
-            if ($response->successful()) {
-                $data = $response->json();
-                $rows = $data['rows'] ?? [];
-                $elements = $rows[0]['elements'] ?? [];
-
-                if (!empty($elements)) {
-                    $results = [];
-                    foreach ($validLocations as $i => $loc) {
-                        $el = $elements[$i] ?? null;
-                        if ($el && ($el['status'] ?? '') === 'OK') {
-                            $results[$loc['key']] = round($el['distance']['value'] / 1000, 2);
-                        }
-                    }
-                    return $results;
-                }
-            }
-        } catch (\Throwable) {
-            // fallback sang Haversine
-        }
-
-        // Fallback: Haversine cho tất cả
-        $results = [];
-        foreach ($validLocations as $loc) {
-            $dist = $this->haversineDistance($reqLat, $reqLng, $loc['lat'], $loc['lng']);
-            if ($dist !== null) {
-                $results[$loc['key']] = $dist;
-            }
-        }
-        return $results;
+        return number_format((float)$distance, 2) . ' km';
     }
 
     public function timDoiGanNhat(Request $request)
@@ -203,7 +98,6 @@ class YeuCauCuuHoController extends Controller
                 'thanhViens',
                 'taiNguyens',
                 'loaiSuCos',
-                'viTris',
                 'phanCongs',
             ])->get();
 
@@ -219,6 +113,7 @@ class YeuCauCuuHoController extends Controller
             $reqDistrict = $normalizeDistrict($khuVucSuCo);
 
             // === Thu thập tất cả tọa độ để gọi Google Distance Matrix 1 lần duy nhất ===
+            // Chỉ sử dụng tọa độ trụ sở (HQ) của đội cứu hộ: vi_tri_lat, vi_tri_lng trong bảng doi_cuu_ho
             $allLocations = [];
             foreach ($allTeams as $team) {
                 if ($team->vi_tri_lat !== null && $team->vi_tri_lng !== null) {
@@ -228,15 +123,6 @@ class YeuCauCuuHoController extends Controller
                         'lng' => floatval($team->vi_tri_lng),
                     ];
                 }
-                foreach ($team->viTris ?? [] as $vt) {
-                    if ($vt->vi_tri_lat !== null && $vt->vi_tri_lng !== null) {
-                        $allLocations[] = [
-                            'key' => 'vt_' . $vt->id_vi_tri,
-                            'lat' => floatval($vt->vi_tri_lat),
-                            'lng' => floatval($vt->vi_tri_lng),
-                        ];
-                    }
-                }
             }
 
             Log::info('[timDoiGanNhat] Collected locations', [
@@ -244,7 +130,7 @@ class YeuCauCuuHoController extends Controller
                 'locations' => $allLocations,
             ]);
 
-            $matrixResults = $this->googleDistanceMatrix($reqLat, $reqLng, $allLocations);
+            $matrixResults = $this->distanceService->calculateDistances($reqLat, $reqLng, $allLocations);
 
             Log::info('[timDoiGanNhat] Distance matrix results', [
                 'matrixResults' => $matrixResults,
@@ -274,28 +160,18 @@ class YeuCauCuuHoController extends Controller
                     $cungQuan = $normReq === $normTeam;
                 }
 
-                // Lấy khoảng cách từ matrix (đã tính 1 lần)
+                // Lấy khoảng cách từ matrix - chỉ tính từ tọa độ trụ sở (vi_tri_lat, vi_tri_lng trong bảng doi_cuu_ho)
                 $hqKey = 'hq_' . $team->id_doi_cuu_ho;
-                $khoangCachTuHQ = $matrixResults[$hqKey] ?? null;
+                $khoangCachCuoi = $matrixResults[$hqKey] ?? null;
 
-                $khoangCachTuViTri = null;
-                foreach ($team->viTris ?? [] as $vt) {
-                    $vtKey = 'vt_' . $vt->id_vi_tri;
-                    $dist = $matrixResults[$vtKey] ?? null;
-                    if ($dist !== null && ($khoangCachTuViTri === null || $dist < $khoangCachTuViTri)) {
-                        $khoangCachTuViTri = $dist;
-                    }
-                }
-
-                $khoangCachCuoi = $khoangCachTuViTri !== null ? $khoangCachTuViTri : $khoangCachTuHQ;
+                // Note: khoang_cach_km có thể là null nếu API lỗi hoặc không có vị trí hợp lệ
+                // Trong trường hợp đó, null sẽ được xử lý trong logic sắp xếp
 
                 Log::info('[timDoiGanNhat] Team distance calculation', [
                     'team_id' => $team->id_doi_cuu_ho,
                     'team_lat' => $team->vi_tri_lat,
                     'team_lng' => $team->vi_tri_lng,
                     'hqKey' => $hqKey,
-                    'khoangCachTuHQ' => $khoangCachTuHQ,
-                    'khoangCachTuViTri' => $khoangCachTuViTri,
                     'khoangCachCuoi' => $khoangCachCuoi,
                 ]);
 
@@ -335,29 +211,63 @@ class YeuCauCuuHoController extends Controller
             }
 
             // Sort ưu tiên thống nhất:
-            // 1. Cùng type + cùng quận  (score 3)
-            // 2. Cùng type + khác quận  (score 2)
-            // 3. Khác type + cùng quận  (score 1)
-            // 4. Khác type + khác quận  (score 0)
-            // Trong cùng score: gần nhất trước
+            // 1. CHÍNH: Những đội có khoảng cách hợp lệ, sắp xếp theo distance (gần nhất lên trước)
+            // 2. PHỤ: Cùng type hiện lên cùng nhau
+            // 3. Những đội không có khoảng cách (null) đẩy xuống cuối
             usort($allTeamsList, function($a, $b) {
+                // Get distance values
+                $distA = $a['khoang_cach_km'];
+                $distB = $b['khoang_cach_km'];
+
+                $hasDistA = is_numeric($distA);
+                $hasDistB = is_numeric($distB);
+
+                // Priority 1: Đội có khoảng cách lên trước
+                if ($hasDistA && !$hasDistB) {
+                    return -1; // a lên trước (gần hơn)
+                }
+                if (!$hasDistA && $hasDistB) {
+                    return 1; // b lên trước
+                }
+
+                // Cả hai đều có khoảng cách - sort by distance
+                if ($hasDistA && $hasDistB) {
+                    $distANum = (float)$distA;
+                    $distBNum = (float)$distB;
+                    $distDiff = abs($distANum - $distBNum);
+
+                    if ($distDiff > 0.01) {
+                        return $distANum <=> $distBNum; // Gần hơn lên trước
+                    }
+
+                    $scoreA = ($a['cung_loai_su_co'] === true ? 2 : ($a['cung_loai_su_co'] === false ? 0 : 1))
+                            + ($a['cung_quan'] ? 1 : 0);
+                    $scoreB = ($b['cung_loai_su_co'] === true ? 2 : ($b['cung_loai_su_co'] === false ? 0 : 1))
+                            + ($b['cung_quan'] ? 1 : 0);
+
+                    if ($scoreA !== $scoreB) {
+                        return $scoreB - $scoreA; // Score cao lên trước khi distance bằng nhau
+                    }
+
+                    return $distANum <=> $distBNum;
+                }
+
+                // Cả hai đều không có khoảng cách - sort by type matching
                 $scoreA = ($a['cung_loai_su_co'] === true ? 2 : ($a['cung_loai_su_co'] === false ? 0 : 1))
                         + ($a['cung_quan'] ? 1 : 0);
                 $scoreB = ($b['cung_loai_su_co'] === true ? 2 : ($b['cung_loai_su_co'] === false ? 0 : 1))
                         + ($b['cung_quan'] ? 1 : 0);
 
-                if ($scoreA !== $scoreB) {
-                    return $scoreB - $scoreA; // cao hơn lên trước
-                }
-
-                // null distance = chưa xác định → đẩy xuống cuối
-                $distA = $a['khoang_cach_km'] ?? PHP_FLOAT_MAX;
-                $distB = $b['khoang_cach_km'] ?? PHP_FLOAT_MAX;
-                return $distA <=> $distB; // gần hơn lên trước
+                return $scoreB - $scoreA; // Score cao lên trước
             });
 
             return response()->json([
-                'teams' => $allTeamsList,
+                'teams' => array_map(function($team) {
+                    return [
+                        ...$team,
+                        'khoang_cach_display' => $this->formatKhoangCach($team['khoang_cach_km']),
+                    ];
+                }, $allTeamsList),
             ]);
         } catch (\Throwable $e) {
             Log::error('[timDoiGanNhat] Lỗi: ' . $e->getMessage(), [
@@ -577,6 +487,8 @@ class YeuCauCuuHoController extends Controller
             ]);
 
             $item->load('nguoiDung', 'loaiSuCo.chiTiets', 'hangDoiXuLy');
+
+            $this->safeBroadcastRescueUpdate($item, 'created');
 
             return Response::json([
                 'success' => true,
@@ -1466,6 +1378,7 @@ class YeuCauCuuHoController extends Controller
                 'loaiSuCo',
                 'phanCongs.doiCuuHo.thanhViens',
                 'phanCongs.ketQua',
+                'phanCongs.thanhVienTiepNhan',
             ])->findOrFail($id);
 
             $phanCongs = $yeuCau->phanCongs ?? collect();
@@ -1479,37 +1392,39 @@ class YeuCauCuuHoController extends Controller
                 $team = $pc->doiCuuHo;
                 $pcStatus = $this->normalizeTrangThaiNhiemVu($pc->trang_thai_nhiem_vu);
 
+                $thanhVienTiepNhan = $pc->thanhVienTiepNhan;
+
+                // Chỉ hiện thành viên đã tiếp nhận, ngược lại mảng rỗng
                 $members = [];
-                if ($team && $team->thanhViens) {
-                    foreach ($team->thanhViens as $thanhVien) {
-                        $members[] = [
-                            'id'           => $thanhVien->id_thanh_vien ?? $thanhVien->id,
-                            'ho_ten'       => $thanhVien->ho_ten ?? $thanhVien->name ?? 'N/A',
-                            'so_dien_thoai' => $thanhVien->so_dien_thoai ?? '',
-                            'trang_thai'   => $thanhVien->trang_thai ?? 'active',
-                        ];
-                    }
+                if ($thanhVienTiepNhan) {
+                    $members[] = [
+                        'id'           => $thanhVienTiepNhan->id_thanh_vien_doi ?? $thanhVienTiepNhan->id,
+                        'ho_ten'       => $thanhVienTiepNhan->ho_ten ?? $thanhVienTiepNhan->name ?? 'N/A',
+                        'so_dien_thoai' => $thanhVienTiepNhan->so_dien_thoai ?? '',
+                        'trang_thai'   => $thanhVienTiepNhan->trang_thai ?? 'active',
+                    ];
                 }
 
-                // Resolve location: use latest position if available
-                $viTriLat = $team->vi_tri_lat ?? null;
-                $viTriLng = $team->vi_tri_lng ?? null;
-                if ($team->viTris && $team->viTris->count() > 0) {
-                    $latest = $team->viTris->sortByDesc('id')->first();
-                    $viTriLat = $latest->vi_tri_lat ?? $viTriLat;
-                    $viTriLng = $latest->vi_tri_lng ?? $viTriLng;
+                $viTriLat = null;
+                $viTriLng = null;
+                if ($team) {
+                    // Luôn dùng vị trí trung tâm (HQ) đã seeder cho đội,
+                    // không dùng vị trí thực tế của rescuer
+                    $viTriLat = $team->vi_tri_lat ?? null;
+                    $viTriLng = $team->vi_tri_lng ?? null;
                 }
 
                 return [
                     'id_phan_cong'         => $pc->id_phan_cong ?? $pc->id,
                     'id_doi'              => $team ? ($team->id_doi_cuu_ho ?? $team->id) : null,
-                    'ten_doi'             => $team ? ($team->ten_co ?? 'Đội không tên') : 'Không xác định',
+                    'ten_doi'             => $team ? ($team->ten_doi ?? 'Chưa có tên đội') : 'Không xác định',
                     'sdt_hotline'         => $team ? ($team->so_dien_thoai_hotline ?? '') : '',
                     'khu_vuc'            => $team ? ($team->khu_vuc_quan_ly ?? '') : '',
                     'trang_thai_nhiem_vu' => $pcStatus,
                     'thoi_gian_phan_cong' => $pc->created_at ? $pc->created_at->toISOString() : null,
                     'thoi_gian_tiep_nhan' => $pc->thoi_gian_tiep_nhan ?? null,
                     'thanh_viens'         => $members,
+                    'da_tiep_nhan'        => $thanhVienTiepNhan !== null,
                     'vi_tri_lat'          => $viTriLat,
                     'vi_tri_lng'          => $viTriLng,
                     'ket_qua'            => $pc->ketQua ? [
@@ -1611,7 +1526,7 @@ class YeuCauCuuHoController extends Controller
                     ] : null,
                     'doi_cuu_ho'       => $team ? [
                         'id'    => $team->id_doi_cuu_ho ?? $team->id,
-                        'ten_co' => $team->ten_co ?? 'N/A',
+                        'ten_doi' => $team->ten_doi ?? 'Chưa có tên đội',
                         'sdt'   => $team->so_dien_thoai_hotline ?? '',
                     ] : null,
                     'phan_cong_count'   => $item->phanCongs->count(),
@@ -1688,7 +1603,7 @@ class YeuCauCuuHoController extends Controller
                     ] : null,
                     'doi_cuu_ho'       => $team ? [
                         'id'    => $team->id_doi_cuu_ho ?? $team->id,
-                        'ten_co' => $team->ten_co ?? 'N/A',
+                        'ten_doi' => $team->ten_doi ?? 'Chưa có tên đội',
                         'sdt'   => $team->so_dien_thoai_hotline ?? '',
                     ] : null,
                     'phan_cong_count'   => $item->phanCongs->count(),

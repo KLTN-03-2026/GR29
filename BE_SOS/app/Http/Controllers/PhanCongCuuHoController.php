@@ -6,6 +6,7 @@ use App\Events\RescueRequestUpdated;
 use App\Events\RescuerLocationUpdated;
 use App\Models\{PhanCongCuuHo, DoiCuuHo};
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class PhanCongCuuHoController extends Controller
@@ -56,7 +57,8 @@ class PhanCongCuuHoController extends Controller
             'yeuCau.baoCao',
             'yeuCau.loaiSuCo',
             'doiCuuHo',
-            'ketQua'
+            'ketQua',
+            'thanhVienTiepNhan',
         ])->paginate($perPage);
         $items->setCollection($this->transformCollection($items->getCollection()));
         return response()->json($items);
@@ -82,7 +84,9 @@ class PhanCongCuuHoController extends Controller
             'yeuCau.loaiSuCo',
             'doiCuuHo',
             'ketQua',
+            'thanhVienTiepNhan',
             'yeuCau.phanCongs.doiCuuHo',
+            'yeuCau.phanCongs.thanhVienTiepNhan',
         ]);
         $this->appendNestedRelations($item);
 
@@ -101,7 +105,8 @@ class PhanCongCuuHoController extends Controller
             'yeuCau.baoCao',
             'yeuCau.loaiSuCo',
             'doiCuuHo',
-            'ketQua'
+            'ketQua',
+            'thanhVienTiepNhan',
         ])->findOrFail($id);
         $this->appendNestedRelations($item);
         return response()->json($item);
@@ -126,7 +131,9 @@ class PhanCongCuuHoController extends Controller
             'yeuCau.loaiSuCo',
             'doiCuuHo',
             'ketQua',
+            'thanhVienTiepNhan',
             'yeuCau.phanCongs.doiCuuHo',
+            'yeuCau.phanCongs.thanhVienTiepNhan',
         ]);
         $this->appendNestedRelations($item);
         return response()->json($item);
@@ -147,7 +154,8 @@ class PhanCongCuuHoController extends Controller
     {
         $item = PhanCongCuuHo::with('yeuCau')->findOrFail($id);
         $validated = $request->validate([
-            'trang_thai_nhiem_vu' => 'required|string|max:20'
+            'trang_thai_nhiem_vu' => 'required|string|max:20',
+            'id_thanh_vien_tiep_nhan' => 'nullable|integer|exists:thanh_vien_doi,id_thanh_vien_doi',
         ]);
 
         $newStatus = strtoupper(trim($validated['trang_thai_nhiem_vu']));
@@ -172,7 +180,23 @@ class PhanCongCuuHoController extends Controller
             }
         }
 
-        $item->update(['trang_thai_nhiem_vu' => $newStatus]);
+        $updateData = ['trang_thai_nhiem_vu' => $newStatus];
+
+        // Ghi nhận thành viên tiếp nhận khi chuyển sang DANG_XU_LY
+        if ($newStatus === 'DANG_XU_LY' && in_array($currentStatus, ['MOI', 'CHUA_TIEP_NHAN'])) {
+            $thanhVienId = $validated['id_thanh_vien_tiep_nhan'] ?? null;
+            if (!$thanhVienId) {
+                $thanhVien = Auth::guard('thanh-vien-doi')->user();
+                if ($thanhVien) {
+                    $thanhVienId = $thanhVien->id_thanh_vien_doi ?? $thanhVien->id;
+                }
+            }
+            if ($thanhVienId) {
+                $updateData['id_thanh_vien_tiep_nhan'] = $thanhVienId;
+            }
+        }
+
+        $item->update($updateData);
 
         // When a team accepts (DANG_XU_LY), cancel all other pending assignments for the same request
         if ($newStatus === 'DANG_XU_LY') {
@@ -208,7 +232,9 @@ class PhanCongCuuHoController extends Controller
             'yeuCau.loaiSuCo',
             'doiCuuHo',
             'ketQua',
+            'thanhVienTiepNhan',
             'yeuCau.phanCongs.doiCuuHo',
+            'yeuCau.phanCongs.thanhVienTiepNhan',
         ]);
         $this->appendNestedRelations($item);
 
@@ -253,7 +279,8 @@ class PhanCongCuuHoController extends Controller
             'yeuCau.nguoiDung',
             'yeuCau.loaiSuCo',
             'doiCuuHo',
-            'ketQua'
+            'ketQua',
+            'thanhVienTiepNhan',
         ])
             ->where('id_doi_cuu_ho', $teamId)
             ->whereIn('trang_thai_nhiem_vu', ['DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'])
@@ -278,7 +305,8 @@ class PhanCongCuuHoController extends Controller
             'yeuCau.baoCao',
             'yeuCau.loaiSuCo',
             'doiCuuHo',
-            'ketQua'
+            'ketQua',
+            'thanhVienTiepNhan',
         ])
             ->where('id_yeu_cau', $id_yeu_cau)
             ->paginate($perPage);
@@ -298,7 +326,8 @@ class PhanCongCuuHoController extends Controller
             'yeuCau.baoCao',
             'yeuCau.loaiSuCo',
             'doiCuuHo',
-            'ketQua'
+            'ketQua',
+            'thanhVienTiepNhan',
         ])
             ->where('id_doi_cuu_ho', $id_doi_cuu_ho)
             ->paginate($perPage);
@@ -353,6 +382,11 @@ class PhanCongCuuHoController extends Controller
         ]);
 
         $teamId = $assignment->id_doi_cuu_ho;
+
+        DoiCuuHo::where('id_doi_cuu_ho', $teamId)->update([
+            'vi_tri_lat' => $validated['lat'],
+            'vi_tri_lng' => $validated['lng'],
+        ]);
 
         // Broadcast location update to all clients tracking this team
         try {

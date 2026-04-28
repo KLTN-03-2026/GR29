@@ -11,7 +11,7 @@ class DoiCuuHo extends Model
 
     protected $table = 'doi_cuu_ho';
     protected $primaryKey = 'id_doi_cuu_ho';
-    protected $fillable = ['ten_co', 'khu_vuc_quan_ly', 'so_dien_thoai_hotline', 'vi_tri_lat', 'vi_tri_lng', 'id_ket_qua', 'trang_thai', 'mo_ta', 'email', 'mat_khau'];
+    protected $fillable = ['ten_doi', 'khu_vuc_quan_ly', 'so_dien_thoai_hotline', 'vi_tri_lat', 'vi_tri_lng', 'id_ket_qua', 'trang_thai', 'mo_ta', 'email', 'mat_khau'];
     protected $hidden = ['mat_khau'];
 
     public function thanhViens()

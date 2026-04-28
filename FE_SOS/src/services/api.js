@@ -213,6 +213,7 @@ export const assignmentAPI = {
   getByTeam: (teamId) => api.get(`/phan-cong-cuu-ho/theo-doi/${teamId}`),
   getByStatus: (status) => api.get('/phan-cong-cuu-ho/theo-trang-thai', { params: { trang_thai: status } }),
   delete: (id) => api.delete(`/phan-cong-cuu-ho/${id}`),
+  updateLocation: (id, data) => api.post(`/phan-cong-cuu-ho/${id}/location`, data),
 };
 
 // Analytics & Reports
