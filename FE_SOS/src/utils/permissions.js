@@ -21,16 +21,17 @@ const OPERATOR_BLOCKED = [
 ];
 
 export function canAccessAdminRoute(role, path) {
+  const numericRole = role !== null && role !== undefined ? Number(role) : null;
   // ADMIN has full access
-  if (role === ADMIN) return true;
+  if (numericRole === ADMIN) return true;
 
   // MANAGER_OPERATOR: blocked routes
-  if (role === MANAGER_OPERATOR) {
+  if (numericRole === MANAGER_OPERATOR) {
     return !MANAGER_OPERATOR_BLOCKED.some(prefix => path.startsWith(prefix));
   }
 
   // OPERATOR: blocked routes
-  if (role === OPERATOR) {
+  if (numericRole === OPERATOR) {
     return !OPERATOR_BLOCKED.some(prefix => path.startsWith(prefix));
   }
 
@@ -47,11 +48,23 @@ const MEMBER_BLOCKED_RESCUER = [
 ];
 
 export function canAccessRescuerRoute(role, path) {
+  if (role === null || role === undefined) return false;
+  
+  const upperRole = String(role).toUpperCase().trim();
+  const isManager = upperRole === "0" || upperRole === "MANAGER_TEAM" || upperRole === "MANAGER";
+  const isLead = upperRole === "1" || upperRole === "TEAMLEAD" || upperRole === "TEAM LEADER" || upperRole === "TEAM_LEADER";
+  const isMem = upperRole === "2" || upperRole === "MEMBER" || upperRole === "THANH_VIEN" || upperRole === "THÀNH VIÊN";
+
   // MANAGER_TEAM(0) and TEAMLEAD(1): full access
-  if (role === MANAGER_TEAM || role === TEAMLEAD) return true;
+  if (isManager || isLead) return true;
 
   // MEMBER(2): blocked routes
-  if (role === MEMBER) {
+  if (isMem) {
+    return !MEMBER_BLOCKED_RESCUER.some(prefix => path.startsWith(prefix));
+  }
+
+  // Nếu vai trò hợp lệ (không rỗng), cấp quyền tương đương MEMBER
+  if (upperRole.length > 0) {
     return !MEMBER_BLOCKED_RESCUER.some(prefix => path.startsWith(prefix));
   }
 

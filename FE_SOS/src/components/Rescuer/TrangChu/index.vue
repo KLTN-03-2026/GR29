@@ -314,6 +314,7 @@
                                     CHỈ THỊ</div>
                                 <div class="text-dark small fw-medium">{{ selectedMission.doi_cuu_ho.ten_co }}</div>
                             </div>
+                        </div>
 
                         <button v-if="selectedMission.trang_thai_nhiem_vu === 'MOI'"
                             class="detail-action-btn"
