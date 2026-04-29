@@ -325,7 +325,12 @@ export default {
     async fetchTeams(page = 1) {
       this.loading = true;
       try {
-        const response = await rescueTeamAPI.getList({ page });
+        let response;
+        if (this.searchQuery && this.searchQuery.trim()) {
+          response = await rescueTeamAPI.search(this.searchQuery.trim(), { page });
+        } else {
+          response = await rescueTeamAPI.getList({ page });
+        }
         const resData = response.data?.data;
         if (resData && resData.data) {
           this.teams = resData.data;

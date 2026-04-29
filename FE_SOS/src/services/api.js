@@ -50,6 +50,7 @@ api.interceptors.request.use((config) => {
     !isRescuerRoute && (
       match('/admin') ||
       match('/yeu-cau-cuu-ho') ||
+      match('/doi-cuu-ho') ||
       match('/phan-cong-cuu-ho/theo-yeu-cau') ||
       match('/phan-cong-cuu-ho/theo-trang-thai') ||
       match('/phan-cong-cuu-ho') ||              // chỉ các route list/create (GET/POST root)
@@ -140,7 +141,7 @@ export const incidentTypeAPI = {
   getByStatus: (status) => api.get('/loai-su-co/theo-trang-thai', { params: { trang_thai: status } }),
   getRequests: (id) => api.get(`/loai-su-co/yeu-cau-cuu-ho/${id}`),
   getTeams: (id) => api.get(`/loai-su-co/doi-cuu-ho/${id}`),
-  search: (query) => api.get('/loai-su-co/tim-kiem', { params: { noi_dung_tim: query } }),
+  search: (query, params = {}) => api.get('/tim-kiem/loai-su-co', { params: { noi_dung_tim: query, ...params } }),
   delete: (id) => api.delete(`/loai-su-co/${id}`),
 };
 
@@ -170,7 +171,7 @@ export const rescueRequestAPI = {
   getByPriority: (priority) => api.get('/yeu-cau-cuu-ho/theo-muc-do-khan-cap', { params: { muc_do_khan_cap: priority } }),
   getAIClassification: () => api.get('/yeu-cau-cuu-ho/phan-loai-ai'),
   getQueue: () => api.get('/yeu-cau-cuu-ho/hang-doi'),
-  search: (query) => api.get('/yeu-cau-cuu-ho/tim-kiem', { params: { noi_dung_tim: query } }),
+  search: (query, params = {}) => api.get('/tim-kiem/yeu-cau', { params: { noi_dung_tim: query, ...params } }),
   delete: (id) => api.delete(`/yeu-cau-cuu-ho/${id}`),
   findNearestTeams: (data) => api.post('/yeu-cau-cuu-ho/tim-doi-gan-nhat', data),
   getTrackingDetail: (id) => api.get(`/yeu-cau-cuu-ho/${id}/theo-doi`),
@@ -201,7 +202,7 @@ export const rescueTeamAPI = {
   getIncidentTypes: (id) => api.get(`/doi-cuu-ho/loai-su-co/${id}`),
   getByStatus: (status) => api.get('/doi-cuu-ho/theo-trang-thai', { params: { trang_thai: status } }),
   getByArea: (area) => api.get('/doi-cuu-ho/theo-khu-vuc', { params: { khu_vuc: area } }),
-  search: (query) => api.get('/doi-cuu-ho/tim-kiem', { params: { noi_dung_tim: query } }),
+  search: (query, params = {}) => api.get('/tim-kiem/doi-cuu-ho', { params: { noi_dung_tim: query, ...params } }),
   delete: (id) => api.delete(`/doi-cuu-ho/${id}`),
 };
 
