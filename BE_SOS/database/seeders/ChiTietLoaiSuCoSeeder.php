@@ -22,7 +22,6 @@ class ChiTietLoaiSuCoSeeder extends Seeder
                 'Cung cấp lương thực',
                 'Cung cấp nước sạch',
                 'Hỗ trợ di dời',
-                'Tìm kiếm người mất tích',
                 'Hỗ trợ người yếu thế'
             ],
 
@@ -33,14 +32,12 @@ class ChiTietLoaiSuCoSeeder extends Seeder
                 'Cung cấp nước sạch',
                 'Hỗ trợ di dời',
                 'Khắc phục nhà cửa',
-                'Tìm kiếm người mất tích',
                 'Hỗ trợ người yếu thế'
             ],
 
             3 => [ // Sạt lở đất
                 'Cứu nạn - mắc kẹt',
                 'Hỗ trợ y tế',
-                'Tìm kiếm người mất tích',
                 'Hỗ trợ di dời',
                 'Khắc phục giao thông',
                 'Hỗ trợ người yếu thế'
@@ -49,7 +46,6 @@ class ChiTietLoaiSuCoSeeder extends Seeder
             4 => [ // Động đất
                 'Cứu nạn - mắc kẹt',
                 'Hỗ trợ y tế',
-                'Tìm kiếm người mất tích',
                 'Hỗ trợ di dời',
                 'Khắc phục công trình',
                 'Hỗ trợ người yếu thế'
@@ -61,7 +57,6 @@ class ChiTietLoaiSuCoSeeder extends Seeder
                 'Cung cấp lương thực',
                 'Cung cấp nước sạch',
                 'Hỗ trợ di dời',
-                'Tìm kiếm người mất tích',
                 'Hỗ trợ người yếu thế'
             ],
 

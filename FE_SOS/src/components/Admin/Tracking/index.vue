@@ -96,10 +96,10 @@
                     <div class="d-flex align-items-center gap-3">
                       <div class="team-initial border text-dark fw-bolder bg-white shadow-sm d-flex align-items-center justify-content-center rounded-circle"
                            style="width: 42px; height: 42px; font-size: 1.1rem;">
-                        {{ (team.ten_doi || team.name || 'Đ').charAt(0) }}
+                        {{ (team.ten_doi || team.ten_co || team.name || 'Đ').charAt(0) }}
                       </div>
                       <div>
-                        <h6 class="mb-0 fw-bold">{{ team.ten_doi || team.name }}</h6>
+                        <h6 class="mb-0 fw-bold">{{ team.ten_doi || team.ten_co || team.name }}</h6>
                         <div class="small fw-medium mt-1 d-flex align-items-center" :class="getStatusTextColor(team.status)">
                           <span class="status-dot-tracking me-2" :class="getStatusDotClass(team.status)"></span>
                           {{ getStatusLabel(team.status) }}
@@ -146,7 +146,7 @@
                 </span>
                 <button class="btn-close" @click="selectedTeam = null" style="font-size: 0.75rem;"></button>
               </div>
-              <h5 class="fw-bolder mb-1">{{ selectedTeam.ten_doi || selectedTeam.name }}</h5>
+              <h5 class="fw-bolder mb-1">{{ selectedTeam.ten_doi || selectedTeam.ten_co || selectedTeam.name }}</h5>
               <p class="text-muted small mb-3"><i class="fa-solid fa-location-dot me-1 text-primary"></i> Tọa độ GPS: {{ selectedTeam.lat.toFixed(4) }}, {{ selectedTeam.lng.toFixed(4) }}</p>
 
               <div class="border-top pt-3 mt-2">
@@ -276,16 +276,10 @@ export default {
         const res = await rescueTeamAPI.getList({ get_all: true });
         const rawData = res?.data?.data || res?.data || [];
         this.teams = rawData.map(item => {
-          // Ưu tiên vị trí mới nhất từ viTri
-          let lat = item.vi_tri_lat || item.lat || null;
-          let lng = item.vi_tri_lng || item.lng || null;
-          if (item.viTris && item.viTris.length > 0) {
-            const latest = [...item.viTris].sort((a, b) => (b.id || 0) - (a.id || 0))[0];
-            if (latest) {
-              lat = latest.vi_tri_lat || lat;
-              lng = latest.vi_tri_lng || lng;
-            }
-          }
+          // Luôn dùng vị trí trung tâm (HQ) đã seeder cho đội,
+          // không dùng vị trí thực tế của rescuer
+          const lat = item.vi_tri_lat || item.lat || null;
+          const lng = item.vi_tri_lng || item.lng || null;
           // Xác định trạng thái thực tế từ capacity (backend gửi về)
           const activeCount = item.active_count ?? 0;
           const pendingCount = item.pending_count ?? 0;

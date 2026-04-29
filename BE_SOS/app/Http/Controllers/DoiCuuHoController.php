@@ -46,7 +46,7 @@ class DoiCuuHoController extends Controller
         if ($user) {
             return response()->json([
                 'status' => true,
-                'ho_ten' => $user->ten_doi,
+                'ho_ten' => $user->ten_doi ?? $user->ho_ten ?? $user->name ?? 'N/A',
             ]);
         } else {
             return response()->json([

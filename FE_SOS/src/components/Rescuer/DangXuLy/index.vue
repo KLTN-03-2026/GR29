@@ -495,8 +495,9 @@
 </template>
 
 <script>
-import { rescuerAPI } from "../../../services/api.js";
+import { rescuerAPI, assignmentAPI } from "../../../services/api.js";
 import { loadOpenMap, createOpenMap, createOpenMapMarker, createOpenMapPopup, fitBoundsToMap } from "../../../utils/openMap.js";
+import { loadGoogleMaps } from "../../../utils/googleMaps.js";
 import { createToaster } from "@meforma/vue-toaster";
 
 const toaster = createToaster({ position: "top-right" });
@@ -533,6 +534,8 @@ export default {
             mapLoading: false,
             mapError: "",
             mapResizeObserver: null,
+            locationBroadcastInterval: null,
+            locationChannel: null,
         };
     },
     async mounted() {
@@ -548,11 +551,18 @@ export default {
             }
         });
         this.subscribeToRescueUpdates();
+        this.startLocationBroadcasting();
     },
     beforeUnmount() {
         this.unsubscribeFromRescueUpdates();
         this.disconnectMapObserver();
         this.cleanupRoute();
+        this.stopLocationBroadcasting();
+        if (this.locationChannel) {
+            this.locationChannel.stopListening('location.updated');
+            window.Echo.leave(`rescuer-location.${this.teamId}`);
+            this.locationChannel = null;
+        }
         if (this.teamMarker) { this.teamMarker.remove(); this.teamMarker = null; }
         if (this.gpsMarker) { this.gpsMarker.remove(); this.gpsMarker = null; }
         if (this.requestMarker) { this.requestMarker.remove(); this.requestMarker = null; }
@@ -603,10 +613,20 @@ export default {
             }
             const connect = () => {
                 if (this.realtimeChannel) return;
+
+                // Subscribe to rescue requests updates
                 this.realtimeChannel = window.Echo.channel('rescue-requests');
                 this.realtimeChannel.listen('RescueRequestUpdated', (event) => {
                     this.handleRescueUpdate(event);
                 });
+
+                // Subscribe to location updates for this team (if we have team data)
+                if (this.teamId) {
+                    this.locationChannel = window.Echo.channel(`rescuer-location.${this.teamId}`);
+                    this.locationChannel.listen('location.updated', (event) => {
+                        this.handleLocationUpdate(event);
+                    });
+                }
             };
             const conn = window.Echo.connector?.pusher?.connection;
             if (conn?.state === 'connected') {
@@ -643,6 +663,32 @@ export default {
             if (this.currentMission) {
                 this.refreshMissionData();
             }
+        },
+        handleLocationUpdate(event) {
+            // Update team marker position on map when receiving location updates
+            if (!this.map || !event.lat || !event.lng) return;
+
+            const newLat = parseFloat(event.lat);
+            const newLng = parseFloat(event.lng);
+
+            if (this.teamMarker) {
+                // Update existing marker position
+                this.teamMarker.setLngLat([newLng, newLat]);
+            } else {
+                // Create new marker if it doesn't exist
+                this.teamMarker = new mapboxgl.Marker({
+                    color: '#10b981', // Green for rescuer team
+                    draggable: false
+                })
+                .setLngLat([newLng, newLat])
+                .addTo(this.map);
+            }
+
+            // Update stored coordinates
+            this.teamLat = newLat;
+            this.teamLng = newLng;
+
+            console.log('[Location] Updated team marker position:', newLat, newLng);
         },
         async refreshMissionData() {
             if (!this.teamId) return;
@@ -1004,13 +1050,47 @@ export default {
                 if (this.memberLat && this.memberLng) {
                     await this.drawDrivingRoute(this.memberLat, this.memberLng, lat, lng);
                 }
-
-                this.map.flyTo({ center: [Number(lng), Number(lat)], zoom: 15 });
             }
         },
         async drawDrivingRoute(lat1, lng1, lat2, lng2) {
             this.cleanupRoute();
             try {
+                // Try Google Directions first if API key is available
+                const googleApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim();
+                if (googleApiKey) {
+                    try {
+                        await loadGoogleMaps();
+                        const directionsService = new google.maps.DirectionsService();
+                        const request = {
+                            origin: { lat: lat1, lng: lng1 },
+                            destination: { lat: lat2, lng: lng2 },
+                            travelMode: google.maps.TravelMode.DRIVING,
+                        };
+                        const response = await new Promise((resolve, reject) => {
+                            directionsService.route(request, (result, status) => {
+                                if (status === google.maps.DirectionsStatus.OK) {
+                                    resolve(result);
+                                } else {
+                                    reject(new Error(`Google Directions failed: ${status}`));
+                                }
+                            });
+                        });
+                        if (response.routes && response.routes.length > 0) {
+                            const route = response.routes[0];
+                            const path = [];
+                            route.overview_path.forEach(point => {
+                                path.push([point.lng(), point.lat()]);
+                            });
+                            this.addDrivingRouteToMap(path);
+                            this.fitBoundsToMap(this.map, [[lng1, lat1], ...path, [lng2, lat2]]);
+                            return;
+                        }
+                    } catch (googleError) {
+                        console.warn('Google Directions failed, falling back to OSRM:', googleError);
+                    }
+                }
+
+                // Fallback to OSRM
                 const response = await fetch(
                     `https://router.project-osrm.org/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=full&geometries=geojson`
                 );
@@ -1023,6 +1103,7 @@ export default {
                     this.drawDrivingFallback(lat1, lng1, lat2, lng2);
                 }
             } catch (error) {
+                console.warn('OSRM failed, using fallback:', error);
                 this.drawDrivingFallback(lat1, lng1, lat2, lng2);
             }
         },
@@ -1053,6 +1134,51 @@ export default {
             });
             this.routeSource = 'route';
             this.routeLayer = 'route-line';
+        },
+        startLocationBroadcasting() {
+            this.stopLocationBroadcasting(); // Clear any existing interval
+            if (!this.currentMission) return;
+
+            this.locationBroadcastInterval = setInterval(async () => {
+                if (!this.currentMission || !navigator.geolocation) return;
+
+                try {
+                    const position = await this.getCurrentPosition();
+                    if (position && this.currentMission.id_phan_cong) {
+                        await assignmentAPI.updateLocation(this.currentMission.id_phan_cong, {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        });
+                        console.log('[Location] Broadcasted:', position.coords.latitude, position.coords.longitude);
+                    }
+                } catch (error) {
+                    console.warn('[Location] Failed to broadcast location:', error);
+                }
+            }, 10000); // Broadcast every 10 seconds
+        },
+        stopLocationBroadcasting() {
+            if (this.locationBroadcastInterval) {
+                clearInterval(this.locationBroadcastInterval);
+                this.locationBroadcastInterval = null;
+            }
+        },
+        getCurrentPosition() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error('Geolocation not supported'));
+                    return;
+                }
+
+                navigator.geolocation.getCurrentPosition(
+                    resolve,
+                    reject,
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 10000
+                    }
+                );
+            });
         },
         cleanupRoute() {
             if (!this.map) return;
@@ -1196,13 +1322,14 @@ export default {
     align-items: center;
     justify-content: center;
     text-decoration: none;
-    transition: all 0.2s;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+    cursor: pointer;
 }
 
 .back-btn:hover {
     background: rgba(255,255,255,0.12);
+    border-color: rgba(255,255,255,0.25);
     color: white;
-    transform: translateX(-2px);
 }
 
 .header-title-group {
@@ -1338,9 +1465,9 @@ export default {
     gap: 0.75rem;
 }
 
-.banner-danger { background: linear-gradient(135deg, #fef2f2, #fee2e2); border: 1px solid #fecaca; }
-.banner-warning { background: linear-gradient(135deg, #fefce8, #fef9c3); border: 1px solid #fde047; }
-.banner-success { background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 1px solid #bbf7d0; }
+    .banner-danger { background: #fef2f2; border: 1px solid #fecaca; }
+    .banner-warning { background: #fefce8; border: 1px solid #fde047; }
+    .banner-success { background: #f0fdf4; border: 1px solid #bbf7d0; }
 
 .banner-priority-icon {
     width: 40px;
@@ -1648,25 +1775,30 @@ export default {
 }
 
 .action-primary {
-    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    background: #dc2626;
+    color: white;
+    transition: background 0.2s;
+}
+
+.action-primary:hover:not(:disabled) {
+    background: #b91c1c;
     color: white;
 }
 
-.action-primary:hover {
-    background: linear-gradient(135deg, #b91c1c, #991b1b);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(220,38,38,0.35);
+.action-primary:active,
+.action-success:active {
+    opacity: 0.85;
 }
 
 .action-success {
-    background: linear-gradient(135deg, #16a34a, #15803d);
+    background: #16a34a;
     color: white;
+    transition: background 0.2s;
 }
 
-.action-success:hover {
-    background: linear-gradient(135deg, #15803d, #166534);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(22,163,74,0.35);
+.action-success:hover:not(:disabled) {
+    background: #15803d;
+    color: white;
 }
 
 .action-icon {
@@ -1761,13 +1893,13 @@ export default {
     font-size: 0.82rem;
     font-weight: 700;
     text-decoration: none;
-    transition: all 0.2s;
+    transition: background 0.2s;
+    cursor: pointer;
 }
 
 .empty-action-btn:hover {
     background: #b91c1c;
     color: white;
-    transform: translateY(-1px);
 }
 
 /* ─── Map Panel ─────────────────────────────────────────────────────── */
@@ -1801,7 +1933,7 @@ export default {
     padding: 2.5rem;
     text-align: center;
     max-width: 320px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    border: 1px solid #e2e8f0;
 }
 
 .overlay-spinner {
@@ -1873,20 +2005,19 @@ export default {
     width: 40px;
     height: 40px;
     border-radius: 12px;
-    border: none;
+    border: 1px solid #e2e8f0;
     background: white;
     color: #334155;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-    transition: all 0.2s;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 
 .map-btn:hover {
     background: #f8fafc;
-    transform: scale(1.05);
+    border-color: #cbd5e1;
 }
 
 .map-btn-divider {
@@ -1912,7 +2043,7 @@ export default {
     background: white;
     border-radius: 12px;
     padding: 0.6rem 0.85rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 1px solid #e2e8f0;
     z-index: 15;
     display: flex;
     flex-direction: column;
@@ -1959,7 +2090,7 @@ export default {
     padding: 0.5rem 0.85rem;
     border-radius: 20px;
     background: white;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    border: 1px solid #e2e8f0;
     font-size: 0.72rem;
     font-weight: 700;
 }
@@ -1983,7 +2114,6 @@ export default {
 .modal-content {
     border: none;
     border-radius: 20px;
-    box-shadow: 0 24px 48px rgba(0,0,0,0.15);
     font-family: 'Inter', sans-serif;
 }
 
@@ -1996,7 +2126,7 @@ export default {
 }
 
 .modal-header-warning {
-    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    background: #fef3c7;
     border-radius: 20px 20px 0 0;
     padding-bottom: 1rem;
 }
@@ -2012,7 +2142,7 @@ export default {
 }
 
 .modal-icon-report {
-    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    background: #dbeafe;
     color: #2563eb;
 }
 

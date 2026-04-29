@@ -188,7 +188,7 @@
                         <button class="btn btn-outline-primary btn-sm fw-medium flex-grow-1"><i
                             class="fa-solid fa-phone me-1"></i>Liên hệ</button>
                         <button class="btn btn-outline-secondary btn-sm fw-medium flex-grow-1"><i
-                            class="fa-solid fa-map me-1"></i>Bản đồ</button>
+                            class="fa-solid fa-map me-1"></i>Nhắn Tin</button>
                       </div>
                     </div>
                   </div>
@@ -200,16 +200,19 @@
                     <h5 class="fw-bolder text-dark d-flex align-items-center gap-2 mb-1">
                       <i class="fa-solid fa-users-gear text-primary"></i> Phân Bổ Lực Lượng
                     </h5>
-                    <span class="text-muted small"><strong>{{ sortedAvailableTeams.length }}</strong> đơn vị hiển thị ·
+                    <span class="text-muted small"><strong>{{ sortedAvailableTeams.length }}
+                      </strong> đơn vị hiển thị ·
                       <strong>{{ availableTeamsCount }}</strong> sẵn sàng ·
-                      ưu tiên: cùng loại + cùng quận &gt; cùng loại &gt; cùng quận &gt; khoảng cách</span>
+                      <!-- ưu tiên: cùng loại + cùng quận &gt; cùng loại &gt; cùng quận &gt; khoảng cách -->
+                      </span>
                   </div>
-                  <div class="d-flex gap-2" v-if="availableTeams.length > 0">
-                    <button v-if="selectedTeams.length < sortedAvailableTeams.length"
-                      class="btn btn-sm btn-light text-primary fw-bold px-3" @click="selectAllTeams">Chọn tất
-                      cả</button>
-                    <button class="btn btn-sm btn-light text-danger fw-bold px-3" @click="deselectAllTeams">Bỏ
-                      chọn</button>
+                  
+                  <div class="d-flex gap-2 align-items-end" v-if="availableTeams.length > 0">
+                    <div class="search-box" style="margin-bottom: 0; min-width: 240px;">
+                      <i class="fa-solid fa-search search-icon"></i>
+                      <input type="text" class="form-control shadow-none" placeholder="Tìm kiếm đội cứu hộ..."
+                        v-model="searchTeamQuery" style="padding: 8px 16px 8px 36px;">
+                    </div>
                   </div>
                 </div>
 
@@ -224,18 +227,21 @@
                 </div>
 
                 <div class="row g-3" v-else>
-                  <div class="col-md-6 col-lg-6 col-xl-6" v-for="team in sortedAvailableTeams" :key="team.id">
+                  <div class="col-md-6 col-lg-6 col-xl-6" v-for="(team, index) in sortedAvailableTeams" :key="team.id">
                     <div class="team-card h-100"
                       :class="{ 'selected': isTeamSelected(team.id), 'busy': isTeamBusy(team.id) }"
                       @click="selectTeam(team)">
+                      <div class="priority-badge" :class="getPriorityBadgeClass(index)">
+                        #{{ index + 1 }}
+                      </div>
                       <div class="d-flex gap-3">
                         <div class="team-avatar fw-bold icon-box"
                           :class="isTeamSelected(team.id) ? 'bg-primary text-white' : 'bg-light text-secondary border'">
-                          {{ team.ten_doi.charAt(0).toUpperCase() }}
+                          {{ (team.ten_co || team.ten_doi).charAt(0).toUpperCase() }}
                         </div>
                         <div class="flex-grow-1 min-w-0">
                           <div class="d-flex justify-content-between align-items-start">
-                            <h6 class="fw-bold text-dark mb-0 text-truncate pe-2">{{ team.ten_doi }}</h6>
+                            <h6 class="fw-bold text-dark mb-0 text-truncate pe-2">{{ team.ten_co || team.ten_doi }}</h6>
                             <div class="d-flex align-items-center gap-2 flex-shrink-0">
                               <span class="status-dot" :class="getTeamStatusClass(team)"
                                 :title="getTeamStatusLabel(team)"></span>
@@ -278,11 +284,11 @@
                           <div class="d-flex flex-wrap gap-1 mt-2">
                             <span class="meta-tag"><i class="fa-solid fa-users text-primary me-1"></i>{{
                               team.thanh_viens ? team.thanh_viens.length : 0 }} người</span>
-                            <span class="meta-tag text-success bg-success-subtle bg-opacity-50" v-if="team.cung_quan"><i
-                                class="fa-solid fa-bolt me-1"></i>Cùng quận</span>
-                            <span class="meta-tag text-info bg-info-subtle bg-opacity-25"
-                              v-if="team.khoang_cach_km !== null"><i class="fa-solid fa-location-arrow me-1"></i>{{
-                              team.khoang_cach_km }} km</span>
+                            <!-- <span class="meta-tag text-success bg-success-subtle bg-opacity-50" v-if="team.cung_quan"><i
+                                class="fa-solid fa-bolt me-1"></i>Cùng quận</span> -->
+                            <span class="meta-tag distance-badge" 
+                              v-if="team.khoang_cach_km != null"><i class="fa-solid fa-location-arrow me-1"></i>{{
+                              formatDistance(team.khoang_cach_km) }}</span>
                             <span class="meta-tag text-danger bg-danger-subtle bg-opacity-25"
                               v-if="team.cung_loai_su_co === true"><i class="fa-solid fa-fire me-1"></i>Đúng loại</span>
                             <span class="meta-tag text-secondary bg-secondary-subtle bg-opacity-25"
@@ -370,15 +376,46 @@ const SEVERITY_NUM_MAP = {
   1: 'LOW',
 };
 
+const PENDING_REQUEST_STATUSES = new Set(['CHO_XU_LY', 'MOI', 'WAITING']);
+
+function normalizeStatus(value) {
+  return String(value || '').toUpperCase().trim().replace(/\s+/g, '_');
+}
+
 function normalizeText(value, fallback = "") {
   if (value === null || value === undefined) return fallback;
   if (typeof value === "object") {
     return normalizeText(
-      value.ten_danh_muc || value.ten_loai_su_co || value.ten_doi || value.title || value.name || fallback,
+      value.ten_danh_muc || value.ten_loai_su_co || value.ten_doi || value.ten_co || value.title || value.name || fallback,
       fallback
     );
   }
   return String(value).trim();
+}
+
+function toNullableNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeTriState(value) {
+  if (value === true || value === 1 || value === '1') return true;
+  if (value === false || value === 0 || value === '0') return false;
+  return null;
+}
+
+function removeAccents(str) {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function extractArrayPayload(payload, key) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.[key])) return payload[key];
+  if (Array.isArray(payload?.data?.[key])) return payload.data[key];
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
 }
 
 function getSeverityInfo(rawSev) {
@@ -476,7 +513,7 @@ function parseRequests(payload) {
         return {
           id: item.id_doi_cuu_ho || item.id,
           raw: item,
-          ten_doi: normalizeText(item.ten_doi || item.ten_doi || item.name || "Đội cứu hộ"),
+          ten_doi: normalizeText(item.ten_doi || item.ten_co || item.name || "Đội cứu hộ"),
           khu_vuc_quan_ly: normalizeText(item.khu_vuc_quan_ly || item.area || ""),
           so_dien_thoai_hotline: item.so_dien_thoai_hotline || item.phone || "",
           trang_thai: item.trang_thai || "SanSang",
@@ -511,6 +548,7 @@ export default {
   data() {
     return {
       searchQuery: '',
+      searchTeamQuery: '',
       selectedReq: null,
       selectedTeams: [],
       selectedSeverityFilter: 'all',
@@ -522,6 +560,8 @@ export default {
       suggestedTeamIds: [],
       assigning: false,
       error: '',
+      realtimeChannel: null,
+      pollingInterval: null,
 
       severityFilters: [
         { value: 'all', label: 'Tất cả' },
@@ -544,9 +584,9 @@ export default {
       if (this.searchQuery) {
         const q = this.searchQuery.toLowerCase();
         reqs = reqs.filter(r =>
-          r.title.toLowerCase().includes(q) ||
-          r.location.toLowerCase().includes(q) ||
-          String(r.id).toLowerCase().includes(q)
+          removeAccents(r.title).includes(removeAccents(q)) ||
+          removeAccents(r.location).includes(removeAccents(q)) ||
+          removeAccents(String(r.id)).includes(removeAccents(q))
         );
       }
       return reqs;
@@ -569,28 +609,23 @@ export default {
       return this.busyTeams.length;
     },
     sortedAvailableTeams() {
-      // Always sort ALL available (non-busy) teams by priority score + distance.
-      // Teams that are fully occupied (busy) are shown but not selectable.
-      if (!this.selectedReq) {
-        return [...this.availableTeams].sort((a, b) => {
-          // Score: true=2, null=1, false=0 cho cung_loai_su_co
-          const aTypeScore = a.cung_loai_su_co === true ? 2 : (a.cung_loai_su_co === false ? 0 : 1);
-          const bTypeScore = b.cung_loai_su_co === true ? 2 : (b.cung_loai_su_co === false ? 0 : 1);
-          const aScore = aTypeScore + (a.cung_quan ? 1 : 0);
-          const bScore = bTypeScore + (b.cung_quan ? 1 : 0);
-          if (aScore !== bScore) return bScore - aScore;
-          const aDist = a.khoang_cach_km ?? Infinity;
-          const bDist = b.khoang_cach_km ?? Infinity;
-          return aDist - bDist;
-        });
-      }
+      // Only show teams that match the incident type (cung_loai_su_co === true).
+      const search = this.searchTeamQuery ? this.searchTeamQuery.toLowerCase().trim() : '';
 
-      return [...this.availableTeams].sort((a, b) => {
-        // Score: true=2, null=1, false=0 cho cung_loai_su_co
-        const aTypeScore = a.cung_loai_su_co === true ? 2 : (a.cung_loai_su_co === false ? 0 : 1);
-        const bTypeScore = b.cung_loai_su_co === true ? 2 : (b.cung_loai_su_co === false ? 0 : 1);
-        const aScore = aTypeScore + (a.cung_quan ? 1 : 0);
-        const bScore = bTypeScore + (b.cung_quan ? 1 : 0);
+      const base = this.availableTeams.filter(team => {
+        const searchMatch = !search || (
+          removeAccents(team.ten_doi || team.ten_co || '').includes(removeAccents(search)) ||
+          removeAccents(team.khu_vuc_quan_ly || '').includes(removeAccents(search))
+        );
+        if (!searchMatch) return false;
+        // Filter by incident type only when no search term AND a request is selected
+        if (!search && this.selectedReq && team.cung_loai_su_co !== true) return false;
+        return true;
+      });
+
+      return [...base].sort((a, b) => {
+        const aScore = (a.cung_quan ? 1 : 0);
+        const bScore = (b.cung_quan ? 1 : 0);
 
         if (aScore !== bScore) {
           return bScore - aScore;
@@ -611,6 +646,12 @@ export default {
   },
   async created() {
     await this.initData();
+    this.subscribeToRescueUpdates();
+    this.startPolling();
+  },
+  beforeUnmount() {
+    this.unsubscribeFromRescueUpdates();
+    this.stopPolling();
   },
   mounted() {
     const queryId = this.$route.query.id;
@@ -643,6 +684,157 @@ export default {
     },
   },
   methods: {
+    subscribeToRescueUpdates() {
+      if (!window.Echo) {
+        console.warn('[AdminAssignments] Echo not available');
+        return;
+      }
+
+      if (this.realtimeChannel) return;
+
+      this.realtimeChannel = window.Echo.channel('rescue-requests');
+      this.realtimeChannel.listen('RescueRequestUpdated', (event) => {
+        this.handleRescueUpdate(event);
+      });
+    },
+    startPolling() {
+      this.stopPolling();
+      this.pollingInterval = setInterval(() => {
+        const status = window.realtimeConnectionStatus || 'connecting';
+        if (status === 'connected') return;
+        this.loadRequests({ silent: true }).catch(() => {});
+      }, 15000);
+    },
+    stopPolling() {
+      if (this.pollingInterval) {
+        clearInterval(this.pollingInterval);
+        this.pollingInterval = null;
+      }
+    },
+    unsubscribeFromRescueUpdates() {
+      if (this.realtimeChannel) {
+        this.realtimeChannel.stopListening('RescueRequestUpdated');
+        window.Echo?.leave('rescue-requests');
+        this.realtimeChannel = null;
+      }
+    },
+    extractRequestIdFromEvent(event) {
+      return Number(
+        event?.id_yeu_cau ??
+        event?.id ??
+        event?.request_id ??
+        event?.yeu_cau?.id_yeu_cau ??
+        event?.yeu_cau?.id ??
+        event?.request?.id_yeu_cau ??
+        event?.request?.id ??
+        0
+      );
+    },
+    removePendingRequestById(requestId) {
+      const idx = this.pendingRequests.findIndex((item) => Number(item.id) === Number(requestId));
+      if (idx !== -1) {
+        this.pendingRequests.splice(idx, 1);
+      }
+
+      if (this.selectedReq && Number(this.selectedReq.id) === Number(requestId)) {
+        this.selectedReq = null;
+        this.selectedTeams = [];
+        this.suggestedTeamIds = [];
+      }
+    },
+    buildPendingRequestFromEvent(event, requestId, requestStatus) {
+      const eventRequest = event?.yeu_cau || event?.request || {};
+      const parsed = parseRequests([{
+        ...eventRequest,
+        ...event,
+        id: requestId,
+        id_yeu_cau: requestId,
+        trang_thai: requestStatus || eventRequest.trang_thai || 'CHO_XU_LY',
+        loai_su_co: event?.loai_su_co ?? eventRequest.loai_su_co,
+        nguoi_dung: event?.nguoi_dung ?? eventRequest.nguoi_dung,
+        vi_tri_dia_chi: event?.vi_tri_dia_chi ?? eventRequest.vi_tri_dia_chi,
+        dia_chi: event?.dia_chi ?? eventRequest.dia_chi,
+        mo_ta: event?.mo_ta ?? event?.description ?? eventRequest.mo_ta,
+        chi_tiet: event?.chi_tiet ?? eventRequest.chi_tiet,
+        chi_tiet_loai_su_co: event?.chi_tiet_loai_su_co ?? eventRequest.chi_tiet_loai_su_co,
+        thoi_gian_gui: event?.thoi_gian_gui ?? eventRequest.thoi_gian_gui ?? event?.created_at ?? eventRequest.created_at,
+        created_at: event?.created_at ?? eventRequest.created_at,
+        updated_at: event?.updated_at ?? eventRequest.updated_at,
+        so_nguoi_bi_anh_huong: event?.so_nguoi_bi_anh_huong ?? eventRequest.so_nguoi_bi_anh_huong,
+        muc_do_khan_cap: event?.muc_do_khan_cap ?? event?.mucDoKhanCap ?? eventRequest.muc_do_khan_cap,
+        diem_uu_tien: event?.diem_uu_tien ?? eventRequest.diem_uu_tien,
+        id_loai_su_co: event?.id_loai_su_co ?? eventRequest.id_loai_su_co,
+      }]);
+
+      return parsed[0] || null;
+    },
+    handleRescueUpdate(event) {
+      const requestId = this.extractRequestIdFromEvent(event);
+      if (!requestId) return;
+
+      const eventAction = String(event?.action || '').toLowerCase().trim();
+      const requestStatus = normalizeStatus(
+        event?.trang_thai ??
+        event?.status ??
+        event?.yeu_cau?.trang_thai ??
+        event?.request?.trang_thai ??
+        (eventAction === 'created' ? 'CHO_XU_LY' : '')
+      );
+
+      if (!PENDING_REQUEST_STATUSES.has(requestStatus)) {
+        this.removePendingRequestById(requestId);
+        return;
+      }
+
+      const updatedRequest = this.buildPendingRequestFromEvent(event, requestId, requestStatus);
+      if (!updatedRequest) return;
+
+      const idx = this.pendingRequests.findIndex((item) => Number(item.id) === requestId);
+      if (idx !== -1) {
+        this.pendingRequests.splice(idx, 1, {
+          ...this.pendingRequests[idx],
+          ...updatedRequest,
+          raw: {
+            ...(this.pendingRequests[idx]?.raw || {}),
+            ...(updatedRequest.raw || {}),
+          },
+        });
+
+        if (this.selectedReq && Number(this.selectedReq.id) === requestId) {
+          Object.assign(this.selectedReq, this.pendingRequests[idx]);
+        }
+        return;
+      }
+
+      this.pendingRequests.unshift(updatedRequest);
+      this.syncSelectedRequestAfterRefresh();
+    },
+    syncSelectedRequestAfterRefresh() {
+      if (this.selectedReq) {
+        const refreshedSelectedReq = this.pendingRequests.find(
+          (item) => String(item.id) === String(this.selectedReq.id)
+        );
+
+        if (!refreshedSelectedReq) {
+          this.selectedReq = null;
+          return;
+        }
+
+        Object.assign(this.selectedReq, refreshedSelectedReq);
+        return;
+      }
+
+      const queryId = this.$route.query.id;
+      if (!queryId) return;
+
+      const requestFromQuery = this.pendingRequests.find(
+        (item) => String(item.id) === String(queryId)
+      );
+
+      if (requestFromQuery) {
+        this.selectedReq = requestFromQuery;
+      }
+    },
     isTeamAvailable(id) {
       return this.availableTeams.some(t => Number(t.id) === Number(id));
     },
@@ -689,16 +881,19 @@ export default {
         }
       }
     },
-    async loadRequests() {
-      this.loadingRequests = true;
+    async loadRequests(options = {}) {
+      const { silent = false } = options;
+      if (!silent) {
+        this.loadingRequests = true;
+      }
       try {
         const response = await rescueRequestAPI.getList();
         const all = parseRequests(response?.data || response);
         // Lấy sự cố đang ở trạng thái mới chờ xử lý
         this.pendingRequests = all.filter(r => {
-          const st = (r.trangThai || '').toUpperCase().replace(/\s+/g, '_');
-          return st === 'CHO_XU_LY' || st === 'MOI' || st === 'WAITING';
+          return PENDING_REQUEST_STATUSES.has(normalizeStatus(r.trangThai));
         });
+        this.syncSelectedRequestAfterRefresh();
       } catch (error) {
         console.error('Lỗi tải dữ liệu:', error);
         this.error = 'Lỗi kết nối máy chủ. Không thể lấy dữ liệu phân công.';
@@ -786,6 +981,73 @@ export default {
       const info = getSeverityInfo(sev);
       return info.border;
     },
+    async fetchNearestTeams(req) {
+      if (!req) {
+        this.suggestedTeamIds = [];
+        this.teams = this.teams.map(team => ({
+          ...team,
+          khoang_cach_km: null,
+          cung_quan: false,
+          cung_loai_su_co: null,
+        }));
+        return;
+      }
+
+      try {
+        const payload = {
+          id_yeu_cau: req.id,
+          id_loai_su_co: req.idLoaiSuCo || null,
+        };
+        const res = await rescueRequestAPI.findNearestTeams(payload);
+        const nearestTeams = extractArrayPayload(res, 'teams');
+        const nearestTeamsById = new Map(
+          nearestTeams.map(team => [Number(team.id || team.id_doi_cuu_ho), team])
+        );
+
+        this.suggestedTeamIds = nearestTeams
+          .map(team => Number(team.id || team.id_doi_cuu_ho))
+          .filter(Number.isFinite);
+
+        this.teams = this.teams.map(team => {
+          const nearby = nearestTeamsById.get(Number(team.id));
+
+          if (!nearby) {
+            return {
+              ...team,
+              khoang_cach_km: null,
+              cung_quan: false,
+              cung_loai_su_co: null,
+            };
+          }
+
+          return {
+            ...team,
+            khoang_cach_km: toNullableNumber(
+              nearby.khoang_cach_km ?? nearby.khoangCachKm ?? nearby.distance
+            ),
+            cung_quan: normalizeTriState(nearby.cung_quan) === true,
+            cung_loai_su_co: normalizeTriState(nearby.cung_loai_su_co),
+          };
+        });
+      } catch (error) {
+        console.error('Lá»—i tĂ¬m Ä‘á»™i gáº§n nháº¥t:', error);
+        this.suggestedTeamIds = [];
+      }
+    },
+    formatDistance(km) {
+      const normalizedKm = toNullableNumber(km);
+      if (normalizedKm === null) {
+        return 'N/A';
+      }
+      return normalizedKm.toFixed(2) + ' km';
+    },
+    getPriorityBadgeClass(index) {
+      // Màu sắc ưu tiên: Top 3 sáng, sau đó nhạt dần
+      if (index === 0) return 'priority-1st';
+      if (index === 1) return 'priority-2nd';
+      if (index === 2) return 'priority-3rd';
+      return 'priority-default';
+    },
     toggleSeverityFilter(value) {
       this.selectedSeverityFilter = value;
     },
@@ -806,7 +1068,7 @@ export default {
           await assignmentAPI.create({
             id_yeu_cau: reqId,
             id_doi_cuu_ho: team.id,
-            mo_ta: `Chỉ thị đội ${team.ten_doi} xử lý sự cố cấp độ ${this.selectedReq.severityLabel}`,
+            mo_ta: `Chỉ thị đội ${team.ten_doi || team.ten_co} xử lý sự cố cấp độ ${this.selectedReq.severityLabel}`,
             trang_thai_nhiem_vu: 'MOI',
           });
           // Team capacity and status are calculated by the backend — do NOT set manually here.
@@ -822,13 +1084,6 @@ export default {
         this.pendingRequests = this.pendingRequests.filter(r => r.id !== reqId);
         this.selectedReq = null;
         this.selectedTeams = [];
-
-        // Reload team data so capacity fields reflect the new assignment
-        await this.loadTeams();
-        // Re-fetch nearest teams to update cung_loai_su_co, cung_quan, khoang_cach_km
-        if (reqId) {
-          await this.fetchNearestTeams({ id: reqId, idLoaiSuCo: this.selectedReq?.idLoaiSuCo });
-        }
       } catch (error) {
         console.error('Lỗi chuyển phân công:', error);
         this.$toast?.error?.('Không thể phát lệnh! Vui lòng kiểm tra lại đường truyền.', {
@@ -910,7 +1165,6 @@ export default {
 .panel-card {
   border-radius: 16px;
   border: 1px solid #e2e8f0;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.03), 0 2px 4px -2px rgb(0 0 0 / 0.03) !important;
 }
 
 .panel-left,
@@ -939,8 +1193,8 @@ export default {
 .search-box input:focus {
   background: white;
   border-color: #2563eb;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
-  outline: none;
+  outline: 2px solid rgba(37, 99, 235, 0.2);
+  outline-offset: 2px;
 }
 
 .search-icon {
@@ -974,6 +1228,7 @@ export default {
   background: white;
   color: #475569;
   font-size: 13px;
+  cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
 }
@@ -1077,8 +1332,7 @@ export default {
 
 .btn-primary.btn-dispatch:hover:not(:disabled) {
   background: #1d4ed8;
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.2) !important;
-  transform: translateY(-1px);
+  border-color: #1d4ed8;
 }
 
 .btn-primary:disabled {
@@ -1095,11 +1349,11 @@ export default {
   transition: all 0.2s;
   position: relative;
   overflow: hidden;
+  cursor: pointer;
 }
 
 .team-card:hover:not(.busy) {
   border-color: #cbd5e1;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.05);
   cursor: pointer;
 }
 
@@ -1111,8 +1365,53 @@ export default {
 .team-card.selected {
   border-color: #2563eb;
   background: #eff6ff;
-  box-shadow: 0 0 0 1px #2563eb, 0 4px 12px rgba(37, 99, 235, 0.1);
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
   cursor: pointer;
+}
+
+.priority-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  min-width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  color: white;
+  z-index: 10;
+}
+
+.priority-badge.priority-1st {
+  background: #dc2626;
+  font-size: 14px;
+  animation: pulse-badge 2s ease-in-out infinite;
+}
+
+.priority-badge.priority-2nd {
+  background: #f59e0b;
+}
+
+.priority-badge.priority-3rd {
+  background: #10b981;
+}
+
+.priority-badge.priority-default {
+  background: #6366f1;
+  opacity: 0.8;
+}
+
+@keyframes pulse-badge {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+  }
+  50% {
+    box-shadow: 0 2px 16px rgba(220, 38, 38, 0.5);
+  }
 }
 
 .icon-box {
@@ -1185,6 +1484,30 @@ export default {
   font-weight: 600;
   padding: 4px 8px;
   border-radius: 6px;
+}
+
+.distance-badge {
+  background: #0ea5e9;
+  color: white;
+  font-weight: 700 !important;
+  padding: 4px 10px !important;
+  border-radius: 8px !important;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.distance-badge i {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* Capacity Bar */
@@ -1328,17 +1651,11 @@ export default {
 }
 
 /* Fix: Icon overlay check khi chọn team - đảm bảo pointer-events trên overlay */
-.team-card {
-  position: relative;
-  overflow: visible;
-  cursor: pointer;
-}
-
 .team-card.selected {
   border-color: #2563eb;
   background: #eff6ff;
-  box-shadow: 0 0 0 1px #2563eb, 0 4px 12px rgba(37, 99, 235, 0.1);
-  position: relative;
-  z-index: 1;
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+  cursor: pointer;
 }
 </style>

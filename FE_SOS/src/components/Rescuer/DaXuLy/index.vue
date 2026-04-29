@@ -236,8 +236,8 @@
                   </div>
                 </div>
                 <div class="detail-section mb-3" v-if="detailItem.doi_cuu_ho">
-                  <div class="text-muted fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">ĐỘI THỰC HIỆN</div>
-                  <div class="fw-bold text-dark">{{ detailItem.doi_cuu_ho.ten_doi }}</div>
+                  <div class="text-muted fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">ĐỘI/NGƯỜI THỰC HIỆN</div>
+                  <div class="fw-bold text-dark">{{ detailItem.doi_cuu_ho.ten_doi || detailItem.doi_cuu_ho.ten_co }}</div>
                 </div>
                 <div class="detail-section">
                   <div class="text-muted fw-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px;">THỜI GIAN YÊU CẦU</div>
