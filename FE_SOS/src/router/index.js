@@ -201,13 +201,18 @@ const routes = [
         meta: { layout: "admin" },
     },
     {
-        path: "/admin/incident-types",
-        component: () => import("../components/Admin/IncidentTypes/index.vue"),
+        path: "/admin/realtime-dispatch",
+        component: () => import("../components/Admin/RealtimeDispatch/index.vue"),
         meta: { layout: "admin", roles: ["admin", "manager_operator"] },
     },
     {
-        path: "/admin/resources",
-        component: () => import("../components/Admin/Resources/index.vue"),
+        path: "/admin/tai-nguyen",
+        component: () => import("../components/Admin/TaiNguyen/index.vue"),
+        meta: { layout: "admin", roles: ["admin", "manager_operator"] },
+    },
+    {
+        path: "/admin/doi-cuu-ho",
+        component: () => import("../components/Admin/DoiCuuHo/index.vue"),
         meta: { layout: "admin", roles: ["admin", "manager_operator"] },
     },
     {

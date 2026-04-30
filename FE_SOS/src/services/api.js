@@ -47,6 +47,7 @@ api.interceptors.request.use((config) => {
   const isAdminRoute =
     !isRescuerRoute && (
       match('/admin') ||
+      match('/auto-dispatch') ||
       match('/yeu-cau-cuu-ho') ||
       match('/phan-cong-cuu-ho/theo-yeu-cau') ||
       match('/phan-cong-cuu-ho/theo-trang-thai') ||
@@ -317,6 +318,43 @@ export const rescuerAPI = {
 
   // Thống kê heatmap
   getHeatmap: () => api.get('/thong-ke/heatmap'),
+};
+
+// Auto Dispatch
+export const autoDispatchAPI = {
+  getStatus: () => api.get('/auto-dispatch/status'),
+  toggle: () => api.post('/auto-dispatch/toggle'),
+  enable: () => api.post('/auto-dispatch/enable'),
+  disable: () => api.post('/auto-dispatch/disable'),
+  dispatch: (id) => api.post(`/auto-dispatch/dispatch/${id}`),
+  dispatchSync: (id) => api.post(`/auto-dispatch/dispatch-sync/${id}`),
+  getEscalations: () => api.get('/auto-dispatch/admin-escalations'),
+  removeEscalation: (id) => api.delete(`/auto-dispatch/admin-escalations/${id}`),
+  debug: (id) => api.get(`/auto-dispatch/debug/${id}`),
+  updateConfig: (data) => api.put('/auto-dispatch/config', data),
+};
+
+// Admin Resources (Doi Cuu Ho + Tai Nguyen)
+export const adminResourcesAPI = {
+  // Don vi cuu ho
+  getList: (params = {}) => api.get('/admin/doi-cuu-ho/list', { params }),
+  create: (data) => api.post('/admin/doi-cuu-ho/create', data),
+  update: (data) => api.post('/admin/doi-cuu-ho/update', data),
+  delete: (data) => api.post('/admin/doi-cuu-ho/delete', data),
+
+  // Tai nguyen
+  createTaiNguyen: (data) => api.post('/admin/tai-nguyen/create', data),
+  updateTaiNguyen: (data) => api.post('/admin/tai-nguyen/update', data),
+  deleteTaiNguyen: (data) => api.post('/admin/tai-nguyen/delete', data),
+  getByDoi: (doiId) => api.get('/admin/tai-nguyen/doi/' + doiId),
+
+  // Kho
+  getKho: () => api.get('/admin/tai-nguyen/kho'),
+  capNhatKho: (data) => api.post('/admin/tai-nguyen/kho/cap-nhat', data),
+
+  // Cap phat
+  capPhat: (data) => api.post('/admin/tai-nguyen/cap-phat', data),
+  getLichSuCapPhat: (params = {}) => api.get('/admin/tai-nguyen/lich-su-cap', { params }),
 };
 
 export default api;

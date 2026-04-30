@@ -14,8 +14,8 @@ class TaiNguyenCuuHoSeeder extends Seeder
     public function run(): void
     {
         $dois = DoiCuuHo::all();
-        $resources = ['Xe cứu hộ', 'Thiết bị chữa cháy', 'Thiết bị y tế', 'Thiết bị điều hành'];
-        $resourceTypes = ['Vehicle', 'Equipment', 'Medical', 'Communication'];
+        $resources = ['Xe cứu hộ', 'Nhu yếu phẩm', 'Vật tư y tế', 'Dụng cụ thi công'];
+        $resourceTypes = ['Vehicle', 'Supply', 'Medical', 'Equipment'];
         $count = 0;
 
         foreach ($dois as $doi) {

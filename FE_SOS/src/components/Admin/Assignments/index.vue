@@ -26,7 +26,7 @@
             <div class="stat-card shadow-sm border-0">
               <div class="stat-icon bg-primary-subtle text-primary"><i class="fa-solid fa-truck-fast"></i></div>
               <div class="stat-info">
-                <span class="stat-label">Nhiệm vụ</span>
+                <span class="stat-label">Đang xử lý</span>
                 <h4 class="stat-value">{{ busyTeamsCount }}</h4>
               </div>
             </div>
@@ -263,7 +263,7 @@
                                 </span>
                                 <!-- Active: đang xử lý -->
                                 <span class="capacity-badge small fw-bolder" :class="isTeamBusy(team.id) ? 'bg-danger-subtle text-danger' : 'bg-light text-secondary'">
-                                  {{ team.active_count ?? 0 }} / {{ team.capacity ?? 0 }}
+                                  {{ team.active_count ?? 0 }} / {{ getMaxCapacity(team) }}
                                 </span>
                               </div>
                             </div>
@@ -273,10 +273,10 @@
                             </div>
                             <div class="capacity-hint small mt-1" :class="isTeamBusy(team.id) ? 'text-danger' : 'text-muted'">
                               <template v-if="isTeamBusy(team.id)">
-                                <i class="fa-solid fa-circle-exclamation me-1"></i>Đội đang xử lý hết công suất ({{ team.capacity - (team.active_count ?? 0) === 0 ? 'không còn chỗ' : (team.capacity - (team.active_count ?? 0)) + ' chỗ trống' }})
+                                <i class="fa-solid fa-circle-exclamation me-1"></i>Đội quá tải ({{ getTotalAssignments(team) }} / {{ getMaxCapacity(team) }} yêu cầu)
                               </template>
                               <template v-else>
-                                <i class="fa-solid fa-check-circle me-1"></i>Còn {{ team.capacity - (team.active_count ?? 0) }} chỗ trống
+                                <i class="fa-solid fa-check-circle me-1"></i>Còn {{ getMaxCapacity(team) - getTotalAssignments(team) }} chỗ trống ({{ getTotalAssignments(team) }} / {{ getMaxCapacity(team) }})
                               </template>
                             </div>
                           </div>
@@ -469,8 +469,12 @@ function parseRequests(payload) {
     } else if (Array.isArray(item.chi_tiet)) {
       chiTietSuCo = item.chi_tiet.map(c => c.ten_chi_tiet || c.ten || c.name || c.label).filter(Boolean);
     } else if (typeof item.chi_tiet === 'string' && item.chi_tiet.trim()) {
-      // Handle case where chi_tiet is a string (e.g., comma-separated or single value)
       chiTietSuCo = item.chi_tiet.split(',').map(s => s.trim()).filter(Boolean);
+    } else if (Array.isArray(item.loai_su_co?.chi_tiets)) {
+      // Backend returns chi tiết under loaiSuCo.chiTiets relationship
+      chiTietSuCo = item.loai_su_co.chi_tiets.map(c => c.ten_chi_tiet || c.ten || c.name || c.label).filter(Boolean);
+    } else if (Array.isArray(item.loai_su_co?.chiTiets)) {
+      chiTietSuCo = item.loai_su_co.chiTiets.map(c => c.ten_chi_tiet || c.ten || c.name || c.label).filter(Boolean);
     }
 
     return {
@@ -598,9 +602,12 @@ export default {
       return this.teams;
     },
     busyTeams() {
-      // Source of truth: trang_thai_theo_nang_luc comes from the backend.
-      // 'overload' means the team has reached or exceeded its capacity (rescuers × 3).
-      return this.teams.filter(t => t.trang_thai_theo_nang_luc === 'overload');
+      // Overload = total assignments (pending + active) >= max capacity (members × 4)
+      return this.teams.filter(t => {
+        const total = (t.pending_count ?? 0) + (t.active_count ?? 0);
+        const maxCap = this.getMaxCapacity(t);
+        return maxCap > 0 && total >= maxCap;
+      });
     },
     availableTeamsCount() {
       return this.teams.length - this.busyTeams.length;
@@ -929,45 +936,41 @@ export default {
       }
     },
     getTeamStatusClass(team) {
-      // Dot color is determined by capacity-based status from backend.
-      // trang_thai_theo_nang_luc: 'available' | 'overload'
-      // Falls back to raw trang_thai only when capacity field is absent.
-      const capacityStatus = team?.trang_thai_theo_nang_luc;
-      if (capacityStatus === 'overload') return 'st-overload';
-      if (capacityStatus === 'available') return 'st-ready';
-      // Fallback: use raw trang_thai when capacity field not present
-      const st = String(team?.trang_thai || '').toUpperCase().replace(/\s+/g, '_');
-      if (st === 'SAN_SANG' || st === 'SẴN_SÀNG') return 'st-ready';
-      if (st === 'DANG_CUU_HO') return 'st-processing';
-      if (st === 'DANG_BAN' || st === 'ĐANG_BẬN') return 'st-overload';
+      const total = (team.pending_count ?? 0) + (team.active_count ?? 0);
+      const maxCap = this.getMaxCapacity(team);
+      if (maxCap > 0 && total >= maxCap) return 'st-overload';
+      if (team.active_count > 0) return 'st-processing';
       return 'st-ready';
     },
     getTeamStatusLabel(team) {
-      // Label reflects capacity-based status from backend.
-      const capacityStatus = team?.trang_thai_theo_nang_luc;
-      if (capacityStatus === 'overload') return 'Đội quá tải, chọn đội khác';
-      if (capacityStatus === 'available') return 'Sẵn sàng';
-      // Fallback
-      const st = String(team?.trang_thai || '').toUpperCase().replace(/\s+/g, '_');
-      if (st === 'SAN_SANG' || st === 'SẴN_SÀNG') return 'Sẵn sàng';
-      if (st === 'DANG_CUU_HO') return 'Đang xử lý';
-      if (st === 'DANG_BAN' || st === 'ĐANG_BẬN') return 'Đang bận';
+      const total = (team.pending_count ?? 0) + (team.active_count ?? 0);
+      const maxCap = this.getMaxCapacity(team);
+      if (maxCap > 0 && total >= maxCap) return 'Đội quá tải, chọn đội khác';
+      if (team.active_count > 0) return 'Đang xử lý';
       return 'Sẵn sàng';
+    },
+    getMaxCapacity(team) {
+      // max requests = number of members × 4
+      const members = team.thanh_viens?.length ?? 0;
+      return members * 4;
+    },
+    getTotalAssignments(team) {
+      return (team.pending_count ?? 0) + (team.active_count ?? 0);
     },
     getCapacityBarWidth(team) {
       const active = team.active_count ?? 0;
-      const capacity = team.capacity ?? 0;
-      if (capacity === 0) return '0%';
-      const pct = Math.min((active / capacity) * 100, 100);
+      const maxCap = this.getMaxCapacity(team);
+      if (maxCap === 0) return '0%';
+      const pct = Math.min((active / maxCap) * 100, 100);
       return pct + '%';
     },
     getCapacityBarClass(team) {
       const active = team.active_count ?? 0;
-      const capacity = team.capacity ?? 0;
-      if (capacity === 0) return 'bar-empty';
-      const ratio = active / capacity;
+      const maxCap = this.getMaxCapacity(team);
+      if (maxCap === 0) return 'bar-empty';
+      const ratio = active / maxCap;
       if (ratio >= 1) return 'bar-full';
-      if (ratio >= 0.67) return 'bar-warning';
+      if (ratio >= 0.5) return 'bar-warning';
       return 'bar-normal';
     },
     isTeamSelected(teamId) {

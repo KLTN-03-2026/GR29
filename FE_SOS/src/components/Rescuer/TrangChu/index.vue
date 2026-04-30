@@ -389,7 +389,7 @@
 <script>
 import { rescuerAPI } from "../../../services/api.js";
 import { loadOpenMap, createOpenMap, createOpenMapMarker, createOpenMapPopup, fitBoundsToMap } from "../../../utils/openMap.js";
-import { loadGoogleMaps } from "../../../utils/googleMaps.js";
+import { veDuongDiTrenMap } from "../../../utils/realtimeRoute.js";
 import { createToaster } from "@meforma/vue-toaster";
 
 const toaster = createToaster({ position: "top-right" });
@@ -414,10 +414,14 @@ export default {
             teamLng: null,
             memberLat: null,
             memberLng: null,
-            hasActiveRequest: false,
             mapLoading: false,
             mapError: "",
             mapResizeObserver: null,
+            realtimeChannel: null,
+            realtimeConnected: false,
+            daThongBaoIds: new Set(),
+            thongBaoTimeout: null,
+            choPhepHienThongBao: true,
         };
     },
     computed: {
@@ -482,6 +486,13 @@ export default {
             }
             return this.radarAssignments;
         },
+        hasActiveRequest() {
+            return this.assignments.some(a => {
+                if (this.teamId && Number(a.id_doi_cuu_ho) !== Number(this.teamId)) return false;
+                const st = (a.trang_thai_nhiem_vu || '').toUpperCase().replace(/\s+/g, '_');
+                return st === 'DANG_XU_LY' || st === 'DA_DEN_HIEN_TRUONG';
+            });
+        },
     },
     async mounted() {
         this.loadTeamData();
@@ -489,10 +500,12 @@ export default {
             this.initMap();
         });
         await this.fetchAssignments();
+        this.dangKyCapNhatCuuHo();
     },
     beforeUnmount() {
         this.disconnectMapObserver();
         this.cleanupRoute();
+        this.huyDangKyCapNhatCuuHo();
         if (this.teamMarker) { this.teamMarker.remove(); this.teamMarker = null; }
         if (this.gpsMarker) { this.gpsMarker.remove(); this.gpsMarker = null; }
         if (this.map) {
@@ -547,6 +560,149 @@ export default {
                 }
             }
         },
+        dangKyCapNhatCuuHo() {
+            if (!window.Echo) {
+                console.warn('[TrangChu] Echo chua san sang, thu lai sau...');
+                setTimeout(() => this.dangKyCapNhatCuuHo(), 3000);
+                return;
+            }
+            const connect = () => {
+                if (this.realtimeChannel) return;
+
+                this.realtimeChannel = window.Echo.channel('rescue-requests');
+                this.realtimeChannel.listen('RescueRequestUpdated', (event) => {
+                    this.xuLyCapNhatCuuHo(event);
+                });
+                this.realtimeConnected = true;
+            };
+            const conn = window.Echo.connector?.pusher?.connection;
+            if (conn?.state === 'connected') {
+                connect();
+            } else if (conn) {
+                conn.bind('connected', connect);
+                setTimeout(() => {
+                    if (!this.realtimeChannel) connect();
+                }, 5000);
+            } else {
+                setTimeout(() => this.dangKyCapNhatCuuHo(), 2000);
+            }
+        },
+        huyDangKyCapNhatCuuHo() {
+            if (this.thongBaoTimeout) {
+                clearTimeout(this.thongBaoTimeout);
+                this.thongBaoTimeout = null;
+                this.choPhepHienThongBao = true;
+            }
+            if (this.realtimeChannel) {
+                this.realtimeChannel.stopListening('RescueRequestUpdated');
+                window.Echo.leave('rescue-requests');
+                this.realtimeChannel = null;
+                this.realtimeConnected = false;
+            }
+        },
+        async xuLyCapNhatCuuHo(event) {
+            const eventTeamId = event.id_doi_cuu_ho ?? event.teamId;
+            const isMyTeam = String(eventTeamId) === String(this.teamId);
+            if (!isMyTeam) return;
+
+            const closed = new Set(["HOAN_THANH", "DA_HOAN_THANH", "HUY_BO", "DA_HUY", "TU_CHOI", "THAT_BAI", "DONE"]);
+
+            if (event.action === 'assigned') {
+                const idPhanCong = event.id_phan_cong;
+                const idYeuCau = event.id_yeu_cau ?? idPhanCong;
+
+                if (idPhanCong && !this.daThongBaoIds.has(idPhanCong)) {
+                    this.daThongBaoIds.add(idPhanCong);
+                    setTimeout(() => this.daThongBaoIds.delete(idPhanCong), 15000);
+                    toaster.success(`Nhiệm vụ: #${idYeuCau} vừa được điều phối`, { duration: 6000 });
+                }
+
+                // Merge WebSocket data directly into local state — no API call needed
+                this.capNhatDanhSachTuWebSocket(event);
+                this.updateMapMarkers();
+            } else if (event.action === 'status_changed' || event.action === 'updated') {
+                // Status update from WebSocket — update local state directly
+                this.capNhatTrangThaiTuWebSocket(event);
+
+                if (closed.has(event.trang_thai) || closed.has(event.trang_thai_nhiem_vu)) {
+                    if (event.id_phan_cong) {
+                        this.daThongBaoIds.delete(event.id_phan_cong);
+                    }
+                    toaster.info("Nhiệm vụ đã hoàn thành hoặc bị hủy bởi điều phối.");
+                }
+                this.updateMapMarkers();
+            } else {
+                // Catch-all for other actions — update directly
+                this.capNhatTrangThaiTuWebSocket(event);
+                this.updateMapMarkers();
+            }
+        },
+
+        // Merge new assignment data from WebSocket into local state
+        capNhatDanhSachTuWebSocket(event) {
+            const idPhanCong = event.id_phan_cong;
+            if (!idPhanCong) return;
+
+            // Check for duplicate
+            const existingIndex = this.assignments.findIndex(a => String(a.id_phan_cong) === String(idPhanCong));
+            if (existingIndex >= 0) return; // Already exists, skip
+
+            // Build yeu_cau object from WebSocket event data
+            const yeuCauData = {
+                id_yeu_cau: event.id_yeu_cau ?? event.id,
+                trang_thai: event.trang_thai ?? null,
+                muc_do_khan_cap: event.muc_do_khan_cap ?? null,
+                loai_su_co: event.loai_su_co ? { ten_danh_muc: event.loai_su_co } : null,
+                vi_tri_lat: event.vi_tri_lat ?? null,
+                vi_tri_lng: event.vi_tri_lng ?? null,
+                vi_tri_dia_chi: event.vi_tri_dia_chi ?? null,
+                dia_chi: event.vi_tri_dia_chi ?? null,
+                mo_ta: event.mo_ta ?? null,
+            };
+
+            // Build the phan cong item
+            const newItem = {
+                id_phan_cong: idPhanCong,
+                id_yeu_cau: event.id_yeu_cau ?? event.id,
+                id_doi_cuu_ho: event.id_doi_cuu_ho,
+                trang_thai_nhiem_vu: event.trang_thai_nhiem_vu ?? 'MOI',
+                nguoi_dieu_phoi: event.nguoi_dieu_phoi ?? event.ten_doi ?? null,
+                created_at: event.updated_at ?? new Date().toISOString(),
+                yeu_cau: yeuCauData,
+            };
+
+            this.assignments.push(newItem);
+        },
+
+        // Update existing assignment status from WebSocket data (no API)
+        capNhatTrangThaiTuWebSocket(event) {
+            const idPhanCong = event.id_phan_cong;
+            if (!idPhanCong) return;
+
+            const idx = this.assignments.findIndex(a => String(a.id_phan_cong) === String(idPhanCong));
+            if (idx < 0) return;
+
+            const item = this.assignments[idx];
+
+            // Update status
+            if (event.trang_thai_nhiem_vu) {
+                item.trang_thai_nhiem_vu = event.trang_thai_nhiem_vu;
+            }
+
+            // Update yeu_cau fields if present
+            if (item.yeu_cau) {
+                if (event.trang_thai) item.yeu_cau.trang_thai = event.trang_thai;
+                if (event.muc_do_khan_cap) item.yeu_cau.muc_do_khan_cap = event.muc_do_khan_cap;
+                if (event.loai_su_co) {
+                    item.yeu_cau.loai_su_co = { ten_danh_muc: event.loai_su_co };
+                }
+                if (event.vi_tri_dia_chi) {
+                    item.yeu_cau.vi_tri_dia_chi = event.vi_tri_dia_chi;
+                    item.yeu_cau.dia_chi = event.vi_tri_dia_chi;
+                }
+                if (event.mo_ta) item.yeu_cau.mo_ta = event.mo_ta;
+            }
+        },
         async fetchAssignments() {
             this.loading = true;
             this.assignments = [];
@@ -574,21 +730,11 @@ export default {
                     return true;
                 });
                 this.updateMapMarkers();
-                await this.checkActiveAssignment();
             } catch (e) {
                 console.error("Lỗi tải phân công:", e);
                 toaster.error("Không thể tải danh sách nhiệm vụ");
             } finally {
                 this.loading = false;
-            }
-        },
-        async checkActiveAssignment() {
-            try {
-                if (!this.teamId) return;
-                const res = await rescuerAPI.getActiveAssignment(this.teamId);
-                this.hasActiveRequest = res.data?.has_active === true;
-            } catch (e) {
-                console.error("Lỗi kiểm tra yêu cầu đang xử lý:", e);
             }
         },
         async initMap() {
@@ -744,106 +890,22 @@ export default {
         async selectMission(item) {
             this.selectedMission = item;
             if (item?.yeu_cau?.vi_tri_lat && item?.yeu_cau?.vi_tri_lng) {
-                const srcLat = this.memberLat;
-                const srcLng = this.memberLng;
+                const srcLat = this.memberLat || this.teamLat;
+                const srcLng = this.memberLng || this.teamLng;
                 if (srcLat && srcLng) {
                     await this.drawDrivingRoute(srcLat, srcLng, item.yeu_cau.vi_tri_lat, item.yeu_cau.vi_tri_lng);
                 }
             }
         },
         async drawDrivingRoute(lat1, lng1, lat2, lng2) {
-            this.cleanupRoute();
-            try {
-                // Try Google Directions first if API key is available
-                const googleApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim();
-                if (googleApiKey) {
-                    try {
-                        await loadGoogleMaps();
-                        const directionsService = new google.maps.DirectionsService();
-                        const request = {
-                            origin: { lat: lat1, lng: lng1 },
-                            destination: { lat: lat2, lng: lng2 },
-                            travelMode: google.maps.TravelMode.DRIVING,
-                        };
-                        const response = await new Promise((resolve, reject) => {
-                            directionsService.route(request, (result, status) => {
-                                if (status === google.maps.DirectionsStatus.OK) {
-                                    resolve(result);
-                                } else {
-                                    reject(new Error(`Google Directions failed: ${status}`));
-                                }
-                            });
-                        });
-                        if (response.routes && response.routes.length > 0) {
-                            const route = response.routes[0];
-                            const path = [];
-                            route.overview_path.forEach(point => {
-                                path.push([point.lng(), point.lat()]);
-                            });
-                            this.addDrivingRouteToMap(path);
-                            this.fitBoundsToMap(this.map, [[lng1, lat1], ...path, [lng2, lat2]]);
-                            return;
-                        }
-                    } catch (googleError) {
-                        console.warn('Google Directions failed, falling back to OSRM:', googleError);
-                    }
-                }
-
-                // Fallback to OSRM
-                const response = await fetch(
-                    `https://router.project-osrm.org/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=full&geometries=geojson`
-                );
-                const data = await response.json();
-                if (data.routes && data.routes.length > 0) {
-                    const coordinates = data.routes[0].geometry.coordinates.map(coord => [coord[0], coord[1]]);
-                    this.addDrivingRouteToMap(coordinates);
-                    this.fitBoundsToMap(this.map, [[lng1, lat1], ...coordinates, [lng2, lat2]]);
-                } else {
-                    this.drawDrivingFallback(lat1, lng1, lat2, lng2);
-                }
-            } catch (error) {
-                console.warn('OSRM failed, using fallback:', error);
-                this.drawDrivingFallback(lat1, lng1, lat2, lng2);
+            const path = await veDuongDiTrenMap(this.map, {lat: lat1, lng: lng1}, {lat: lat2, lng: lng2}, 'route');
+            if (path && path.length > 0) {
+                fitBoundsToMap(this.map, path);
             }
-        },
-        addDrivingRouteToMap(coordinates) {
-            const routeGeoJSON = { type: 'Feature', geometry: { type: 'LineString', coordinates } };
-            this.map.addSource('route', { type: 'geojson', data: routeGeoJSON });
-            this.map.addLayer({
-                id: 'route-line',
-                type: 'line',
-                source: 'route',
-                layout: { 'line-join': 'round', 'line-cap': 'round' },
-                paint: { 'line-color': '#ef4444', 'line-width': 4, 'line-opacity': 0.8 },
-            });
-            this.routeSource = 'route';
             this.routeLayer = 'route-line';
-        },
-        drawDrivingFallback(lat1, lng1, lat2, lng2) {
-            const coords = [[Number(lng1), Number(lat1)], [Number(lng2), Number(lat2)]];
-            const routeGeoJSON = { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } };
-            if (this.map.getLayer('route-line')) this.map.removeLayer('route-line');
-            if (this.map.getSource('route')) this.map.removeSource('route');
-            this.map.addSource('route', { type: 'geojson', data: routeGeoJSON });
-            this.map.addLayer({
-                id: 'route-line',
-                type: 'line',
-                source: 'route',
-                paint: { 'line-color': '#ef4444', 'line-width': 4, 'line-opacity': 0.6, 'line-dasharray': [2, 2] },
-            });
             this.routeSource = 'route';
-            this.routeLayer = 'route-line';
         },
-        fitBoundsToMap(map, coordinates) {
-            if (!coordinates || coordinates.length === 0) return;
-            const bounds = new (map.constructor.LatLngBounds)();
-            coordinates.forEach((coord) => {
-                const lng = typeof coord.lng === "number" ? coord.lng : coord[0];
-                const lat = typeof coord.lat === "number" ? coord.lat : coord[1];
-                bounds.extend([lng, lat]);
-            });
-            map.fitBounds(bounds, { padding: 50 });
-        },
+
         cleanupRoute() {
             if (!this.map) return;
             if (this.routeLayer && this.map.getLayer(this.routeLayer)) {
@@ -861,7 +923,14 @@ export default {
                     trang_thai_nhiem_vu: 'DANG_XU_LY'
                 });
                 toaster.success("Đã tiếp nhận nhiệm vụ");
-                await this.fetchAssignments();
+                // Update local state directly — no refetch needed
+                const idx = this.assignments.findIndex(a => String(a.id_phan_cong) === String(item.id_phan_cong));
+                if (idx >= 0) {
+                    this.assignments[idx] = {
+                        ...this.assignments[idx],
+                        trang_thai_nhiem_vu: 'DANG_XU_LY'
+                    };
+                }
                 this.selectedMission = null;
                 this.$router.push("/rescuer/dang-xu-ly");
             } catch (e) {

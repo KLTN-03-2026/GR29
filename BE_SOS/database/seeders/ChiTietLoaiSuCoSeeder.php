@@ -15,6 +15,19 @@ class ChiTietLoaiSuCoSeeder extends Seeder
     {
         ChiTietLoaiSuCo::query()->delete();
 
+        $priorityScores = [
+            'Cứu nạn - mắc kẹt' => 10,
+            'Hỗ trợ y tế' => 9,
+            'Hỗ trợ di dời' => 8,
+            'Hỗ trợ người yếu thế' => 8,
+            'Cung cấp nước sạch' => 7,
+            'Cung cấp lương thực' => 6,
+            'Hỗ trợ sinh hoạt' => 5,
+            'Khắc phục giao thông' => 4,
+            'Khắc phục công trình' => 4,
+            'Khắc phục nhà cửa' => 3,
+        ];
+
         $details = [
             1 => [ // Lũ lụt
                 'Cứu nạn - mắc kẹt',
@@ -77,7 +90,8 @@ class ChiTietLoaiSuCoSeeder extends Seeder
                 ChiTietLoaiSuCo::create([
                     'id_loai_su_co' => $idLoaiSuCo,
                     'ten_chi_tiet' => $detail,
-                    'mo_ta' => "Chi tiết: {$detail}"
+                    'mo_ta' => "Chi tiết: {$detail}",
+                    'diem_uu_tien' => $priorityScores[$detail],
                 ]);
                 $count++;
             }

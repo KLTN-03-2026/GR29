@@ -27,3 +27,9 @@ Broadcast::channel('rescuer-location.{teamId}', function ($user, $teamId) {
     // For now, allow authenticated users - can be refined based on team assignments
     return $user !== null;
 });
+
+Broadcast::channel('team.{teamId}', function ($user, $teamId) {
+    // Team members can listen to dispatch notifications for their team
+    // Allow authenticated users to receive auto-dispatch notifications
+    return $user !== null;
+});

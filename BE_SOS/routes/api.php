@@ -17,6 +17,7 @@ use App\Http\Controllers\KetQuaCuuHoController;
 use App\Http\Controllers\DanhGiaCuuHoController;
 use App\Http\Controllers\ThanhVienDoiController;
 use App\Http\Controllers\BaoCaoCuuHoController;
+use App\Http\Controllers\AutoDispatchController;
 
 // =========================================
 // PUBLIC ROUTES
@@ -172,11 +173,41 @@ Route::middleware(['auth:admin', 'check.admin'])->group(function () {
     Route::put('doi-cuu-ho/{id}', [DoiCuuHoController::class, 'update']);
     Route::delete('doi-cuu-ho/{id}', [DoiCuuHoController::class, 'destroy']);
 
+    // Admin CRUD cho Đội cứu hộ (tách riêng để tránh trùng với rescuer route)
+    Route::post('admin/doi-cuu-ho/create', [DoiCuuHoController::class, 'createDoiCuuHo']);
+    Route::post('admin/doi-cuu-ho/update', [DoiCuuHoController::class, 'updateDoiCuuHo']);
+    Route::post('admin/doi-cuu-ho/delete', [DoiCuuHoController::class, 'deleteDoiCuuHo']);
+    Route::get('admin/doi-cuu-ho/list', [DoiCuuHoController::class, 'listDoiCuuHo']);
+
+    // Admin CRUD cho Tài nguyên cứu hộ
+    Route::post('admin/tai-nguyen/create', [DoiCuuHoController::class, 'themTaiNguyen']);
+    Route::post('admin/tai-nguyen/update', [DoiCuuHoController::class, 'suaTaiNguyen']);
+    Route::post('admin/tai-nguyen/delete', [DoiCuuHoController::class, 'xoaTaiNguyen']);
+
+    // Kho tài nguyên tổng & Cấp phát
+    Route::get('admin/tai-nguyen/kho', [DoiCuuHoController::class, 'getKhoTaiNguyen']);
+    Route::post('admin/tai-nguyen/kho/cap-nhat', [DoiCuuHoController::class, 'capNhatKhoTaiNguyen']);
+    Route::get('admin/tai-nguyen/lich-su-cap', [DoiCuuHoController::class, 'getLichSuCapPhat']);
+    Route::post('admin/tai-nguyen/cap-phat', [DoiCuuHoController::class, 'capPhatTaiNguyen']);
+    Route::get('admin/tai-nguyen/doi/{id}', [DoiCuuHoController::class, 'getTaiNguyenByDoi']);
+
     Route::put('ket-qua-cuu-ho/{id}', [KetQuaCuuHoController::class, 'update']);
 
     Route::get('loai-su-co/{id}', [LoaiSuCoController::class, 'show']);
     Route::put('loai-su-co/{id}', [LoaiSuCoController::class, 'update']);
     Route::delete('loai-su-co/{id}', [LoaiSuCoController::class, 'destroy']);
+
+    // === AUTO DISPATCH (Admin) ===
+    Route::get('auto-dispatch/status', [AutoDispatchController::class, 'layTrangThai']);
+    Route::post('auto-dispatch/toggle', [AutoDispatchController::class, 'toggle']);
+    Route::post('auto-dispatch/enable', [AutoDispatchController::class, 'batDieuPhoi']);
+    Route::post('auto-dispatch/disable', [AutoDispatchController::class, 'tatDieuPhoi']);
+    Route::post('auto-dispatch/dispatch/{id}', [AutoDispatchController::class, 'kichHoatDieuPhoi']);
+    Route::post('auto-dispatch/dispatch-sync/{id}', [AutoDispatchController::class, 'kichHoatDieuPhoiDongBo']);
+    Route::get('auto-dispatch/admin-escalations', [AutoDispatchController::class, 'layDanhSachCanThiepAdmin']);
+    Route::delete('auto-dispatch/admin-escalations/{id}', [AutoDispatchController::class, 'xoaCanhBaoCanThiep']);
+    Route::get('auto-dispatch/debug/{id}', [AutoDispatchController::class, 'xemDiemCham']);
+    Route::put('auto-dispatch/config', [AutoDispatchController::class, 'capNhatCauHinh']);
 });
 
 // =========================================

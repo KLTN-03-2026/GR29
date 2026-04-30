@@ -899,4 +899,454 @@ class DoiCuuHoController extends Controller
             ], 500);
         }
     }
+
+    // ========== ADMIN CRUD DOI CUU HO ==========
+
+    /**
+     * List all rescue teams for admin (full details)
+     */
+    public function listDoiCuuHo(Request $request)
+    {
+        try {
+            $perPage = $request->get('per_page', 15);
+            $items = DoiCuuHo::with(['thanhViens', 'taiNguyens'])
+                ->orderBy('id_doi_cuu_ho', 'desc')
+                ->paginate($perPage);
+
+            return Response::json([
+                'success' => true,
+                'message' => 'Danh sách đội cứu hộ',
+                'data' => $items
+            ], 200);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Admin create rescue team
+     */
+    public function createDoiCuuHo(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'ten_doi' => 'required|string|max:255',
+                'khu_vuc_quan_ly' => 'required|string|max:255',
+                'so_dien_thoai_hotline' => 'nullable|string|max:20',
+                'vi_tri_lat' => 'nullable|numeric',
+                'vi_tri_lng' => 'nullable|numeric',
+                'trang_thai' => 'nullable|string|max:30',
+                'mo_ta' => 'nullable|string',
+                'email' => 'nullable|email|max:255',
+                'mat_khau' => 'nullable|string|min:6',
+            ]);
+
+            if (isset($validated['mat_khau'])) {
+                $validated['mat_khau'] = Hash::make($validated['mat_khau']);
+            }
+
+            $item = DoiCuuHo::create($validated);
+            $item->load('thanhViens', 'taiNguyens', 'viTris', 'nangLuc', 'loaiSuCos');
+
+            return Response::json([
+                'success' => true,
+                'message' => 'Tạo đội cứu hộ thành công',
+                'data' => $item
+            ], 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi xác thực dữ liệu',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Admin update rescue team
+     */
+    public function updateDoiCuuHo(Request $request)
+    {
+        try {
+            $id = $request->get('id');
+            $item = DoiCuuHo::findOrFail($id);
+
+            $validated = $request->validate([
+                'ten_doi' => 'sometimes|string|max:255',
+                'khu_vuc_quan_ly' => 'sometimes|string|max:255',
+                'so_dien_thoai_hotline' => 'nullable|string|max:20',
+                'vi_tri_lat' => 'nullable|numeric',
+                'vi_tri_lng' => 'nullable|numeric',
+                'trang_thai' => 'nullable|string|max:30',
+                'mo_ta' => 'nullable|string',
+                'email' => 'nullable|email|max:255',
+                'mat_khau' => 'nullable|string|min:6',
+            ]);
+
+            if (isset($validated['mat_khau'])) {
+                $validated['mat_khau'] = Hash::make($validated['mat_khau']);
+            }
+
+            $item->update($validated);
+            $item->load('thanhViens', 'taiNguyens', 'viTris', 'nangLuc', 'loaiSuCos');
+
+            return Response::json([
+                'success' => true,
+                'message' => 'Cập nhật đội cứu hộ thành công',
+                'data' => $item
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Đội cứu hộ không tồn tại'
+            ], 404);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi xác thực dữ liệu',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Admin delete rescue team
+     */
+    public function deleteDoiCuuHo(Request $request)
+    {
+        try {
+            $id = $request->get('id');
+            $item = DoiCuuHo::findOrFail($id);
+            $item->delete();
+
+            return Response::json([
+                'success' => true,
+                'message' => 'Xóa đội cứu hộ thành công'
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Đội cứu hộ không tồn tại'
+            ], 404);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // ========== ADMIN CRUD TAI NGUYEN ==========
+
+    /**
+     * Admin create resource
+     */
+    public function themTaiNguyen(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'id_doi_cuu_ho' => 'required|integer|exists:doi_cuu_ho,id_doi_cuu_ho',
+                'ten_tai_nguyen' => 'required|string|max:255',
+                'loai_tai_nguyen' => 'required|string|max:100',
+                'so_luong' => 'required|integer|min:0',
+                'trang_thai' => 'nullable|integer|in:0,1',
+            ]);
+
+            $item = TaiNguyenCuuHo::create($validated);
+
+            return Response::json([
+                'success' => true,
+                'message' => 'Thêm tài nguyên thành công',
+                'data' => $item
+            ], 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi xác thực dữ liệu',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Admin update resource
+     */
+    public function suaTaiNguyen(Request $request)
+    {
+        try {
+            $id = $request->get('id');
+            $item = TaiNguyenCuuHo::findOrFail($id);
+
+            $validated = $request->validate([
+                'ten_tai_nguyen' => 'sometimes|string|max:255',
+                'loai_tai_nguyen' => 'sometimes|string|max:100',
+                'so_luong' => 'sometimes|integer|min:0',
+                'trang_thai' => 'nullable|integer|in:0,1',
+            ]);
+
+            $item->update($validated);
+
+            return Response::json([
+                'success' => true,
+                'message' => 'Cập nhật tài nguyên thành công',
+                'data' => $item
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Tài nguyên không tồn tại'
+            ], 404);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi xác thực dữ liệu',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Admin delete resource
+     */
+    public function xoaTaiNguyen(Request $request)
+    {
+        try {
+            $id = $request->get('id');
+            $item = TaiNguyenCuuHo::findOrFail($id);
+            $item->delete();
+
+            return Response::json([
+                'success' => true,
+                'message' => 'Xóa tài nguyên thành công'
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Tài nguyên không tồn tại'
+            ], 404);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // ========== KHO TAI NGUYEN & CAP PHAT ==========
+
+    /**
+     * Get warehouse summary: aggregate all resources by type across all teams
+     */
+    public function getKhoTaiNguyen(Request $request)
+    {
+        try {
+            $loaiTaiNguyen = ['Vehicle', 'Supply', 'Medical', 'Equipment'];
+            $tenHienThi = ['Vehicle' => 'Xe cứu hộ', 'Supply' => 'Nhu yếu phẩm', 'Medical' => 'Vật tư y tế', 'Equipment' => 'Dụng cụ thiết bị'];
+
+            $result = [];
+            foreach ($loaiTaiNguyen as $loai) {
+                $tong = TaiNguyenCuuHo::where('loai_tai_nguyen', $loai)->sum('so_luong');
+                $result[] = [
+                    'loai_tai_nguyen' => $loai,
+                    'ten_hien_thi' => $tenHienThi[$loai] ?? $loai,
+                    'tong_so_luong' => (int) $tong,
+                    'so_luong_da_cap' => 0,
+                ];
+            }
+
+            return Response::json([
+                'success' => true,
+                'message' => 'Dữ liệu kho tài nguyên',
+                'data' => $result
+            ], 200);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Cap nhat kho tai nguyen (global warehouse update)
+     */
+    public function capNhatKhoTaiNguyen(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'loai_tai_nguyen' => 'required|string|max:100',
+                'so_luong' => 'required|integer|min:0',
+            ]);
+
+            $dois = DoiCuuHo::all();
+            $loai = $validated['loai_tai_nguyen'];
+
+            foreach ($dois as $doi) {
+                $taiNguyen = TaiNguyenCuuHo::where('id_doi_cuu_ho', $doi->id_doi_cuu_ho)
+                    ->where('loai_tai_nguyen', $loai)
+                    ->first();
+
+                if ($taiNguyen) {
+                    $taiNguyen->update(['so_luong' => $validated['so_luong']]);
+                } else {
+                    TaiNguyenCuuHo::create([
+                        'id_doi_cuu_ho' => $doi->id_doi_cuu_ho,
+                        'ten_tai_nguyen' => $loai,
+                        'loai_tai_nguyen' => $loai,
+                        'so_luong' => $validated['so_luong'],
+                        'trang_thai' => 1,
+                    ]);
+                }
+            }
+
+            return Response::json([
+                'success' => true,
+                'message' => 'Cập nhật kho tài nguyên thành công'
+            ], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi xác thực dữ liệu',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get resources by team
+     */
+    public function getTaiNguyenByDoi(Request $request, $id)
+    {
+        try {
+            DoiCuuHo::findOrFail($id);
+            $items = TaiNguyenCuuHo::where('id_doi_cuu_ho', $id)->get();
+
+            return Response::json([
+                'success' => true,
+                'message' => 'Tài nguyên theo đội',
+                'data' => $items
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Đội cứu hộ không tồn tại'
+            ], 404);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Cap phat tai nguyen cho team
+     */
+    public function capPhatTaiNguyen(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'id_doi_cuu_ho' => 'required|integer|exists:doi_cuu_ho,id_doi_cuu_ho',
+                'loai_tai_nguyen' => 'required|string|max:100',
+                'so_luong_cap' => 'required|integer|min:1',
+                'ghi_chu' => 'nullable|string|max:500',
+            ]);
+
+            $doi = DoiCuuHo::findOrFail($validated['id_doi_cuu_ho']);
+            $loai = $validated['loai_tai_nguyen'];
+
+            $taiNguyen = TaiNguyenCuuHo::where('id_doi_cuu_ho', $doi->id_doi_cuu_ho)
+                ->where('loai_tai_nguyen', $loai)
+                ->first();
+
+            if ($taiNguyen) {
+                $taiNguyen->update([
+                    'so_luong' => $taiNguyen->so_luong + $validated['so_luong_cap']
+                ]);
+            } else {
+                $tenHienThi = ['Vehicle' => 'Xe cứu hộ', 'Supply' => 'Nhu yếu phẩm', 'Medical' => 'Vật tư y tế', 'Equipment' => 'Dụng cụ thiết bị'];
+                TaiNguyenCuuHo::create([
+                    'id_doi_cuu_ho' => $doi->id_doi_cuu_ho,
+                    'ten_tai_nguyen' => $tenHienThi[$loai] ?? $loai,
+                    'loai_tai_nguyen' => $loai,
+                    'so_luong' => $validated['so_luong_cap'],
+                    'trang_thai' => 1,
+                ]);
+            }
+
+            return Response::json([
+                'success' => true,
+                'message' => 'Cấp phát tài nguyên thành công cho đội ' . $doi->ten_doi,
+            ], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi xác thực dữ liệu',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get lich su cap phat (placeholder - returns empty for now, can be expanded with a lich_su_cap_phat table)
+     */
+    public function getLichSuCapPhat(Request $request)
+    {
+        try {
+            $idDoi = $request->get('id_doi_cuu_ho');
+
+            $query = TaiNguyenCuuHo::with('doiCuuHo')
+                ->whereNotNull('id_doi_cuu_ho');
+
+            if ($idDoi) {
+                $query->where('id_doi_cuu_ho', $idDoi);
+            }
+
+            $items = $query->orderBy('id_tai_nguyen', 'desc')->paginate(50);
+
+            return Response::json([
+                'success' => true,
+                'message' => 'Lịch sử cấp phát',
+                'data' => $items
+            ], 200);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
