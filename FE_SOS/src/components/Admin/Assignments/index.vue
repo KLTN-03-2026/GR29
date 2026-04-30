@@ -136,8 +136,9 @@
                           <i class="fa-solid fa-truck-medical text-primary mt-1"></i>
                           <div class="w-100">
                             <div class="small text-muted fw-semibold mb-1">Nhu cầu cần giúp</div>
-                            <div class="d-flex flex-wrap gap-1" v-if="selectedReq.chiTietSuCo && selectedReq.chiTietSuCo.length > 0">
-                              <span v-for="(detail, idx) in selectedReq.chiTietSuCo" :key="idx" 
+                            <div class="d-flex flex-wrap gap-1"
+                              v-if="selectedReq.chiTietSuCo && selectedReq.chiTietSuCo.length > 0">
+                              <span v-for="(detail, idx) in selectedReq.chiTietSuCo" :key="idx"
                                 class="badge bg-light text-dark border border-secondary border-opacity-25 rounded-pill px-2 py-1 fw-medium">
                                 {{ detail }}
                               </span>
@@ -175,15 +176,20 @@
                       class="info-box bg-white border border-light h-100 p-4 rounded-4 d-flex flex-column justify-content-center align-items-center text-center shadow-sm">
                       <div
                         class="box-label text-muted small fw-bolder text-uppercase tracking-wider mb-3 w-100 text-start">
-                        <i class="fa-solid fa-user me-1"></i> Người Gửi Yêu Cầu </div>
+                        <i class="fa-solid fa-user me-1"></i> Người Gửi Yêu Cầu
+                      </div>
                       <div
                         class="reporter-avatar bg-primary text-white fw-bolder rounded-circle d-flex align-items-center justify-content-center mb-3 shadow"
                         style="width: 56px; height: 56px; font-size: 24px;">
                         {{ selectedReq.reporter.charAt(0).toUpperCase() }}
                       </div>
                       <h6 class="fw-bolder text-dark mb-1">{{ selectedReq.reporter }}</h6>
-                      <div class="fw-bold text-primary mb-3"><i class="fa-solid fa-phone me-1"></i> {{ selectedReq.phone
-                        }}</div>
+                      <div class="fw-bold text-primary mb-3"><i class="fa-solid fa-phone me-1"></i> {{ selectedReq.phone }}</div>
+
+                      <div v-if="selectedReq.hinhAnh" class="w-100 mb-3">
+                        <img :src="selectedReq.hinhAnh" alt="Hình ảnh sự cố" class="rounded-3 w-100" style="max-height: 140px; object-fit: cover; border: 1px solid #dee2e6;">
+                      </div>
+
                       <div class="d-flex gap-2 w-100 mt-auto">
                         <button class="btn btn-outline-primary btn-sm fw-medium flex-grow-1"><i
                             class="fa-solid fa-phone me-1"></i>Liên hệ</button>
@@ -204,9 +210,9 @@
                       </strong> đơn vị hiển thị ·
                       <strong>{{ availableTeamsCount }}</strong> sẵn sàng ·
                       <!-- ưu tiên: cùng loại + cùng quận &gt; cùng loại &gt; cùng quận &gt; khoảng cách -->
-                      </span>
+                    </span>
                   </div>
-                  
+
                   <div class="d-flex gap-2 align-items-end" v-if="availableTeams.length > 0">
                     <div class="search-box" style="margin-bottom: 0; min-width: 240px;">
                       <i class="fa-solid fa-search search-icon"></i>
@@ -223,7 +229,8 @@
 
                 <div v-else-if="availableTeamsCount === 0"
                   class="alert custom-alert-warning fw-medium d-flex align-items-center">
-                  <i class="fa-solid fa-circle-exclamation fs-5 me-3"></i> Tất cả đội cứu hộ đều đang bận. Vui lòng đợi một đội hoàn thành nhiệm vụ hoặc sử dụng lực lượng dự phòng.
+                  <i class="fa-solid fa-circle-exclamation fs-5 me-3"></i> Tất cả đội cứu hộ đều đang bận. Vui lòng đợi
+                  một đội hoàn thành nhiệm vụ hoặc sử dụng lực lượng dự phòng.
                 </div>
 
                 <div class="row g-3" v-else>
@@ -253,16 +260,19 @@
                           <!-- Capacity progress bar -->
                           <div class="capacity-wrapper mt-2">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                              <span class="capacity-label small fw-semibold" :class="isTeamBusy(team.id) ? 'text-danger' : 'text-secondary'">
+                              <span class="capacity-label small fw-semibold"
+                                :class="isTeamBusy(team.id) ? 'text-danger' : 'text-secondary'">
                                 <i class="fa-solid fa-list-check me-1"></i>Nhiệm vụ đang xử lý
                               </span>
                               <div class="d-flex align-items-center gap-2">
                                 <!-- Pending: đã phân công nhưng chưa tiếp nhận -->
-                                <span v-if="(team.pending_count ?? 0) > 0" class="capacity-pending-badge small fw-bolder">
+                                <span v-if="(team.pending_count ?? 0) > 0"
+                                  class="capacity-pending-badge small fw-bolder">
                                   <i class="fa-regular fa-clock me-1"></i>{{ team.pending_count }} chờ
                                 </span>
                                 <!-- Active: đang xử lý -->
-                                <span class="capacity-badge small fw-bolder" :class="isTeamBusy(team.id) ? 'bg-danger-subtle text-danger' : 'bg-light text-secondary'">
+                                <span class="capacity-badge small fw-bolder"
+                                  :class="isTeamBusy(team.id) ? 'bg-danger-subtle text-danger' : 'bg-light text-secondary'">
                                   {{ team.active_count ?? 0 }} / {{ getMaxCapacity(team) }}
                                 </span>
                               </div>
@@ -271,12 +281,16 @@
                               <div class="capacity-bar-fill" :class="getCapacityBarClass(team)"
                                 :style="{ width: getCapacityBarWidth(team) }"></div>
                             </div>
-                            <div class="capacity-hint small mt-1" :class="isTeamBusy(team.id) ? 'text-danger' : 'text-muted'">
+                            <div class="capacity-hint small mt-1"
+                              :class="isTeamBusy(team.id) ? 'text-danger' : 'text-muted'">
                               <template v-if="isTeamBusy(team.id)">
-                                <i class="fa-solid fa-circle-exclamation me-1"></i>Đội quá tải ({{ getTotalAssignments(team) }} / {{ getMaxCapacity(team) }} yêu cầu)
+                                <i class="fa-solid fa-circle-exclamation me-1"></i>Đội quá tải ({{
+                                getTotalAssignments(team) }} / {{ getMaxCapacity(team) }} yêu cầu)
                               </template>
                               <template v-else>
-                                <i class="fa-solid fa-check-circle me-1"></i>Còn {{ getMaxCapacity(team) - getTotalAssignments(team) }} chỗ trống ({{ getTotalAssignments(team) }} / {{ getMaxCapacity(team) }})
+                                <i class="fa-solid fa-check-circle me-1"></i>Còn {{ getMaxCapacity(team) -
+                                getTotalAssignments(team) }} chỗ trống ({{ getTotalAssignments(team) }} / {{
+                                getMaxCapacity(team) }})
                               </template>
                             </div>
                           </div>
@@ -286,23 +300,23 @@
                               team.thanh_viens ? team.thanh_viens.length : 0 }} người</span>
                             <!-- <span class="meta-tag text-success bg-success-subtle bg-opacity-50" v-if="team.cung_quan"><i
                                 class="fa-solid fa-bolt me-1"></i>Cùng quận</span> -->
-                            <span class="meta-tag distance-badge" 
-                              v-if="team.khoang_cach_km != null"><i class="fa-solid fa-location-arrow me-1"></i>{{
-                              formatDistance(team.khoang_cach_km) }}</span>
+                            <span class="meta-tag distance-badge" v-if="team.khoang_cach_km != null"><i
+                                class="fa-solid fa-location-arrow me-1"></i>{{
+                                  formatDistance(team.khoang_cach_km) }}</span>
                             <span class="meta-tag text-danger bg-danger-subtle bg-opacity-25"
                               v-if="team.cung_loai_su_co === true"><i class="fa-solid fa-fire me-1"></i>Đúng loại</span>
                             <span class="meta-tag text-secondary bg-secondary-subtle bg-opacity-25"
-                              v-if="team.cung_loai_su_co === false"><i class="fa-solid fa-fire me-1"></i>Khác loại</span>
-                            <span class="meta-tag text-muted bg-light"
-                              v-if="team.cung_loai_su_co === null"><i class="fa-solid fa-circle-question me-1"></i>Chưa rõ</span>
+                              v-if="team.cung_loai_su_co === false"><i class="fa-solid fa-fire me-1"></i>Khác
+                              loại</span>
+                            <span class="meta-tag text-muted bg-light" v-if="team.cung_loai_su_co === null"><i
+                                class="fa-solid fa-circle-question me-1"></i>Chưa rõ</span>
                           </div>
                           <div class="d-flex flex-wrap gap-1 mt-2" v-if="team.loai_su_co && team.loai_su_co.length > 0">
-                            <span class="type-tag" v-for="(type, idx) in team.loai_su_co" :key="idx"
-                              :class="{
-                                'type-match': team.cung_loai_su_co === true,
-                                'type-mismatch': team.cung_loai_su_co === false,
-                                'type-unknown': team.cung_loai_su_co === null
-                              }">{{ type }}</span>
+                            <span class="type-tag" v-for="(type, idx) in team.loai_su_co" :key="idx" :class="{
+                              'type-match': team.cung_loai_su_co === true,
+                              'type-mismatch': team.cung_loai_su_co === false,
+                              'type-unknown': team.cung_loai_su_co === null
+                            }">{{ type }}</span>
                           </div>
                         </div>
                       </div>
@@ -338,8 +352,7 @@
             </template>
 
             <template v-else>
-              <div
-                class="empty-selection d-flex flex-column justify-content-center align-items-center text-center p-5">
+              <div class="empty-selection d-flex flex-column justify-content-center align-items-center text-center p-5">
                 <div
                   class="bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center mb-4 icon-pulse shadow-sm"
                   style="width: 88px; height: 88px; font-size: 36px;">
@@ -361,6 +374,29 @@
 import { rescueRequestAPI, rescueTeamAPI, assignmentAPI } from "../../../services/api";
 
 const BASE_URL = 'http://localhost:8000';
+
+function getImageUrl(image) {
+  if (!image) return null;
+  const raw = String(image).trim();
+  if (!raw) return null;
+  if (/^(https?:|data:|blob:)/i.test(raw)) return raw;
+
+  const clean = raw.replace(/^\/+/, "");
+
+  if (clean.startsWith("uploads/") || clean.startsWith("storage/")) {
+    return `${BASE_URL}/${clean}`;
+  }
+
+  if (!clean.includes("/") && /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(clean)) {
+    return `${BASE_URL}/uploads/${clean}`;
+  }
+
+  if (clean.includes("/")) {
+    return `${BASE_URL}/${clean}`;
+  }
+
+  return null;
+}
 
 const SEVERITY_MAP = {
   'CRITICAL': { label: 'CRITICAL', badge: 'lv-critical', border: 'border-critical' },
@@ -494,58 +530,59 @@ function parseRequests(payload) {
       trangThai: item.trang_thai,
       chiTietSuCo: chiTietSuCo,
       idLoaiSuCo: item.id_loai_su_co || null,
+      hinhAnh: getImageUrl(item.hinh_anh),
     };
   });
 }
 
-    function parseTeams(payload) {
-      const rawData = payload?.data?.data || payload?.data || payload || [];
-      const items = Array.isArray(rawData) ? rawData : [];
-      return items.map((item) => {
-        const loaiSuCoRaw = item.loai_su_co;
-        let loaiSuCo = [];
-        if (Array.isArray(loaiSuCoRaw)) {
-          loaiSuCo = loaiSuCoRaw
-            .map(s => (typeof s === 'string' ? s : (s?.ten || s?.ten_danh_muc || '')))
-            .filter(Boolean);
-        }
-
-        // phan_congs: backend returns this; fallback to item.raw.phan_congs if set
-        const phanCongRaw = item.phan_congs ?? item.raw?.phan_congs ?? [];
-        const phanCongs = Array.isArray(phanCongRaw) ? phanCongRaw : [];
-
-        return {
-          id: item.id_doi_cuu_ho || item.id,
-          raw: item,
-          ten_doi: normalizeText(item.ten_doi || item.ten_co || item.name || "Đội cứu hộ"),
-          khu_vuc_quan_ly: normalizeText(item.khu_vuc_quan_ly || item.area || ""),
-          so_dien_thoai_hotline: item.so_dien_thoai_hotline || item.phone || "",
-          trang_thai: item.trang_thai || "SanSang",
-          thanh_viens: Array.isArray(item.thanh_viens) ? item.thanh_viens : [],
-          tai_nguyens: Array.isArray(item.tai_nguyens) ? item.tai_nguyens : [],
-          vi_tri_lat: item.vi_tri_lat || null,
-          vi_tri_lng: item.vi_tri_lng || null,
-          khoang_cach_km: item.khoang_cach_km !== undefined && item.khoang_cach_km !== null ? item.khoang_cach_km : null,
-          cung_loai_su_co: (() => {
-            const v = item.cung_loai_su_co;
-            if (v === true || v === 1 || v === '1') return true;
-            if (v === false || v === 0 || v === '0') return false;
-            return null; // chưa xác định (backend trả về null)
-          })(),
-          cung_quan: item.cung_quan === true || item.cung_quan === 1 || item.cung_quan === '1',
-          loai_su_co: loaiSuCo,
-          // Capacity fields — backend is the single source of truth
-          phan_congs: phanCongs,
-          // active_count: task thực sự đang xử lý (DANG_XU_LY / DA_DEN_HIEN_TRUONG)
-          active_count: item.active_count ?? 0,
-          // pending_count: task mới phân công chưa tiếp nhận (MOI)
-          pending_count: item.pending_count ?? 0,
-          // capacity: tổng số task tối đa = số thành viên
-          capacity: item.capacity ?? 0,
-          trang_thai_theo_nang_luc: item.trang_thai_theo_nang_luc || 'available',
-        };
-      });
+function parseTeams(payload) {
+  const rawData = payload?.data?.data || payload?.data || payload || [];
+  const items = Array.isArray(rawData) ? rawData : [];
+  return items.map((item) => {
+    const loaiSuCoRaw = item.loai_su_co;
+    let loaiSuCo = [];
+    if (Array.isArray(loaiSuCoRaw)) {
+      loaiSuCo = loaiSuCoRaw
+        .map(s => (typeof s === 'string' ? s : (s?.ten || s?.ten_danh_muc || '')))
+        .filter(Boolean);
     }
+
+    // phan_congs: backend returns this; fallback to item.raw.phan_congs if set
+    const phanCongRaw = item.phan_congs ?? item.raw?.phan_congs ?? [];
+    const phanCongs = Array.isArray(phanCongRaw) ? phanCongRaw : [];
+
+    return {
+      id: item.id_doi_cuu_ho || item.id,
+      raw: item,
+      ten_doi: normalizeText(item.ten_doi || item.ten_co || item.name || "Đội cứu hộ"),
+      khu_vuc_quan_ly: normalizeText(item.khu_vuc_quan_ly || item.area || ""),
+      so_dien_thoai_hotline: item.so_dien_thoai_hotline || item.phone || "",
+      trang_thai: item.trang_thai || "SanSang",
+      thanh_viens: Array.isArray(item.thanh_viens) ? item.thanh_viens : [],
+      tai_nguyens: Array.isArray(item.tai_nguyens) ? item.tai_nguyens : [],
+      vi_tri_lat: item.vi_tri_lat || null,
+      vi_tri_lng: item.vi_tri_lng || null,
+      khoang_cach_km: item.khoang_cach_km !== undefined && item.khoang_cach_km !== null ? item.khoang_cach_km : null,
+      cung_loai_su_co: (() => {
+        const v = item.cung_loai_su_co;
+        if (v === true || v === 1 || v === '1') return true;
+        if (v === false || v === 0 || v === '0') return false;
+        return null; // chưa xác định (backend trả về null)
+      })(),
+      cung_quan: item.cung_quan === true || item.cung_quan === 1 || item.cung_quan === '1',
+      loai_su_co: loaiSuCo,
+      // Capacity fields — backend is the single source of truth
+      phan_congs: phanCongs,
+      // active_count: task thực sự đang xử lý (DANG_XU_LY / DA_DEN_HIEN_TRUONG)
+      active_count: item.active_count ?? 0,
+      // pending_count: task mới phân công chưa tiếp nhận (MOI)
+      pending_count: item.pending_count ?? 0,
+      // capacity: tổng số task tối đa = số thành viên
+      capacity: item.capacity ?? 0,
+      trang_thai_theo_nang_luc: item.trang_thai_theo_nang_luc || 'available',
+    };
+  });
+}
 
 export default {
   name: "AdminAssignments",
@@ -709,7 +746,7 @@ export default {
       this.pollingInterval = setInterval(() => {
         const status = window.realtimeConnectionStatus || 'connecting';
         if (status === 'connected') return;
-        this.loadRequests({ silent: true }).catch(() => {});
+        this.loadRequests({ silent: true }).catch(() => { });
       }, 15000);
     },
     stopPolling() {
@@ -1409,9 +1446,12 @@ export default {
 }
 
 @keyframes pulse-badge {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
   }
+
   50% {
     box-shadow: 0 2px 16px rgba(220, 38, 38, 0.5);
   }
@@ -1507,6 +1547,7 @@ export default {
     opacity: 0;
     transform: scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -1535,10 +1576,21 @@ export default {
   transition: width 0.4s ease, background 0.3s ease;
 }
 
-.bar-empty { background: #e2e8f0; }
-.bar-normal { background: #16a34a; }
-.bar-warning { background: #f59e0b; }
-.bar-full { background: #dc2626; }
+.bar-empty {
+  background: #e2e8f0;
+}
+
+.bar-normal {
+  background: #16a34a;
+}
+
+.bar-warning {
+  background: #f59e0b;
+}
+
+.bar-full {
+  background: #dc2626;
+}
 
 .capacity-badge {
   padding: 2px 8px;
@@ -1555,7 +1607,9 @@ export default {
   border: 1px solid #fcd34d;
 }
 
-.bg-danger-subtle { background-color: #fef2f2; }
+.bg-danger-subtle {
+  background-color: #fef2f2;
+}
 
 .capacity-hint {
   font-size: 11px;
@@ -1639,14 +1693,14 @@ export default {
   height: auto !important;
 }
 
-.panel-right-full > .card-body {
+.panel-right-full>.card-body {
   overflow: visible !important;
   flex: 1 1 auto;
   min-height: 0;
 }
 
 /* Fix: Footer phải luôn hiển thị, không bị overflow cắt */
-.panel-right-full > .card-footer,
+.panel-right-full>.card-footer,
 .panel-footer {
   flex-shrink: 0;
   position: relative;
