@@ -497,6 +497,7 @@
 <script>
 import { rescuerAPI, assignmentAPI } from "../../../services/api.js";
 import { loadOpenMap, createOpenMap, createOpenMapMarker, createOpenMapPopup, fitBoundsToMap } from "../../../utils/openMap.js";
+import { veDuongDiTrenMap, kiemTraCanCapNhatDuong } from "../../../utils/realtimeRoute.js";
 import { loadGoogleMaps } from "../../../utils/googleMaps.js";
 import { createToaster } from "@meforma/vue-toaster";
 
@@ -536,6 +537,8 @@ export default {
             mapResizeObserver: null,
             locationBroadcastInterval: null,
             locationChannel: null,
+            viTriCu: null,
+            lanCapNhatCuoi: 0,
         };
     },
     async mounted() {
@@ -664,7 +667,7 @@ export default {
                 this.refreshMissionData();
             }
         },
-        handleLocationUpdate(event) {
+        async handleLocationUpdate(event) {
             // Update team marker position on map when receiving location updates
             if (!this.map || !event.lat || !event.lng) return;
 
@@ -675,20 +678,28 @@ export default {
                 // Update existing marker position
                 this.teamMarker.setLngLat([newLng, newLat]);
             } else {
-                // Create new marker if it doesn't exist
-                this.teamMarker = new mapboxgl.Marker({
-                    color: '#10b981', // Green for rescuer team
-                    draggable: false
-                })
-                .setLngLat([newLng, newLat])
-                .addTo(this.map);
+                this.addTeamMarker(newLat, newLng);
             }
 
             // Update stored coordinates
             this.teamLat = newLat;
             this.teamLng = newLng;
 
-            console.log('[Location] Updated team marker position:', newLat, newLng);
+            // Realtime Route Update
+            if (this.currentMission?.yeu_cau?.vi_tri_lat && this.currentMission?.yeu_cau?.vi_tri_lng) {
+                const reqLat = Number(this.currentMission.yeu_cau.vi_tri_lat);
+                const reqLng = Number(this.currentMission.yeu_cau.vi_tri_lng);
+                
+                const viTriMoi = { lat: newLat, lng: newLng };
+
+                if (kiemTraCanCapNhatDuong(viTriMoi, this.viTriCu, this.lanCapNhatCuoi)) {
+                    const path = await veDuongDiTrenMap(this.map, viTriMoi, { lat: reqLat, lng: reqLng });
+                    if (path && path.length > 0) {
+                        this.viTriCu = viTriMoi;
+                        this.lanCapNhatCuoi = Date.now();
+                    }
+                }
+            }
         },
         async refreshMissionData() {
             if (!this.teamId) return;
@@ -1047,93 +1058,20 @@ export default {
                 this.requestMarker.addTo(this.map);
 
                 // Draw driving route from current GPS location to request
-                if (this.memberLat && this.memberLng) {
-                    await this.drawDrivingRoute(this.memberLat, this.memberLng, lat, lng);
+                const srcLat = this.memberLat || this.teamLat;
+                const srcLng = this.memberLng || this.teamLng;
+                if (srcLat && srcLng) {
+                    await this.drawDrivingRoute(srcLat, srcLng, lat, lng);
                 }
             }
         },
         async drawDrivingRoute(lat1, lng1, lat2, lng2) {
-            this.cleanupRoute();
-            try {
-                // Try Google Directions first if API key is available
-                const googleApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim();
-                if (googleApiKey) {
-                    try {
-                        await loadGoogleMaps();
-                        const directionsService = new google.maps.DirectionsService();
-                        const request = {
-                            origin: { lat: lat1, lng: lng1 },
-                            destination: { lat: lat2, lng: lng2 },
-                            travelMode: google.maps.TravelMode.DRIVING,
-                        };
-                        const response = await new Promise((resolve, reject) => {
-                            directionsService.route(request, (result, status) => {
-                                if (status === google.maps.DirectionsStatus.OK) {
-                                    resolve(result);
-                                } else {
-                                    reject(new Error(`Google Directions failed: ${status}`));
-                                }
-                            });
-                        });
-                        if (response.routes && response.routes.length > 0) {
-                            const route = response.routes[0];
-                            const path = [];
-                            route.overview_path.forEach(point => {
-                                path.push([point.lng(), point.lat()]);
-                            });
-                            this.addDrivingRouteToMap(path);
-                            this.fitBoundsToMap(this.map, [[lng1, lat1], ...path, [lng2, lat2]]);
-                            return;
-                        }
-                    } catch (googleError) {
-                        console.warn('Google Directions failed, falling back to OSRM:', googleError);
-                    }
-                }
-
-                // Fallback to OSRM
-                const response = await fetch(
-                    `https://router.project-osrm.org/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=full&geometries=geojson`
-                );
-                const data = await response.json();
-                if (data.routes && data.routes.length > 0) {
-                    const coordinates = data.routes[0].geometry.coordinates.map(coord => [coord[0], coord[1]]);
-                    this.addDrivingRouteToMap(coordinates);
-                    this.fitBoundsToMap(this.map, [[lng1, lat1], ...coordinates, [lng2, lat2]]);
-                } else {
-                    this.drawDrivingFallback(lat1, lng1, lat2, lng2);
-                }
-            } catch (error) {
-                console.warn('OSRM failed, using fallback:', error);
-                this.drawDrivingFallback(lat1, lng1, lat2, lng2);
+            const path = await veDuongDiTrenMap(this.map, {lat: lat1, lng: lng1}, {lat: lat2, lng: lng2}, 'route');
+            if (path && path.length > 0) {
+                fitBoundsToMap(this.map, path);
             }
-        },
-        addDrivingRouteToMap(coordinates) {
-            const routeGeoJSON = { type: 'Feature', geometry: { type: 'LineString', coordinates } };
-            this.map.addSource('route', { type: 'geojson', data: routeGeoJSON });
-            this.map.addLayer({
-                id: 'route-line',
-                type: 'line',
-                source: 'route',
-                layout: { 'line-join': 'round', 'line-cap': 'round' },
-                paint: { 'line-color': '#2563eb', 'line-width': 5, 'line-opacity': 0.8 },
-            });
-            this.routeSource = 'route';
             this.routeLayer = 'route-line';
-        },
-        drawDrivingFallback(lat1, lng1, lat2, lng2) {
-            const coords = [[Number(lng1), Number(lat1)], [Number(lng2), Number(lat2)]];
-            const routeGeoJSON = { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } };
-            if (this.map.getLayer('route-line')) this.map.removeLayer('route-line');
-            if (this.map.getSource('route')) this.map.removeSource('route');
-            this.map.addSource('route', { type: 'geojson', data: routeGeoJSON });
-            this.map.addLayer({
-                id: 'route-line',
-                type: 'line',
-                source: 'route',
-                paint: { 'line-color': '#2563eb', 'line-width': 4, 'line-opacity': 0.6 },
-            });
             this.routeSource = 'route';
-            this.routeLayer = 'route-line';
         },
         startLocationBroadcasting() {
             this.stopLocationBroadcasting(); // Clear any existing interval

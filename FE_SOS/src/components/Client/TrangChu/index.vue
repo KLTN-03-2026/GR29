@@ -306,7 +306,6 @@ export default {
             selectedImageName: "",
             selectedImageFile: null,
             soNguoiBiAnhHuong: 1,
-            mucDoKhanCap: "HIGH",
             diemUuTien: null,
             trangThai: null,
             searchTimeout: null,
@@ -562,7 +561,6 @@ export default {
                     payload.append('hinh_anh', this.selectedImageFile);
                 }
                 payload.append('so_nguoi_bi_anh_huong', Number(this.soNguoiBiAnhHuong) || 1);
-                payload.append('muc_do_khan_cap', this.mucDoKhanCap || "HIGH");
                 if (this.diemUuTien !== null) {
                     payload.append('diem_uu_tien', Number(this.diemUuTien));
                 }
@@ -587,7 +585,6 @@ export default {
                 this.selectedImageName = "";
                 this.selectedImageFile = null;
                 this.soNguoiBiAnhHuong = 1;
-                this.mucDoKhanCap = "HIGH";
                 this.diemUuTien = null;
                 this.trangThai = null;
                 this.selectedDetailIds = [];

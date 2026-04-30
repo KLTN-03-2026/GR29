@@ -132,12 +132,12 @@ export function createOpenMapPopup(options = {}) {
 }
 
 export function createOpenMapBounds() {
-    return new maplibregl.LatLngBounds();
+    return new maplibregl.LngLatBounds();
 }
 
 export function fitBoundsToMap(map, coordinates) {
     if (!coordinates || coordinates.length === 0) return;
-    const bounds = new maplibregl.LatLngBounds();
+    const bounds = new maplibregl.LngLatBounds();
     coordinates.forEach((coord) => {
         const lng = typeof coord.lng === "number" ? coord.lng : coord.lon ?? coord[0];
         const lat = typeof coord.lat === "number" ? coord.lat : coord[1];
