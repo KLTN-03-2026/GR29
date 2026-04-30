@@ -383,7 +383,8 @@ class PhanCongCuuHoController extends Controller
 
         $teamId = $assignment->id_doi_cuu_ho;
 
-        DoiCuuHo::where('id_doi_cuu_ho', $teamId)->update([
+        // Lưu vị trí rescuer vào bảng phân công, KHÔNG ghi đè tọa độ trụ sở của đội
+        $assignment->update([
             'vi_tri_lat' => $validated['lat'],
             'vi_tri_lng' => $validated['lng'],
         ]);

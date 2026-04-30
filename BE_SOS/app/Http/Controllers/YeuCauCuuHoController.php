@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Events\RescueRequestUpdated;
 use App\Http\Requests\YeuCauCuuHoRequest;
+use App\Jobs\AutoDispatchJob;
 use App\Models\{DoiCuuHo, YeuCauCuuHo, HangDoiXuLy, PhanLoaiAis, DuLieuHeatmap, PhanCongCuuHo, NguoiDung, LoaiSuCo};
 use App\Services\DistanceService;
+use App\Services\AutoDispatchService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Response;
@@ -367,6 +369,14 @@ class YeuCauCuuHoController extends Controller
         return in_array($v, $allowed, true) ? $v : $v;
     }
 
+    private function mapDiemUuTienSangMucDoKhanCap(float $diem): string
+    {
+        if ($diem >= 9) return 'CRITICAL';
+        if ($diem >= 7) return 'HIGH';
+        if ($diem >= 5) return 'MEDIUM';
+        return 'LOW';
+    }
+
     /**
      * Display paginated list of all rescue requests
      *
@@ -453,12 +463,35 @@ class YeuCauCuuHoController extends Controller
 
             if (!array_key_exists('diem_uu_tien', $validated) || $validated['diem_uu_tien'] === null) {
                 $validated['diem_uu_tien'] = 0;
+                if (!empty($validated['id_loai_su_co'])) {
+                    $chiTietNames = array_map('trim', explode(',', $validated['chi_tiet'] ?? ''));
+                    $chiTietNames = array_filter($chiTietNames);
+
+                    if (!empty($chiTietNames)) {
+                        $maxDiem = DB::table('chi_tiet_loai_su_co')
+                            ->where('id_loai_su_co', $validated['id_loai_su_co'])
+                            ->whereIn('ten_chi_tiet', $chiTietNames)
+                            ->max('diem_uu_tien');
+                    }
+
+                    if (!isset($maxDiem) || $maxDiem === null) {
+                        $maxDiem = DB::table('chi_tiet_loai_su_co')
+                            ->where('id_loai_su_co', $validated['id_loai_su_co'])
+                            ->max('diem_uu_tien');
+                    }
+
+                    if ($maxDiem !== null) {
+                        $validated['diem_uu_tien'] = (float) $maxDiem;
+                    }
+                }
             }
             if (!array_key_exists('so_nguoi_bi_anh_huong', $validated) || $validated['so_nguoi_bi_anh_huong'] === null) {
                 $validated['so_nguoi_bi_anh_huong'] = 1;
             }
             if (!array_key_exists('muc_do_khan_cap', $validated) || $validated['muc_do_khan_cap'] === null) {
-                $validated['muc_do_khan_cap'] = 'MEDIUM';
+                $validated['muc_do_khan_cap'] = $this->mapDiemUuTienSangMucDoKhanCap(
+                    (float) ($validated['diem_uu_tien'] ?? 0)
+                );
             }
             if (!array_key_exists('trang_thai', $validated) || $validated['trang_thai'] === null) {
                 $validated['trang_thai'] = 'CHO_XU_LY';
@@ -489,6 +522,11 @@ class YeuCauCuuHoController extends Controller
             $item->load('nguoiDung', 'loaiSuCo.chiTiets', 'hangDoiXuLy');
 
             $this->safeBroadcastRescueUpdate($item, 'created');
+
+            // === Điều phối tự động: dispatch job nếu AutoDispatch đang bật ===
+            if (AutoDispatchService::daBat()) {
+                AutoDispatchJob::dispatch($item->id_yeu_cau);
+            }
 
             return Response::json([
                 'success' => true,

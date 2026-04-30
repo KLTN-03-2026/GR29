@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\ChiTietLoaiSuCo;
 use Illuminate\Database\Eloquent\Model;
 
 class YeuCauCuuHo extends Model
@@ -72,6 +73,21 @@ class YeuCauCuuHo extends Model
     public function baoCao()
     {
         return $this->hasOne(RescueReport::class, 'id_yeu_cau', 'id_yeu_cau');
+    }
+
+    /**
+     * Relationship with ChiTietLoaiSuCo (via chi_tiet field or loaiSuCo.chiTiets)
+     */
+    public function chiTiet()
+    {
+        return $this->hasManyThrough(
+            ChiTietLoaiSuCo::class,
+            LoaiSuCo::class,
+            'id_loai_su_co',
+            'id_loai_su_co',
+            'id_loai_su_co',
+            'id_loai_su_co'
+        );
     }
 
     /**
