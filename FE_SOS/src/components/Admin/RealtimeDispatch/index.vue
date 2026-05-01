@@ -72,6 +72,7 @@
                 <svg v-else-if="stat.icon === 'auto'" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M13 3L4 14H12L11 21L20 10H12L13 3Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 <svg v-else-if="stat.icon === 'pending'" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                 <svg v-else-if="stat.icon === 'escalate'" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <svg v-else-if="stat.icon === 'retry'" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 12C4 7.58172 7.58172 4 12 4C15.0736 4 17.7248 5.80151 19 8.4M20 12C20 16.4183 16.4183 20 12 20C8.92638 20 6.27515 18.1985 5 15.6M4 4V8H8M20 20V16H16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </div>
               <div class="stat-trend-badge" :style="{ background: stat.trendBg, color: stat.trendColor }" v-if="stat.trendText">
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none"><path :d="stat.trendIcon === 'up' ? 'M12 19V5M5 12l7-7 7 7' : 'M12 5v14M19 12l-7 7-7-7'" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -542,8 +543,7 @@
 </template>
 
 <script>
-import { incidentTypeAPI } from "../../../services/api";
-import { autoDispatchAPI } from "../../../services/api";
+import { incidentTypeAPI, autoDispatchAPI, rescueRequestAPI, assignmentAPI } from "../../../services/api";
 import api from "../../../services/api";
 
 export default {
@@ -587,7 +587,7 @@ export default {
       ],
 
       activities: [],
-      monitoredStats: { totalRequests: 0, autoDispatched: 0, pendingAuto: 0, escalated: 0 },
+      monitoredStats: { totalRequests: 0, autoDispatched: 0, pendingAuto: 0, escalated: 0, pendingRequests: 0, over30Mins: 0, retryDispatch: 0 },
       uptimeStart: null,
 
       ruleForm: {
@@ -628,16 +628,15 @@ export default {
     },
 
     statsCards() {
-      const total = this.monitoredStats.totalRequests;
       const autoRate = this.successRate;
-      const pendingRate = total > 0 ? Math.round((this.monitoredStats.pendingAuto / total) * 100) : 0;
       return [
         {
-          label: "Yêu cầu đang giám sát", value: total, icon: "total",
-          iconBg: "rgba(37, 99, 235, 0.12)", iconColor: "#2563eb",
-          valueColor: "#0f172a",
-          trendText: this.dispatchEnabled ? "+3 hôm nay" : null,
-          trendBg: "rgba(22, 163, 74, 0.12)", trendColor: "#16a34a", trendIcon: "up",
+          label: "Yêu cầu đang chờ", value: this.monitoredStats.pendingRequests, icon: "pending",
+          iconBg: "rgba(217, 119, 6, 0.12)", iconColor: "#d97706",
+          valueColor: "#d97706",
+          trendText: this.monitoredStats.pendingRequests > 0 ? "Cần xử lý" : "Trống",
+          trendBg: this.monitoredStats.pendingRequests > 0 ? "rgba(217, 119, 6, 0.12)" : "rgba(22, 163, 74, 0.12)", 
+          trendColor: this.monitoredStats.pendingRequests > 0 ? "#d97706" : "#16a34a", trendIcon: "up",
           progress: undefined, progressColor: "",
         },
         {
@@ -649,24 +648,22 @@ export default {
           progress: autoRate, progressColor: "#16a34a",
         },
         {
-          label: "Chờ auto-dispatch", value: this.monitoredStats.pendingAuto, icon: "pending",
-          iconBg: this.monitoredStats.pendingAuto > 0 ? "rgba(217, 119, 6, 0.12)" : "rgba(148, 163, 184, 0.1)",
-          iconColor: this.monitoredStats.pendingAuto > 0 ? "#d97706" : "#94a3b8",
-          valueColor: this.monitoredStats.pendingAuto > 0 ? "#d97706" : "#94a3b8",
-          trendText: this.monitoredStats.pendingAuto > 0 ? "Cần xử lý" : "Không có",
-          trendBg: this.monitoredStats.pendingAuto > 0 ? "rgba(220, 38, 38, 0.1)" : "rgba(22, 163, 74, 0.1)",
-          trendColor: this.monitoredStats.pendingAuto > 0 ? "#dc2626" : "#16a34a", trendIcon: "up",
-          progress: pendingRate,
-          progressColor: this.monitoredStats.pendingAuto > 0 ? "#d97706" : "#94a3b8",
+          label: ">30p chưa tiếp nhận", value: this.monitoredStats.over30Mins, icon: "escalate",
+          iconBg: this.monitoredStats.over30Mins > 0 ? "rgba(220, 38, 38, 0.1)" : "rgba(148, 163, 184, 0.1)",
+          iconColor: this.monitoredStats.over30Mins > 0 ? "#dc2626" : "#94a3b8",
+          valueColor: this.monitoredStats.over30Mins > 0 ? "#dc2626" : "#94a3b8",
+          trendText: this.monitoredStats.over30Mins > 0 ? "Cần can thiệp" : "Bình thường",
+          trendBg: this.monitoredStats.over30Mins > 0 ? "rgba(220, 38, 38, 0.1)" : "rgba(22, 163, 74, 0.1)",
+          trendColor: this.monitoredStats.over30Mins > 0 ? "#dc2626" : "#16a34a", trendIcon: "up",
+          progress: undefined, progressColor: "",
         },
         {
-          label: "Đã leo thang", value: this.monitoredStats.escalated, icon: "escalate",
-          iconBg: this.monitoredStats.escalated > 0 ? "rgba(220, 38, 38, 0.1)" : "rgba(148, 163, 184, 0.1)",
-          iconColor: this.monitoredStats.escalated > 0 ? "#dc2626" : "#94a3b8",
-          valueColor: this.monitoredStats.escalated > 0 ? "#dc2626" : "#94a3b8",
-          trendText: this.monitoredStats.escalated > 0 ? "Cần can thiệp" : "Bình thường",
-          trendBg: this.monitoredStats.escalated > 0 ? "rgba(217, 119, 6, 0.1)" : "rgba(22, 163, 74, 0.1)",
-          trendColor: this.monitoredStats.escalated > 0 ? "#d97706" : "#16a34a", trendIcon: "up",
+          label: "Retry dispatch", value: this.monitoredStats.retryDispatch, icon: "retry",
+          iconBg: "rgba(147, 51, 234, 0.12)", iconColor: "#9333ea",
+          valueColor: "#9333ea",
+          trendText: this.monitoredStats.retryDispatch > 0 ? "Đang tìm lại" : "Ổn định",
+          trendBg: this.monitoredStats.retryDispatch > 0 ? "rgba(147, 51, 234, 0.12)" : "rgba(22, 163, 74, 0.12)", 
+          trendColor: this.monitoredStats.retryDispatch > 0 ? "#9333ea" : "#16a34a", trendIcon: "up",
           progress: undefined, progressColor: "",
         },
       ];
@@ -711,8 +708,8 @@ export default {
   mounted() {
     this.loadConfig();
     this.loadIncidentTypes();
-    this.loadActivities();
     this.loadMonitoredStats();
+    this.loadActivities();
     document.addEventListener("click", this.handleOutsideClick);
   },
 
@@ -825,8 +822,8 @@ export default {
       this.loading = true;
       await Promise.all([
         this.loadIncidentTypes(),
-        this.loadActivities(),
         this.loadMonitoredStats(),
+        this.loadActivities(),
       ]);
       this.loading = false;
     },
@@ -895,72 +892,194 @@ export default {
 
     async loadMonitoredStats() {
       try {
-        const [escalRes, queueRes] = await Promise.all([
-          autoDispatchAPI.getEscalations(),
-          api.get('/hang-doi-xu-ly'),
+        const [escRes, reqRes] = await Promise.all([
+          autoDispatchAPI.getEscalations().catch(() => ({ data: {} })),
+          rescueRequestAPI.getList().catch(() => ({ data: [] })),
         ]);
 
-        const escalatedCount = escalRes.data?.thanh_cong ? escalRes.data.du_lieu?.length || 0 : 0;
-        const pendingCount = queueRes.data?.success
-          ? (queueRes.data.data || queueRes.data.du_lieu || []).length
-          : 0;
+        const escalationEvents = Array.isArray(escRes.data?.du_lieu)
+          ? escRes.data.du_lieu
+          : Array.isArray(escRes.data)
+            ? escRes.data
+            : [];
 
-        const total = pendingCount + escalatedCount;
+        const allRequests = Array.isArray(reqRes.data?.data)
+          ? reqRes.data.data
+          : Array.isArray(reqRes.data)
+            ? reqRes.data
+            : [];
+
+        const pendingStatuses = new Set(['CHO_XU_LY', 'MOI', 'WAITING']);
+        const now = new Date();
+
+        let totalRequests = allRequests.length;
+        let pendingRequestsCount = 0;
+        let over30MinsCount = 0;
+        let autoDispatchedCount = 0;
+        let retryDispatchCount = 0;
+
+        allRequests.forEach(req => {
+          const status = String(req.trang_thai || '').toUpperCase().trim();
+          const isPending = pendingStatuses.has(status);
+
+          if (isPending) {
+            pendingRequestsCount += 1;
+          }
+
+          const createdDate = new Date(req.thoi_gian_gui || req.created_at || req.updated_at || req.created_at_old);
+          if (!isNaN(createdDate.getTime())) {
+            const diffMins = (now - createdDate) / (1000 * 60);
+            if (diffMins > 30 && isPending) {
+              over30MinsCount += 1;
+            }
+          }
+
+          if (req.retry_count || req.retry || req.so_lan_thu) {
+            const retryValue = Number(req.retry_count || req.retry || req.so_lan_thu);
+            if (!Number.isNaN(retryValue) && retryValue > 0) {
+              retryDispatchCount += 1;
+            }
+          }
+
+          if (req.tu_dong_phan_cong || req.auto_dispatched || req.da_auto_dispatch) {
+            const autoDispatchedFlag = req.tu_dong_phan_cong || req.auto_dispatched || req.da_auto_dispatch;
+            if (autoDispatchedFlag === true || String(autoDispatchedFlag) === '1' || String(autoDispatchedFlag).toLowerCase() === 'true') {
+              autoDispatchedCount += 1;
+            }
+          }
+        });
+
+        if (autoDispatchedCount === 0 && escalationEvents.length > 0 && totalRequests > 0) {
+          // Fallback khi backend chưa trả flag auto-dispatched
+          autoDispatchedCount = Math.max(0, totalRequests - escalationEvents.length);
+        }
+
         this.monitoredStats = {
-          totalRequests: total,
-          autoDispatched: Math.max(0, pendingCount - escalatedCount),
-          pendingAuto: escalatedCount,
-          escalated: escalatedCount,
+          totalRequests,
+          autoDispatched: autoDispatchedCount,
+          pendingAuto: escalationEvents.length,
+          escalated: escalationEvents.length,
+          pendingRequests: pendingRequestsCount,
+          over30Mins: over30MinsCount,
+          retryDispatch: retryDispatchCount,
         };
       } catch (err) {
-        console.error("Load monitored stats error:", err);
+        console.error('Load monitored stats error:', err);
       }
+    },
+
+    formatTimeAgo(dateStr) {
+      if (!dateStr) return "Vừa xong";
+      const diff = (new Date() - new Date(dateStr)) / 1000;
+      if (diff < 60) return "Vừa xong";
+      if (diff < 3600) return Math.floor(diff / 60) + " phút trước";
+      if (diff < 86400) return Math.floor(diff / 3600) + " giờ trước";
+      return Math.floor(diff / 86400) + " ngày trước";
     },
 
     async loadActivities() {
       this.loading = true;
       try {
-        const res = await autoDispatchAPI.getEscalations();
-        if (res.data?.thanh_cong && res.data?.du_lieu) {
-          const rawList = res.data.du_lieu;
-          this.activities = rawList.map((item, idx) => {
-            const isLongWait = item.thoi_gian_cho_phut > 60;
-            return {
-              id: item.id_yeu_cau || idx + 1,
-              type: isLongWait ? "escalate" : "warning",
-              icon: isLongWait ? "arrow" : "warn",
-              typeLabel: isLongWait ? "Leo thang" : "Cảnh báo",
-              title: isLongWait
-                ? "Leo thang tự động"
-                : "Cần can thiệp",
-              description: isLongWait
-                ? `Yêu cầu #${item.id_yeu_cau} chờ hơn ${item.thoi_gian_cho_phut} phút — chuyển lên điều phối viên`
-                : `Yêu cầu #${item.id_yeu_cau} (${item.loai_su_co || 'N/A'}) tại ${item.vi_tri_dia_chi || 'N/A'} chưa được xử lý`,
-              timeAgo: item.thoi_gian_cho || "Vừa xong",
-              dotBg: isLongWait ? "rgba(217, 119, 6, 0.12)" : "rgba(220, 38, 38, 0.1)",
-              dotColor: isLongWait ? "#d97706" : "#dc2626",
-              badgeBg: isLongWait ? "rgba(217, 119, 6, 0.1)" : "rgba(220, 38, 38, 0.08)",
-              badgeColor: isLongWait ? "#d97706" : "#dc2626",
-              details: [
-                { text: item.loai_su_co || "N/A" },
-                { text: item.muc_do_khan_cap || "MEDIUM" },
-                { text: item.thoi_gian_cho_phut + " phút" },
-              ],
-            };
+        const [escRes, assignRes] = await Promise.all([
+          autoDispatchAPI.getEscalations().catch(() => ({ data: {} })),
+          assignmentAPI.getList().catch(() => ({ data: [] })),
+        ]);
+
+        const combined = [];
+
+        // --- Phân công đã tạo (dispatch thành công) ---
+        const rawAssignments = Array.isArray(assignRes.data?.data)
+          ? assignRes.data.data
+          : Array.isArray(assignRes.data)
+            ? assignRes.data
+            : [];
+
+        rawAssignments.forEach((item, idx) => {
+          const teamName = item.doi_cuu_ho?.ten_doi
+            || item.ten_doi
+            || (item.doi_cuu_ho_id ? `Đội #${item.doi_cuu_ho_id}` : null)
+            || "Chưa xác định";
+          const reqId = item.yeu_cau_cuu_ho?.id_yeu_cau
+            || item.id_yeu_cau
+            || item.yeu_cau_id
+            || item.id;
+          const loaiSuCo = item.yeu_cau_cuu_ho?.loai_su_co
+            || item.loai_su_co
+            || "N/A";
+          const mucDo = item.yeu_cau_cuu_ho?.muc_do_khan_cap
+            || item.muc_do_khan_cap
+            || "N/A";
+          const diaChi = item.yeu_cau_cuu_ho?.vi_tri_dia_chi
+            || item.vi_tri_dia_chi
+            || "N/A";
+          const isAuto = item.tu_dong_phan_cong || item.auto_dispatched || item.da_auto_dispatch;
+          const trangThai = String(item.trang_thai_nhiem_vu || item.trang_thai || "").toUpperCase();
+          const isSuccess = ["DANG_XU_LY", "HOAN_THANH", "DA_NHAN"].includes(trangThai);
+
+          combined.push({
+            id: `assign-${item.id_phan_cong || item.id || idx}`,
+            type: isAuto ? "auto" : "success",
+            icon: isSuccess ? "check" : "bolt",
+            typeLabel: isAuto ? "Auto" : "Thủ công",
+            title: isAuto
+              ? `Auto-dispatch → ${teamName}`
+              : `Điều phối thủ công → ${teamName}`,
+            description: `Yêu cầu #${reqId} (${loaiSuCo}) tại ${diaChi} — Trạng thái: ${trangThai || "CHỜ"}`,
+            timeAgo: this.formatTimeAgo(item.created_at || item.thoi_gian_phan_cong),
+            dotBg: isAuto ? "rgba(22, 163, 74, 0.12)" : "rgba(37, 99, 235, 0.12)",
+            dotColor: isAuto ? "#16a34a" : "#2563eb",
+            badgeBg: isAuto ? "rgba(22, 163, 74, 0.1)" : "rgba(37, 99, 235, 0.08)",
+            badgeColor: isAuto ? "#16a34a" : "#2563eb",
+            details: [
+              { text: teamName },
+              { text: loaiSuCo },
+              { text: mucDo },
+            ],
+            _sortTime: new Date(item.created_at || item.thoi_gian_phan_cong || 0).getTime(),
           });
-          this.monitoredStats = {
-            totalRequests: res.data.so_luong || rawList.length,
-            autoDispatched: Math.max(0, (res.data.so_luong || 0) - rawList.length),
-            pendingAuto: rawList.filter(i => !i.can_thiep_admin).length,
-            escalated: rawList.filter(i => i.can_thiep_admin).length,
-          };
-        }
+        });
+
+        // --- Leo thang / Cảnh báo ---
+        const escalations = Array.isArray(escRes.data?.du_lieu)
+          ? escRes.data.du_lieu
+          : Array.isArray(escRes.data)
+            ? escRes.data
+            : [];
+
+        escalations.forEach((item, idx) => {
+          const isLongWait = item.thoi_gian_cho_phut > 60;
+          combined.push({
+            id: `esc-${item.id_yeu_cau || idx}`,
+            type: isLongWait ? "escalate" : "warning",
+            icon: isLongWait ? "arrow" : "warn",
+            typeLabel: isLongWait ? "Leo thang" : "Cảnh báo",
+            title: isLongWait ? "Leo thang tự động" : "Cần can thiệp",
+            description: isLongWait
+              ? `Yêu cầu #${item.id_yeu_cau} chờ hơn ${item.thoi_gian_cho_phut} phút — chuyển lên điều phối viên`
+              : `Yêu cầu #${item.id_yeu_cau} (${item.loai_su_co || 'N/A'}) tại ${item.vi_tri_dia_chi || 'N/A'} chưa được xử lý`,
+            timeAgo: item.thoi_gian_cho || "Vừa xong",
+            dotBg: isLongWait ? "rgba(217, 119, 6, 0.12)" : "rgba(220, 38, 38, 0.1)",
+            dotColor: isLongWait ? "#d97706" : "#dc2626",
+            badgeBg: isLongWait ? "rgba(217, 119, 6, 0.1)" : "rgba(220, 38, 38, 0.08)",
+            badgeColor: isLongWait ? "#d97706" : "#dc2626",
+            details: [
+              { text: item.loai_su_co || "N/A" },
+              { text: item.muc_do_khan_cap || "MEDIUM" },
+              { text: item.thoi_gian_cho_phut + " phút" },
+            ],
+            _sortTime: 0,
+          });
+        });
+
+        // Sắp xếp mới nhất lên đầu
+        combined.sort((a, b) => (b._sortTime || 0) - (a._sortTime || 0));
+        this.activities = combined;
       } catch (err) {
         console.error("Load activities error:", err);
       } finally {
         this.loading = false;
       }
-    },
+    }
   },
 };
 </script>
@@ -1047,6 +1166,9 @@ export default {
   transition: all 0.25s ease;
   animation: slide-up-anim 0.45s ease backwards;
   animation-delay: var(--delay, 0ms);
+  display: flex;
+  flex-direction: column;
+  min-height: 180px;
 }
 @keyframes slide-up-anim { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 .stat-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); transform: translateY(-1px); }
