@@ -432,9 +432,37 @@ class YeuCauCuuHoController extends Controller
                 }
             }
 
+            // Validate: cho phép gửi khi đã đăng nhập (id_nguoi_dung)
+            // hoặc khi là guest (guest_session_id + device_id)
+            $hasUser = $request->filled('id_nguoi_dung');
+            $hasGuest = $request->filled('guest_session_id') && $request->filled('device_id');
+
+            if (!$hasUser && !$hasGuest) {
+                return Response::json([
+                    'success' => false,
+                    'message' => 'Vui long dang nhap hoac nhap so dien thoai de gui yeu cau cuu ho.',
+                ], 422);
+            }
+
+            // Nếu là guest, validate guest_session tồn tại
+            if ($hasGuest) {
+                $guestSession = \App\Models\GuestSession::find($request->input('guest_session_id'));
+                if (!$guestSession) {
+                    return Response::json([
+                        'success' => false,
+                        'message' => 'Phien lam viec khong hop le. Vui long thu lai.',
+                    ], 422);
+                }
+                if ($guestSession->is_linked) {
+                    return Response::json([
+                        'success' => false,
+                        'message' => 'Phien lam viec da duoc lien ket voi tai khoan khac.',
+                    ], 422);
+                }
+            }
+
             // Validate basic fields manually (skip YeuCauCuuHoRequest to handle file upload separately)
             $baseValidated = $request->validate([
-                'id_nguoi_dung' => 'required|exists:nguoi_dung,id_nguoi_dung',
                 'id_loai_su_co' => 'required|exists:loai_su_co,id_loai_su_co',
                 'vi_tri_lat' => 'required|numeric',
                 'vi_tri_lng' => 'required|numeric',
@@ -506,10 +534,22 @@ class YeuCauCuuHoController extends Controller
                 $hinhAnhPath = 'uploads/anh_su_co/' . $filename;
             }
 
-            $item = YeuCauCuuHo::create([
+            $createData = [
                 ...$validated,
                 'hinh_anh' => $hinhAnhPath,
-            ]);
+            ];
+
+            if ($hasUser) {
+                $createData['id_nguoi_dung'] = $request->input('id_nguoi_dung');
+                $createData['device_id'] = null;
+                $createData['guest_session_id'] = null;
+            } else {
+                $createData['id_nguoi_dung'] = null;
+                $createData['guest_session_id'] = $request->input('guest_session_id');
+                $createData['device_id'] = $request->input('device_id');
+            }
+
+            $item = YeuCauCuuHo::create($createData);
 
             // Create processing queue entry
             HangDoiXuLy::create([

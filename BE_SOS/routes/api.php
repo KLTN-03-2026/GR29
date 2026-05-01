@@ -17,6 +17,7 @@ use App\Http\Controllers\KetQuaCuuHoController;
 use App\Http\Controllers\DanhGiaCuuHoController;
 use App\Http\Controllers\ThanhVienDoiController;
 use App\Http\Controllers\BaoCaoCuuHoController;
+use App\Http\Controllers\GuestSessionController;
 use App\Http\Controllers\AutoDispatchController;
 
 // =========================================
@@ -79,6 +80,9 @@ Route::get('loai-su-co/{id}/yeu-cau-cuu-ho', [LoaiSuCoController::class, 'getYeu
 Route::get('loai-su-co/{id}/doi-cuu-ho', [LoaiSuCoController::class, 'getDoiCuuHo']);
 Route::get('tim-kiem/loai-su-co', [LoaiSuCoController::class, 'search']);
 Route::put('loai-su-co/{id}/trang-thai', [LoaiSuCoController::class, 'updateStatus']);
+
+// Guest session (cho phép gửi yêu cầu khi chưa đăng nhập)
+Route::post('guest/session', [GuestSessionController::class, 'storeOrUpdate']);
 
 Route::apiResource('yeu-cau-cuu-ho', YeuCauCuuHoController::class);
 Route::get('yeu-cau-cuu-ho/{id}/phan-loai', [YeuCauCuuHoController::class, 'getPhanLoai']);

@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\NguoiDung;
+use App\Models\GuestSession;
+use App\Models\YeuCauCuuHo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 class NguoiDungController extends Controller
 {
@@ -57,6 +60,7 @@ class NguoiDungController extends Controller
             'so_dien_thoai' => 'required|string|regex:/^0\d{9,10}$/',
             'email' => 'required|email|unique:nguoi_dung,email',
             'mat_khau' => 'required|string|min:6',
+            'device_id' => 'nullable|string|max:100',
         ]);
 
         $user = new NguoiDung();
@@ -67,6 +71,14 @@ class NguoiDungController extends Controller
         $user->trang_thai = 1;
         $user->save();
 
+        // === Link yêu cầu cứu hộ cũ của guest vào tài khoản mới ===
+        $linkedRequestsCount = 0;
+        $deviceId = $request->input('device_id');
+
+        if ($deviceId || $request->filled('so_dien_thoai')) {
+            $linkedRequestsCount = $this->linkGuestRequestsToUser($user, $request->so_dien_thoai, $deviceId);
+        }
+
         $token = $user->createToken('nguoi-dung-token')->plainTextToken;
 
         return response()->json([
@@ -74,8 +86,55 @@ class NguoiDungController extends Controller
             'message' => 'Dang ky thanh cong',
             'token' => $token,
             'token_type' => 'Bearer',
+            'linked_requests_count' => $linkedRequestsCount,
             'data' => $user->makeHidden(['mat_khau', 'api_token']),
         ], 201);
+    }
+
+    /**
+     * Link các yêu cầu cứu hộ của guest vào tài khoản người dùng mới
+     * Chỉ link nếu: trùng số điện thoại VÀ cùng thiết bị
+     */
+    private function linkGuestRequestsToUser($user, string $soDienThoai, ?string $deviceId = null): int
+    {
+        $linkedCount = 0;
+
+        // Link theo guest_session (nếu có trùng SĐT trên cùng thiết bị)
+        $guestSessions = GuestSession::where('so_dien_thoai', $soDienThoai)
+            ->where('is_linked', false)
+            ->get();
+
+        foreach ($guestSessions as $session) {
+            // Nếu có device_id, chỉ link session cùng thiết bị
+            if ($deviceId && $session->device_id !== $deviceId) {
+                continue;
+            }
+
+            // Update tất cả yêu cầu chưa có người dùng của session này
+            $updated = YeuCauCuuHo::where('guest_session_id', $session->id)
+                ->whereNull('id_nguoi_dung')
+                ->update([
+                    'id_nguoi_dung' => $user->id_nguoi_dung,
+                    'guest_session_id' => null,
+                    'device_id' => $session->device_id,
+                ]);
+            $linkedCount += $updated;
+
+            // Link thêm các yêu cầu theo device_id (nếu có)
+            if ($deviceId && $session->device_id === $deviceId) {
+                $updatedByDevice = YeuCauCuuHo::where('device_id', $deviceId)
+                    ->whereNull('id_nguoi_dung')
+                    ->whereNull('guest_session_id')
+                    ->update([
+                        'id_nguoi_dung' => $user->id_nguoi_dung,
+                    ]);
+                $linkedCount += $updatedByDevice;
+            }
+
+            $session->update(['is_linked' => true]);
+        }
+
+        return $linkedCount;
     }
 
     public function checkClient()

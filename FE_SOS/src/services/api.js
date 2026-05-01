@@ -90,6 +90,11 @@ export const authAPI = {
   loginRescuer: (data) => api.post('/rescuer/login', data),
 };
 
+// Guest Session (cho phép gửi yêu cầu khi chưa đăng nhập)
+export const guestAPI = {
+  createOrUpdateSession: (data) => api.post('/guest/session', data),
+};
+
 // Client Profile
 export const clientAPI = {
   getProfile: () => api.get('/nguoi-dung/check-client'),
@@ -219,6 +224,7 @@ export const assignmentAPI = {
 
 // Analytics & Reports
 export const analyticsAPI = {
+  getDashboard: () => api.get('/thong-ke/dashboard'),
   getTotalRequests: () => api.get('/thong-ke/tong-so-yeu-cau'),
   getRequestsByType: () => api.get('/thong-ke/yeu-cau-theo-loai'),
   getRequestsByPriority: () => api.get('/thong-ke/yeu-cau-theo-muc-do-khan-cap'),

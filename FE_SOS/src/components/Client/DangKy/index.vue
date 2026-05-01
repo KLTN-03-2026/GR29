@@ -80,10 +80,16 @@
     </div>
   </div>
 
+  <!-- Thong bao link yeu cau cu -->
+  <div v-if="linkedRequestsCount > 0" class="linked-banner">
+    <i class="fa-solid fa-link"></i>
+    <span>{{ linkedRequestsCount }} yeu cau cuu ho cua ban da duoc lien ket voi tai khoan nay.</span>
+  </div>
+
   <!-- 🔥 BUTTON CLICK -->
-  <button 
-    type="button" 
-    class="btn-primary" 
+  <button
+    type="button"
+    class="btn-primary"
     :disabled="isLoading"
     @click="dangKy"
   >
@@ -148,6 +154,7 @@ export default {
       showPassword: false,
       showRePassword: false,
       isLoading: false,
+      linkedRequestsCount: 0,
     };
   },
 
@@ -166,10 +173,14 @@ export default {
           so_dien_thoai: this.nguoi_dung.so_dien_thoai,
           email: this.nguoi_dung.email,
           mat_khau: this.nguoi_dung.mat_khau,
+          device_id: localStorage.getItem('guest_device_id') || null,
         });
 
         const body = res.data;
-        this.$toast.success(body.message || "Đăng ký thành công");
+        this.$toast.success(body.message || "Dang ky thanh cong");
+        if (body.linked_requests_count > 0) {
+          this.linkedRequestsCount = body.linked_requests_count;
+        }
         if (body.token) {
           localStorage.removeItem("admin_token");
           localStorage.removeItem("admin_user");
@@ -474,5 +485,23 @@ export default {
   .social-login {
     flex-direction: column;
   }
+}
+
+.linked-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  border: 1px solid #6ee7b7;
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: #065f46;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.linked-banner i {
+  color: #059669;
+  font-size: 18px;
 }
 </style>

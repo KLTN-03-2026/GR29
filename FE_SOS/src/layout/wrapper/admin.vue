@@ -18,6 +18,8 @@ import "../../assets/css/bootstrap.min.css";
 import "../../assets/css/bootstrap-extended.css";
 import "../../assets/css/app.css";
 import "../../assets/css/icons.css";
+import "../../assets/plugins/apexcharts-bundle/js/apexcharts.js";
+import "../../assets/plugins/apexcharts-bundle/css/apexcharts.css";
 import TopAdmin from "../components/TopAdmin.vue";
 import MenuAdmin from "../components/MenuAdmin.vue";
 
