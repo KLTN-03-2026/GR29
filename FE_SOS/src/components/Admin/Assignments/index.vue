@@ -9,6 +9,13 @@
         </div>
         <div class="col-xl-6">
           <div class="d-flex justify-content-xl-end gap-3 stats-wrapper">
+            <div class="stat-card shadow-sm border-0 cursor-pointer" @click="toggleAutoDispatch" :class="{ 'stat-active': dispatchEnabled }" :title="dispatchEnabled ? 'Nhấn để tắt' : 'Nhấn để bật'">
+              <div class="stat-icon" :class="dispatchEnabled ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'"><i :class="dispatchEnabled ? 'fa-solid fa-power-off' : 'fa-solid fa-clock'"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">Auto Dispatch</span>
+                <h4 class="stat-value" :class="dispatchEnabled ? 'text-success' : 'text-warning'">{{ dispatchEnabled ? 'BẬT' : 'TẮT' }}</h4>
+              </div>
+            </div>
             <div class="stat-card shadow-sm border-0">
               <div class="stat-icon bg-warning-subtle text-warning"><i class="fa-solid fa-clock"></i></div>
               <div class="stat-info">
@@ -371,7 +378,7 @@
 </template>
 
 <script>
-import { rescueRequestAPI, rescueTeamAPI, assignmentAPI } from "../../../services/api";
+import { rescueRequestAPI, rescueTeamAPI, assignmentAPI, autoDispatchAPI } from "../../../services/api";
 
 const BASE_URL = 'http://localhost:8000';
 
@@ -603,6 +610,8 @@ export default {
       error: '',
       realtimeChannel: null,
       pollingInterval: null,
+      dispatchEnabled: false,
+      togglingDispatch: false,
 
       severityFilters: [
         { value: 'all', label: 'Tất cả' },
@@ -689,6 +698,7 @@ export default {
     },
   },
   async created() {
+    this.loadDispatchStatus();
     await this.initData();
     this.subscribeToRescueUpdates();
     this.startPolling();
@@ -1097,6 +1107,53 @@ export default {
     deselectAllTeams() {
       this.selectedTeams = [];
     },
+    async loadDispatchStatus() {
+      try {
+        const res = await autoDispatchAPI.getStatus();
+        if (res.data?.thanh_cong) {
+          this.dispatchEnabled = res.data.du_lieu?.dieu_phoi_tu_dong ?? false;
+        } else {
+          const saved = localStorage.getItem('realtimeDispatchConfig');
+          if (saved) this.dispatchEnabled = JSON.parse(saved).dispatchEnabled || false;
+        }
+      } catch {
+        const saved = localStorage.getItem('realtimeDispatchConfig');
+        if (saved) this.dispatchEnabled = JSON.parse(saved).dispatchEnabled || false;
+      }
+    },
+    async toggleAutoDispatch() {
+      if (this.togglingDispatch) return;
+      this.togglingDispatch = true;
+      try {
+        await autoDispatchAPI.toggle();
+        this.dispatchEnabled = !this.dispatchEnabled;
+
+        // Sync localStorage để RealtimeDispatch page đọc được
+        const saved = localStorage.getItem('realtimeDispatchConfig');
+        const config = saved ? JSON.parse(saved) : {};
+        config.dispatchEnabled = this.dispatchEnabled;
+        localStorage.setItem('realtimeDispatchConfig', JSON.stringify(config));
+
+        // Notify RealtimeDispatch nếu đang mở cùng lúc
+        window.dispatchEvent(new CustomEvent('dispatch-status-changed', {
+          detail: { enabled: this.dispatchEnabled }
+        }));
+
+        const statusText = this.dispatchEnabled ? 'Bật' : 'Tắt';
+        this.$toast?.success?.(`Auto Dispatch ${statusText}`, {
+          position: 'top-right',
+          duration: 2000,
+        });
+      } catch (error) {
+        console.error('Lỗi toggle auto-dispatch:', error);
+        this.$toast?.error?.('Lỗi cập nhật trạng thái!', {
+          position: 'top-right',
+          duration: 2000,
+        });
+      } finally {
+        this.togglingDispatch = false;
+      }
+    },
     async assignTask() {
       if (!this.selectedReq || this.selectedTeams.length === 0) return;
 
@@ -1170,11 +1227,21 @@ export default {
   align-items: center;
   gap: 16px;
   min-width: 220px;
-  transition: transform 0.2s;
+  transition: all 0.2s;
 }
 
 .stat-card:hover {
   transform: translateY(-3px);
+}
+
+.stat-card.cursor-pointer {
+  cursor: pointer;
+}
+
+.stat-card.stat-active {
+  border: 1px solid #10b981;
+  background: linear-gradient(135deg, #f0fdf4, #fafafa);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.15);
 }
 
 .stat-icon {
@@ -1185,6 +1252,11 @@ export default {
   align-items: center;
   justify-content: center;
   font-size: 20px;
+  transition: all 0.2s ease;
+}
+
+.stat-card:hover .stat-icon {
+  transform: scale(1.1);
 }
 
 .stat-label {

@@ -442,7 +442,11 @@ export default {
             const filtered = this.assignments.filter(a => {
                 if (teamId && Number(a.id_doi_cuu_ho) !== Number(teamId)) return false;
                 const st = (a.trang_thai_nhiem_vu || '').toUpperCase().replace(/\s+/g, '_');
-                if (st !== 'DA_PHAN_CONG' && st !== 'MOI') return false;
+                const pendingStatuses = new Set([
+                    'DA_PHAN_CONG', 'MOI', 'CHO_NHAN', 'PENDING', 'ASSIGNED',
+                    'WAITING', 'CHO_XU_LY', 'DA_DUOC_PHAN_CONG',
+                ]);
+                if (!pendingStatuses.has(st)) return false;
                 const ycId = a.yeu_cau?.id_yeu_cau;
                 if (ycId && processingYeuCauIds.has(ycId)) return false;
                 return true;
@@ -729,6 +733,12 @@ export default {
                     seen.add(item.id_phan_cong);
                     return true;
                 });
+                if (this.assignments.length === 0) {
+                    console.warn('[TrangChu] Không có phân công nào. teamId:', this.teamId);
+                } else {
+                    console.log('[TrangChu] Phân công tải được:', this.assignments.length,
+                        '| Trạng thái:', [...new Set(this.assignments.map(a => a.trang_thai_nhiem_vu))]);
+                }
                 this.updateMapMarkers();
             } catch (e) {
                 console.error("Lỗi tải phân công:", e);
