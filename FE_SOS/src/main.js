@@ -6,6 +6,9 @@ import ClientLayout from './layout/wrapper/client.vue'
 import AdminLayout from './layout/wrapper/admin.vue'
 import RescuerLayout from './layout/wrapper/rescuer.vue'
 
+// Bootstrap Laravel Echo for real-time WebSocket broadcasting
+import './bootstrap-echo'
+
 // import meforma toaster
 import Toaster from "@meforma/vue-toaster"
 

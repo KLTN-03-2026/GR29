@@ -29,6 +29,7 @@ api.interceptors.request.use((config) => {
     match('/rescuer/check-token') ||
     match('/rescuer/gui-bao-cao') ||
     match('/rescuer/bao-cao') ||
+    match('/rescuer/members') ||
     match('/doi-cuu-ho/login') ||
     match('/doi-cuu-ho/check-token') ||
     match('/get-doi-cuu-ho') ||
@@ -46,6 +47,7 @@ api.interceptors.request.use((config) => {
   const isAdminRoute =
     !isRescuerRoute && (
       match('/admin') ||
+      match('/auto-dispatch') ||
       match('/yeu-cau-cuu-ho') ||
       match('/phan-cong-cuu-ho/theo-yeu-cau') ||
       match('/phan-cong-cuu-ho/theo-trang-thai') ||
@@ -86,6 +88,11 @@ export const authAPI = {
   loginUser: (data) => api.post('/nguoi-dung/login', data),
   registerUser: (data) => api.post('/nguoi-dung/register', data),
   loginRescuer: (data) => api.post('/rescuer/login', data),
+};
+
+// Guest Session (cho phép gửi yêu cầu khi chưa đăng nhập)
+export const guestAPI = {
+  createOrUpdateSession: (data) => api.post('/guest/session', data),
 };
 
 // Client Profile
@@ -173,6 +180,9 @@ export const rescueRequestAPI = {
   getTrackingDetail: (id) => api.get(`/yeu-cau-cuu-ho/${id}/theo-doi`),
   getTrackingList: () => api.get('/yeu-cau-cuu-ho/theo-doi/danh-sach'),
   getTrackingDelta: (since) => api.get('/yeu-cau-cuu-ho/theo-doi/thay-doi', { params: { since } }),
+  // Client review
+  submitRating: (yeuCauId, data) =>
+    api.post('/post-danh-gia-cuu-ho/yeu-cau/' + yeuCauId, data),
 };
 
 // Rescue Teams (Đội Cứu hộ)
@@ -209,10 +219,12 @@ export const assignmentAPI = {
   getByTeam: (teamId) => api.get(`/phan-cong-cuu-ho/theo-doi/${teamId}`),
   getByStatus: (status) => api.get('/phan-cong-cuu-ho/theo-trang-thai', { params: { trang_thai: status } }),
   delete: (id) => api.delete(`/phan-cong-cuu-ho/${id}`),
+  updateLocation: (id, data) => api.post(`/phan-cong-cuu-ho/${id}/location`, data),
 };
 
 // Analytics & Reports
 export const analyticsAPI = {
+  getDashboard: () => api.get('/thong-ke/dashboard'),
   getTotalRequests: () => api.get('/thong-ke/tong-so-yeu-cau'),
   getRequestsByType: () => api.get('/thong-ke/yeu-cau-theo-loai'),
   getRequestsByPriority: () => api.get('/thong-ke/yeu-cau-theo-muc-do-khan-cap'),
@@ -303,8 +315,8 @@ export const rescuerAPI = {
   // Đánh giá cứu hộ
   getRatings: (yeuCauId) => api.get('/get-danh-gia-cuu-ho/yeu-cau/' + yeuCauId),
 
-  // Thành viên đội (quản lý)
-  getMembers: () => api.get('/thanh-vien-doi/list'),
+  // Thành viên đội (quản lý - role-filtered via API)
+  getMembers: () => api.get('/rescuer/members'),
   addMember: (data) => api.post('/thanh-vien-doi/create', data),
   updateMember: (id, data) => api.put('/thanh-vien-doi/update/' + id, data),
   toggleMemberStatus: (id) => api.put('/thanh-vien-doi/change-status/' + id),
@@ -312,6 +324,43 @@ export const rescuerAPI = {
 
   // Thống kê heatmap
   getHeatmap: () => api.get('/thong-ke/heatmap'),
+};
+
+// Auto Dispatch
+export const autoDispatchAPI = {
+  getStatus: () => api.get('/auto-dispatch/status'),
+  toggle: () => api.post('/auto-dispatch/toggle'),
+  enable: () => api.post('/auto-dispatch/enable'),
+  disable: () => api.post('/auto-dispatch/disable'),
+  dispatch: (id) => api.post(`/auto-dispatch/dispatch/${id}`),
+  dispatchSync: (id) => api.post(`/auto-dispatch/dispatch-sync/${id}`),
+  getEscalations: () => api.get('/auto-dispatch/admin-escalations'),
+  removeEscalation: (id) => api.delete(`/auto-dispatch/admin-escalations/${id}`),
+  debug: (id) => api.get(`/auto-dispatch/debug/${id}`),
+  updateConfig: (data) => api.put('/auto-dispatch/config', data),
+};
+
+// Admin Resources (Doi Cuu Ho + Tai Nguyen)
+export const adminResourcesAPI = {
+  // Don vi cuu ho
+  getList: (params = {}) => api.get('/admin/doi-cuu-ho/list', { params }),
+  create: (data) => api.post('/admin/doi-cuu-ho/create', data),
+  update: (data) => api.post('/admin/doi-cuu-ho/update', data),
+  delete: (data) => api.post('/admin/doi-cuu-ho/delete', data),
+
+  // Tai nguyen
+  createTaiNguyen: (data) => api.post('/admin/tai-nguyen/create', data),
+  updateTaiNguyen: (data) => api.post('/admin/tai-nguyen/update', data),
+  deleteTaiNguyen: (data) => api.post('/admin/tai-nguyen/delete', data),
+  getByDoi: (doiId) => api.get('/admin/tai-nguyen/doi/' + doiId),
+
+  // Kho
+  getKho: () => api.get('/admin/tai-nguyen/kho'),
+  capNhatKho: (data) => api.post('/admin/tai-nguyen/kho/cap-nhat', data),
+
+  // Cap phat
+  capPhat: (data) => api.post('/admin/tai-nguyen/cap-phat', data),
+  getLichSuCapPhat: (params = {}) => api.get('/admin/tai-nguyen/lich-su-cap', { params }),
 };
 
 export default api;

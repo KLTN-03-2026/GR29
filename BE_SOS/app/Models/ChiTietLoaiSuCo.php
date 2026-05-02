@@ -8,7 +8,7 @@ class ChiTietLoaiSuCo extends Model
 {
     protected $table = 'chi_tiet_loai_su_co';
     protected $primaryKey = 'id_chi_tiet';
-    protected $fillable = ['id_loai_su_co', 'ten_chi_tiet', 'mo_ta'];
+    protected $fillable = ['id_loai_su_co', 'ten_chi_tiet', 'mo_ta', 'diem_uu_tien'];
 
     public function loaiSuCo()
     {

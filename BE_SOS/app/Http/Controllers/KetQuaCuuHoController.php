@@ -2,11 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\RescueRequestUpdated;
 use App\Models\{KetQuaCuuHo, PhanCongCuuHo, YeuCauCuuHo};
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class KetQuaCuuHoController extends Controller
 {
+    private function safeBroadcastRescueUpdate($yeuCau, string $action): void
+    {
+        try {
+            event(new RescueRequestUpdated($yeuCau, $action));
+        } catch (\Throwable $exception) {
+            Log::warning('[BroadcastGuard] Failed to send RescueRequestUpdated', [
+                'action' => $action,
+                'request_id' => $yeuCau->id_yeu_cau ?? $yeuCau->id ?? null,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
     public function index(Request $request)
     {
         $perPage = $request->get('per_page', 15);
@@ -106,6 +120,9 @@ class KetQuaCuuHoController extends Controller
             } elseif ($trangThaiKetQua === 'THAT_BAI') {
                 $yeuCau->update(['trang_thai' => 'THAT_BAI']);
             }
+            // Broadcast to all connected clients
+            $yeuCau->load('phanCongs.doiCuuHo', 'phanCongs');
+            $this->safeBroadcastRescueUpdate($yeuCau, 'completed');
         }
 
         $validated['id_phan_cong'] = $id_phan_cong;

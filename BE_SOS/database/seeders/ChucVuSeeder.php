@@ -14,15 +14,16 @@ class ChucVuSeeder extends Seeder
     {
         $chucVuData = [
             ['ten_chuc_vu' => 'Quản trị viên', 'slug_chuc_vu' => 'admin', 'mo_ta' => 'Quản trị toàn bộ hệ thống', 'tinh_trang' => 1],
-            ['ten_chuc_vu' => 'Điều hành', 'slug_chuc_vu' => 'operator', 'mo_ta' => 'Điều hành phân công', 'tinh_trang' => 1],
-            ['ten_chuc_vu' => 'Trưởng đội', 'slug_chuc_vu' => 'team_leader', 'mo_ta' => 'Quản lý đội cứu hộ', 'tinh_trang' => 1],
-            ['ten_chuc_vu' => 'Thành viên', 'slug_chuc_vu' => 'member', 'mo_ta' => 'Thành viên đội', 'tinh_trang' => 1]
+            ['ten_chuc_vu' => 'Điều hành viên', 'slug_chuc_vu' => 'manager_operator', 'mo_ta' => 'Quản lý điều hành', 'tinh_trang' => 1],
+            ['ten_chuc_vu' => 'Điều phối viên', 'slug_chuc_vu' => 'operator', 'mo_ta' => 'Điều phối phân công', 'tinh_trang' => 1],
+            // ['ten_chuc_vu' => 'Trưởng đội', 'slug_chuc_vu' => 'team_leader', 'mo_ta' => 'Quản lý đội cứu hộ', 'tinh_trang' => 1],
+            // ['ten_chuc_vu' => 'Thành viên', 'slug_chuc_vu' => 'member', 'mo_ta' => 'Thành viên đội', 'tinh_trang' => 1]
         ];
 
         foreach ($chucVuData as $data) {
             ChucVu::create($data);
         }
 
-        echo "✅ Chức Vụ Seeding: 4 chức vụ\n";
+        echo "✅ Chức Vụ Seeding: 5 chức vụ\n";
     }
 }

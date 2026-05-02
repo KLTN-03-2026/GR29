@@ -10,12 +10,15 @@ use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\NguoiDungController;
 use App\Http\Controllers\LoaiSuCoController;
 use App\Http\Controllers\YeuCauCuuHoController;
+use App\Http\Controllers\GoogleMapsConfigController;
 use App\Http\Controllers\DoiCuuHoController;
 use App\Http\Controllers\PhanCongCuuHoController;
 use App\Http\Controllers\KetQuaCuuHoController;
 use App\Http\Controllers\DanhGiaCuuHoController;
 use App\Http\Controllers\ThanhVienDoiController;
 use App\Http\Controllers\BaoCaoCuuHoController;
+use App\Http\Controllers\GuestSessionController;
+use App\Http\Controllers\AutoDispatchController;
 
 // =========================================
 // PUBLIC ROUTES
@@ -65,6 +68,7 @@ Route::post('password/resend-otp', [PasswordResetController::class, 'guiLaiMaOtp
 Route::post('thanh-vien-doi/login', [ThanhVienDoiController::class, 'login']);
 Route::post('rescuer/login', [ThanhVienDoiController::class, 'login']);
 Route::get('rescuer/check-token', [ThanhVienDoiController::class, 'checkToken']);
+Route::get('config/google-maps', [GoogleMapsConfigController::class, 'show']);
 
 // =========================================
 // PUBLIC - No Auth Required
@@ -76,6 +80,9 @@ Route::get('loai-su-co/{id}/yeu-cau-cuu-ho', [LoaiSuCoController::class, 'getYeu
 Route::get('loai-su-co/{id}/doi-cuu-ho', [LoaiSuCoController::class, 'getDoiCuuHo']);
 Route::get('tim-kiem/loai-su-co', [LoaiSuCoController::class, 'search']);
 Route::put('loai-su-co/{id}/trang-thai', [LoaiSuCoController::class, 'updateStatus']);
+
+// Guest session (cho phép gửi yêu cầu khi chưa đăng nhập)
+Route::post('guest/session', [GuestSessionController::class, 'storeOrUpdate']);
 
 Route::apiResource('yeu-cau-cuu-ho', YeuCauCuuHoController::class);
 Route::get('yeu-cau-cuu-ho/{id}/phan-loai', [YeuCauCuuHoController::class, 'getPhanLoai']);
@@ -165,16 +172,46 @@ Route::middleware(['auth:admin', 'check.admin'])->group(function () {
     Route::put('phan-cong-cuu-ho/{id}', [PhanCongCuuHoController::class, 'update']);
     Route::delete('phan-cong-cuu-ho/{id}', [PhanCongCuuHoController::class, 'destroy']);
     Route::get('phan-cong-cuu-ho/theo-yeu-cau/{id_yeu_cau}', [PhanCongCuuHoController::class, 'getByYeuCau']);
-    Route::get('phan-cong-cuu-ho/theo-trang-thai/{trang_thai}', [PhanCongCuuHoController::class, 'getByStatus']);
+    Route::get('admin/assignments/suggested/{id_yeu_cau}', [PhanCongCuuHoController::class, 'getSuggestedTeamsForRequest']);
 
     Route::put('doi-cuu-ho/{id}', [DoiCuuHoController::class, 'update']);
     Route::delete('doi-cuu-ho/{id}', [DoiCuuHoController::class, 'destroy']);
+
+    // Admin CRUD cho Đội cứu hộ (tách riêng để tránh trùng với rescuer route)
+    Route::post('admin/doi-cuu-ho/create', [DoiCuuHoController::class, 'createDoiCuuHo']);
+    Route::post('admin/doi-cuu-ho/update', [DoiCuuHoController::class, 'updateDoiCuuHo']);
+    Route::post('admin/doi-cuu-ho/delete', [DoiCuuHoController::class, 'deleteDoiCuuHo']);
+    Route::get('admin/doi-cuu-ho/list', [DoiCuuHoController::class, 'listDoiCuuHo']);
+
+    // Admin CRUD cho Tài nguyên cứu hộ
+    Route::post('admin/tai-nguyen/create', [DoiCuuHoController::class, 'themTaiNguyen']);
+    Route::post('admin/tai-nguyen/update', [DoiCuuHoController::class, 'suaTaiNguyen']);
+    Route::post('admin/tai-nguyen/delete', [DoiCuuHoController::class, 'xoaTaiNguyen']);
+
+    // Kho tài nguyên tổng & Cấp phát
+    Route::get('admin/tai-nguyen/kho', [DoiCuuHoController::class, 'getKhoTaiNguyen']);
+    Route::post('admin/tai-nguyen/kho/cap-nhat', [DoiCuuHoController::class, 'capNhatKhoTaiNguyen']);
+    Route::get('admin/tai-nguyen/lich-su-cap', [DoiCuuHoController::class, 'getLichSuCapPhat']);
+    Route::post('admin/tai-nguyen/cap-phat', [DoiCuuHoController::class, 'capPhatTaiNguyen']);
+    Route::get('admin/tai-nguyen/doi/{id}', [DoiCuuHoController::class, 'getTaiNguyenByDoi']);
 
     Route::put('ket-qua-cuu-ho/{id}', [KetQuaCuuHoController::class, 'update']);
 
     Route::get('loai-su-co/{id}', [LoaiSuCoController::class, 'show']);
     Route::put('loai-su-co/{id}', [LoaiSuCoController::class, 'update']);
     Route::delete('loai-su-co/{id}', [LoaiSuCoController::class, 'destroy']);
+
+    // === AUTO DISPATCH (Admin) ===
+    Route::get('auto-dispatch/status', [AutoDispatchController::class, 'layTrangThai']);
+    Route::post('auto-dispatch/toggle', [AutoDispatchController::class, 'toggle']);
+    Route::post('auto-dispatch/enable', [AutoDispatchController::class, 'batDieuPhoi']);
+    Route::post('auto-dispatch/disable', [AutoDispatchController::class, 'tatDieuPhoi']);
+    Route::post('auto-dispatch/dispatch/{id}', [AutoDispatchController::class, 'kichHoatDieuPhoi']);
+    Route::post('auto-dispatch/dispatch-sync/{id}', [AutoDispatchController::class, 'kichHoatDieuPhoiDongBo']);
+    Route::get('auto-dispatch/admin-escalations', [AutoDispatchController::class, 'layDanhSachCanThiepAdmin']);
+    Route::delete('auto-dispatch/admin-escalations/{id}', [AutoDispatchController::class, 'xoaCanhBaoCanThiep']);
+    Route::get('auto-dispatch/debug/{id}', [AutoDispatchController::class, 'xemDiemCham']);
+    Route::put('auto-dispatch/config', [AutoDispatchController::class, 'capNhatCauHinh']);
 });
 
 // =========================================
@@ -185,6 +222,7 @@ Route::middleware(['auth:thanh-vien-doi', 'check.rescuer'])->group(function () {
     Route::get('phan-cong-cuu-ho/theo-doi/{id_doi_cuu_ho}', [PhanCongCuuHoController::class, 'getByDoi']);
     Route::get('phan-cong-cuu-ho/active/{id_doi_cuu_ho}', [PhanCongCuuHoController::class, 'getActiveAssignment']);
     Route::put('phan-cong-cuu-ho/{id}/trang-thai', [PhanCongCuuHoController::class, 'updateStatus']);
+    Route::post('phan-cong-cuu-ho/{id}/location', [PhanCongCuuHoController::class, 'updateLocation']);
 
     // Rescuer tiếp nhận nhiệm vụ
     Route::post('yeu-cau-cuu-ho/rescuer-nhan-yeu-cau', [YeuCauCuuHoController::class, 'resNhanYeuCau']);
@@ -197,6 +235,12 @@ Route::middleware(['auth:thanh-vien-doi', 'check.rescuer'])->group(function () {
     Route::post('rescuer/gui-bao-cao', [BaoCaoCuuHoController::class, 'guiBaoCao']);
     Route::get('rescuer/bao-cao/theo-doi/{id}', [BaoCaoCuuHoController::class, 'getByDoi']);
     Route::get('rescuer/bao-cao/{id}', [BaoCaoCuuHoController::class, 'show']);
+
+    // Quản lý thành viên (role-based filtering)
+    // MANAGER_TEAM(0): see all members
+    // TEAMLEAD(1): see only members of the same team
+    // MEMBER(2): see only members of the same team (route guard blocks access on FE)
+    Route::get('rescuer/members', [ThanhVienDoiController::class, 'getMembersFiltered']);
 });
 
 // =========================================

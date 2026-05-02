@@ -111,11 +111,59 @@ class ThanhVienDoiController extends Controller
             return response()->json([
                 'status' => true,
                 'ho_ten' => $user->ho_ten,
+                'vai_tro_trong_doi' => $user->vai_tro_trong_doi,
+                'id_doi_cuu_ho' => $user->id_doi_cuu_ho,
+                'data' => $user->load('doiCuuHo'),
             ]);
         }
         return response()->json([
             'status' => false,
             'message' => 'Token không hợp lệ hoặc đã hết hạn.',
         ], 401);
+    }
+
+    /**
+     * Get members filtered by role.
+     * MANAGER_TEAM (0): all members across all teams
+     * TEAMLEAD (1): only members of the same team
+     * MEMBER (2): only members of the same team
+     */
+    public function getMembersFiltered()
+    {
+        $currentUser = Auth::guard('thanh-vien-doi')->user();
+
+        if (!$currentUser) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized',
+            ], 401);
+        }
+
+        $role = $currentUser->vai_tro_trong_doi;
+
+        // MANAGER_TEAM: return all members
+        if ($role == 0) {
+            $members = ThanhVienDoi::with('doiCuuHo')->get();
+            return response()->json([
+                'status' => true,
+                'data' => $members,
+            ]);
+        }
+
+        // TEAMLEAD or MEMBER: return only members of the same team
+        if ($currentUser->id_doi_cuu_ho) {
+            $members = ThanhVienDoi::with('doiCuuHo')
+                ->where('id_doi_cuu_ho', $currentUser->id_doi_cuu_ho)
+                ->get();
+        } else {
+            $members = ThanhVienDoi::with('doiCuuHo')
+                ->whereNull('id_doi_cuu_ho')
+                ->get();
+        }
+
+        return response()->json([
+            'status' => true,
+            'data' => $members,
+        ]);
     }
 }

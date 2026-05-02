@@ -14,19 +14,22 @@ class AdminSeeder extends Seeder
 
     public function run(): void
     {
-        $chucVus = ChucVu::all();
-        if ($chucVus->count() < 2) {
+        $chucVus = ChucVu::whereIn('slug_chuc_vu', ['admin', 'manager_operator', 'operator'])
+            ->get()
+            ->keyBy('slug_chuc_vu');
+
+        if ($chucVus->count() < 3) {
             echo "⚠️  AdminSeeder skipped: cần seed ChucVu trước\n";
             return;
         }
 
         $admins = [
-            ['ho_ten' => 'Nguyễn Văn A', 'email' => 'admin@example.com', 'mat_khau' => Hash::make('admin123'), 'so_dien_thoai' => '0901234567', 'id_chuc_vu' => $chucVus[0]->id_chuc_vu, 'trang_thai' => 1],
-            ['ho_ten' => 'Cao Tri', 'email' => 'tad@gmail.com', 'mat_khau' => Hash::make('111111'), 'so_dien_thoai' => '0911111111', 'id_chuc_vu' => $chucVus[0]->id_chuc_vu, 'trang_thai' => 1],
-            ['ho_ten' => 'Trần Thị B', 'email' => 'operator1@example.com', 'mat_khau' => Hash::make('op123'), 'so_dien_thoai' => '0912345678', 'id_chuc_vu' => $chucVus[1]->id_chuc_vu, 'trang_thai' => 1],
-            ['ho_ten' => 'Lê Văn C', 'email' => 'operator2@example.com', 'mat_khau' => Hash::make('op123'), 'so_dien_thoai' => '0923456789', 'id_chuc_vu' => $chucVus[1]->id_chuc_vu, 'trang_thai' => 1],
-            ['ho_ten' => 'Phạm Thị D', 'email' => 'support@example.com', 'mat_khau' => Hash::make('sup123'), 'so_dien_thoai' => '0934567890', 'id_chuc_vu' => $chucVus[1]->id_chuc_vu, 'trang_thai' => 1],
-            ['ho_ten' => 'Hoàng Văn E', 'email' => 'manager@example.com', 'mat_khau' => Hash::make('mgr123'), 'so_dien_thoai' => '0945678901', 'id_chuc_vu' => $chucVus[0]->id_chuc_vu, 'trang_thai' => 1]
+            ['ho_ten' => 'Nguyễn Văn A', 'email' => 'admin@example.com', 'mat_khau' => Hash::make('admin123'), 'so_dien_thoai' => '0901234567', 'id_chuc_vu' => $chucVus['admin']->id_chuc_vu, 'trang_thai' => 1],
+            ['ho_ten' => 'Cao Tri', 'email' => 'tad@gmail.com', 'mat_khau' => Hash::make('111111'), 'so_dien_thoai' => '0911111111', 'id_chuc_vu' => $chucVus['admin']->id_chuc_vu, 'trang_thai' => 1],
+            ['ho_ten' => 'Hoàng Văn E', 'email' => 'manager@example.com', 'mat_khau' => Hash::make('mgr123'), 'so_dien_thoai' => '0945678901', 'id_chuc_vu' => $chucVus['manager_operator']->id_chuc_vu, 'trang_thai' => 1],
+            ['ho_ten' => 'Trần Thị B', 'email' => 'operator1@example.com', 'mat_khau' => Hash::make('op123'), 'so_dien_thoai' => '0912345678', 'id_chuc_vu' => $chucVus['operator']->id_chuc_vu, 'trang_thai' => 1],
+            ['ho_ten' => 'Lê Văn C', 'email' => 'operator2@example.com', 'mat_khau' => Hash::make('op123'), 'so_dien_thoai' => '0923456789', 'id_chuc_vu' => $chucVus['operator']->id_chuc_vu, 'trang_thai' => 1],
+            ['ho_ten' => 'Phạm Thị D', 'email' => 'support@example.com', 'mat_khau' => Hash::make('sup123'), 'so_dien_thoai' => '0934567890', 'id_chuc_vu' => $chucVus['operator']->id_chuc_vu, 'trang_thai' => 1]
         ];
 
         foreach ($admins as $admin) {
@@ -36,6 +39,6 @@ class AdminSeeder extends Seeder
             );
         }
 
-        echo "✅ Admin Seeding: 5 tài khoản admin\n";
+        echo "✅ Admin Seeding: 6 tài khoản admin\n";
     }
 }

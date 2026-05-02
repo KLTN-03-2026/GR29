@@ -1,216 +1,336 @@
 <template>
-  <div class="bg-light min-vh-100 py-4 py-md-5 px-3 px-md-5" style="background: #f8f9fa;">
-    <div class="container-fluid px-0">
-      <!-- Header Section -->
-      <div class="mb-5 d-flex justify-content-between align-items-end flex-wrap gap-3">
-        <div>
-          <h1 class="fw-bold font-headline tracking-tight mb-2" style="color: #111827; font-size: 2.5rem;">
-            Theo Dõi Tiến Độ
-          </h1>
-          <p class="text-secondary text-uppercase small fw-bold tracking-wider mb-0 flex-grow-1">
-            <span class="pulse-dot me-2"></span>CÁC YÊU CẦU ĐANG TRONG QUÁ TRÌNH XỬ LÝ
-          </p>
-        </div>
-        
-        <!-- Thanh tìm kiếm -->
-        <div class="position-relative" style="min-width: 280px;">
-          <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3"
-             style="color: #6b7280; font-size: 1rem;"></i>
-          <input
-            type="text"
-            class="form-control ps-5 py-2.5 rounded-pill border-0 shadow-sm"
-            style="font-size: 0.95rem; background: #ffffff;"
-            placeholder="Tìm theo ID, loại sự cố..."
-            v-model="searchQuery"
-          >
-        </div>
-      </div>
+  <div class="dang-xu-ly-page">
+    <!-- Connection Banner -->
+    <ConnectionStatusBanner />
 
-      <!-- Loading state -->
-      <div v-if="loading" class="d-flex flex-column align-items-center justify-content-center py-5" style="min-height: 40vh;">
-        <div class="spinner-grow text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
-          <span class="visually-hidden">Đang tải...</span>
-        </div>
-        <h5 class="fw-bold text-dark">Đang đồng bộ dữ liệu...</h5>
-        <p class="text-secondary">Vui lòng đợi trong giây lát</p>
-      </div>
-
-      <!-- Syncing indicator (non-blocking, subtle) -->
-      <div v-else-if="isSyncing" class="d-flex align-items-center gap-2 mb-3 px-2">
-        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
-        <span class="text-secondary small fw-medium">Đang cập nhật...</span>
-      </div>
-
-      <!-- Không có yêu cầu đang xử lý -->
-      <div v-else-if="filteredList.length === 0" class="d-flex flex-column align-items-center justify-content-center py-5 text-center" style="min-height: 40vh;">
-        <div class="empty-state-icon mb-4 rounded-circle bg-white shadow-sm d-flex align-items-center justify-content-center" style="width: 100px; height: 100px;">
-          <i class="bi bi-shield-check text-success" style="font-size: 3rem;"></i>
-        </div>
-        <h3 class="fw-bold text-dark mb-2">Bạn đang an toàn!</h3>
-        <p class="text-secondary mb-4" style="max-width: 400px;">
-          Hiện tại bạn không có yêu cầu cứu hộ nào đang chờ hoặc đang được xử lý.
-        </p>
-        <button class="btn btn-primary rounded-pill px-4 py-2.5 fw-bold shadow-sm" @click="$router.push('/gui-yeu-cau')">
-          <i class="bi bi-plus-circle me-2"></i>Tạo Yêu Cầu Mới
+    <!-- ─── HEADER ─────────────────────────────────────────── -->
+    <header class="page-header">
+      <div class="header-inner">
+        <button class="back-btn" @click="goBack" :title="viewMode === 'detail' ? 'Quay lại danh sách' : 'Quay lại'">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path v-if="viewMode === 'list'" d="M19 12H5M12 19l-7-7 7-7" />
+            <path v-else d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
         </button>
+        <div class="header-title-group">
+          <div class="header-status-indicator" v-if="viewMode === 'detail'">
+            <span class="status-pulse-dot"></span>
+            <span class="status-label">Đang theo dõi</span>
+          </div>
+          <h1 class="header-title">{{ viewMode === 'detail' ? 'Chi Tiết Yêu Cầu' : 'Yêu Cầu Cứu Hộ' }}</h1>
+        </div>
+        <div class="header-right">
+          <span class="request-count-chip" v-if="viewMode === 'list' && requests.length > 0">
+            {{ requests.length }} yêu cầu
+          </span>
+          <span class="request-id-chip" v-if="viewMode === 'detail' && activeRequest">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+            #{{ activeRequest.id }}
+          </span>
+          <button class="refresh-btn" @click="refreshData" :disabled="refreshing" title="Làm mới">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              :class="{ 'spin': refreshing }"
+            >
+              <polyline points="23 4 23 10 17 10" />
+              <polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+      <!-- ─── MAIN CONTENT ───────────────────────────────────── -->
+    <main class="page-content">
+
+      <!-- Loading State -->
+      <div v-if="loading" class="loading-state">
+        <div class="loading-spinner-wrap">
+          <div class="loading-spinner"></div>
+          <p class="loading-text">Đang đồng bộ dữ liệu...</p>
+        </div>
       </div>
 
-      <!-- Danh sách yêu cầu đang xử lý -->
-      <div v-else class="row g-4">
-        <div v-for="item in filteredList" :key="item.id" class="col-12 col-xl-6">
-          <div class="active-card rounded-4 p-4 position-relative overflow-hidden bg-white shadow-sm h-100 d-flex flex-column flex-sm-row gap-4">
-            <!-- Dải màu trạng thái bên trái -->
-            <div class="position-absolute top-0 bottom-0 start-0" :style="{ width: '5px', backgroundColor: item.trangThaiColor }"></div>
+      <!-- ─── LIST VIEW ──────────────────────────────────────── -->
+      <div v-else-if="viewMode === 'list'" class="list-view">
 
-            <!-- Cột Trái: Ảnh & Icons -->
-            <div class="shrink-0 position-relative">
-              <div class="rounded-4 overflow-hidden position-relative shadow-sm" style="width: 150px; height: 150px;">
-                <img v-if="item.anh_hien_truong"
-                     :src="item.anh_hien_truong"
-                     class="w-100 h-100 object-fit-cover"
-                     alt="Ảnh hiện trường">
-                <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center" :style="{ backgroundColor: item.iconBg }">
-                  <i :class="['bi fs-1', item.icon]" :style="{ color: item.iconColor }"></i>
-                </div>
-              </div>
-              <div class="position-absolute top-0 start-0 translate-middle badge rounded-pill shadow-sm bg-white border" style="padding: 0.4rem;">
-                <i :class="['bi fs-5', item.icon]" :style="{ color: item.iconColor }"></i>
-              </div>
-            </div>
+        <!-- Empty State — No requests -->
+        <div v-if="requests.length === 0" class="empty-state">
+          <div class="empty-icon-wrap">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+              <line x1="9" y1="9" x2="9.01" y2="9" />
+              <line x1="15" y1="9" x2="15.01" y2="9" />
+            </svg>
+          </div>
+          <h3 class="empty-heading">Không có yêu cầu đang xử lý</h3>
+          <p class="empty-desc">Bạn không có yêu cầu cứu hộ nào đang được xử lý.</p>
+          <button class="empty-action-btn" @click="$router.push('/gui-yeu-cau')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+            Tạo yêu cầu mới
+          </button>
+        </div>
 
-            <!-- Cột Phải: Nội Dung & Tiến Độ -->
-            <div class="d-flex flex-column flex-grow-1 justify-content-between py-1">
-              <div>
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                  <div>
-                    <span class="badge bg-light text-dark border px-2 py-1 rounded-2 fw-bold font-monospace me-2">#{{ item.id }}</span>
-                    <span class="badge rounded-pill fw-bold text-white px-3 py-1 bg-primary d-inline-flex gap-2 align-items-center shadow-sm" :style="{ backgroundColor: item.trangThaiColor + ' !important' }">
-                      <span class="pulse-dot-small bg-white"></span>
-                      {{ item.trangThaiText }}
-                    </span>
-                  </div>
-                  <span class="text-secondary small fw-medium" style="font-size: 0.8rem;">
-                    <i class="bi bi-clock me-1"></i>{{ item.time }}
+        <!-- Request List -->
+        <div v-else class="request-list">
+          <div
+            v-for="item in requests"
+            :key="item.id"
+            class="request-list-item"
+            @click="selectRequest(item)"
+          >
+            <div class="list-item-priority-dot" :class="getPriorityClass(item)"></div>
+            <div class="list-item-body">
+              <div class="list-item-top">
+                <div class="list-item-badges">
+                  <span class="list-item-type-badge">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                      <line x1="12" y1="9" x2="12" y2="13" />
+                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                    {{ item.loai }}
+                  </span>
+                  <span class="list-item-status-badge" :class="getStatusClass(item)">
+                    {{ getStatusText(item) }}
                   </span>
                 </div>
-
-                <h3 class="fw-bold mb-2 text-dark" style="font-size: 1.35rem; font-family: 'Manrope', sans-serif;">
-                  {{ item.loai }}
-                </h3>
-
-                <div class="d-flex align-items-center gap-2 text-secondary mb-3">
-                  <div class="bg-light p-2 rounded-circle d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
-                     <i class="bi bi-geo-alt-fill text-danger" style="font-size: 0.85rem;"></i>
-                  </div>
-                  <span class="fw-medium text-truncate" style="font-size: 0.9rem; max-width: 300px;">{{ item.address }}</span>
-                </div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="list-item-arrow">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
               </div>
-
-              <!-- Thanh Tiến Độ -->
-              <div class="mt-auto">
-                <div class="progress mb-2 rounded-pill" style="height: 8px; background-color: #f1f5f9;">
-                  <div class="progress-bar progress-bar-striped progress-bar-animated rounded-pill"
-                       role="progressbar"
-                       :style="{ width: getProgress(item.trang_thai) + '%', backgroundColor: item.trangThaiColor }"></div>
-                </div>
-                <div class="d-flex justify-content-between text-secondary small fw-bold" style="font-size: 0.75rem;">
-                  <span :class="getStepClass(0, getStepIndex(item.trang_thai))">Chờ Xử Lý</span>
-                  <span :class="getStepClass(1, getStepIndex(item.trang_thai))">Đã Phân Công</span>
-                  <span :class="getStepClass(2, getStepIndex(item.trang_thai))">Đã Tiếp Nhận</span>
-                  <span :class="getStepClass(3, getStepIndex(item.trang_thai))">Đã Đến Hiện Trường</span>
-               
-                </div>
+              <div class="list-item-address">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                {{ item.address }}
               </div>
-              
-
-              <!-- Buttons -->
-              <div class="d-flex gap-2 mt-4 pt-3 border-top">
-                <button class="btn btn-outline-secondary rounded-pill px-4 fw-bold flex-grow-1 flex-sm-grow-0" style="font-size: 0.85rem;" @click="showDetailModal(item)">
-                  <i class="bi bi-info-circle me-1"></i>Chi Tiết
-                </button>
-                <button class="btn text-white rounded-pill px-4 fw-bold flex-grow-1 flex-sm-grow-0" 
-                        style="font-size: 0.85rem;"
-                        :style="{ backgroundColor: item.trangThaiColor, border: 'none' }"
-                        disabled>
-                  <i class="bi bi-telephone me-1"></i>Liên hệ Đội Cứu Hộ
-                </button>
+              <div class="list-item-bottom">
+                <span class="list-item-time">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  {{ formatTime(item.createdAt) }}
+                </span>
+                <span class="list-item-id">#{{ item.id }}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Modal Chi tiết -->
-    <div v-if="isModalOpen" class="modal-overlay" @click.self="closeModal">
-      <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden" style="max-width: 650px;">
-        <!-- Modal Header -->
-        <div class="p-4 bg-white border-bottom d-flex justify-content-between align-items-center sticky-top">
-          <h4 class="fw-bold mb-0 text-dark" style="font-family: 'Manrope', sans-serif;">
-            <i class="bi bi-file-earmark-text text-primary me-2"></i>Chi Tiết Yêu Cầu Khẩn Cấp
-          </h4>
-          <button class="btn-close shadow-none" @click="closeModal"></button>
+      <!-- ─── DETAIL VIEW ────────────────────────────────────── -->
+      <div v-else class="detail-view">
+
+        <!-- Empty State — No active request selected -->
+        <div v-if="!activeRequest" class="empty-state">
+          <div class="empty-icon-wrap">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+              <line x1="9" y1="9" x2="9.01" y2="9" />
+              <line x1="15" y1="9" x2="15.01" y2="9" />
+            </svg>
+          </div>
+          <h3 class="empty-heading">Không có yêu cầu nào được chọn</h3>
+          <button class="empty-action-btn" @click="viewMode = 'list'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            Quay lại danh sách
+          </button>
         </div>
 
-        <!-- Modal Body -->
-        <div class="p-4" style="background-color: #f9fafb;">
-          
-          <!-- Request ID & Map Preview Placeholder -->
-          <div class="bg-white p-3 rounded-4 shadow-sm mb-4 border d-flex gap-3 align-items-center">
-            <div class="map-placeholder rounded-3 bg-light d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
-               <i class="bi bi-map text-secondary fs-3"></i>
-            </div>
-            <div>
-               <div class="fw-bold font-monospace bg-light border px-2 py-1 rounded d-inline-block mb-1">Mã Yêu Cầu: #{{ selectedItem?.id }}</div>
-               <div class="fw-bold fs-5 text-dark">{{ selectedItem?.loai }}</div>
-            </div>
-          </div>
+        <!-- Active Request View -->
+        <div v-else class="active-layout" :class="{ 'map-visible': mapStep }">
 
-          <div class="row g-4 mb-4">
-            <div class="col-sm-6">
-              <div class="bg-white p-3 rounded-4 shadow-sm border h-100">
-                <label class="fw-bold text-secondary text-uppercase mb-2 small d-flex align-items-center">
-                  <i class="bi bi-clock-history me-2"></i>Trạng thái hiện tại
-                </label>
-                <div class="fw-bold text-dark fs-6 d-flex align-items-center gap-2">
-                  <span class="pulse-dot-small" :style="{ backgroundColor: selectedItem?.trangThaiColor }"></span>
-                  {{ selectedItem?.trangThaiText }}
+          <!-- ─── TOP SECTION: Info Cards (scrollable on mobile) ─── -->
+          <div class="info-section">
+
+            <!-- Priority Banner -->
+            <div class="priority-banner" :class="priorityBannerClass">
+              <div class="banner-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </div>
+              <div class="banner-content">
+                <span class="banner-level">{{ priorityText }}</span>
+                <span class="banner-type">{{ activeRequest.mucDoKhanCap }}</span>
+              </div>
+              <div class="banner-time">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                {{ formatTime(activeRequest.createdAt) }}
+              </div>
+            </div>
+
+            <!-- Incident Type & Address -->
+            <div class="incident-card">
+              <div class="incident-top">
+                <div class="incident-badges">
+                  <span class="incident-type-badge">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                      <line x1="12" y1="9" x2="12" y2="13" />
+                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                    {{ activeRequest.loai }}
+                  </span>
                 </div>
               </div>
-            </div>
-            <div class="col-sm-6">
-              <div class="bg-white p-3 rounded-4 shadow-sm border h-100">
-                <label class="fw-bold text-secondary text-uppercase mb-2 small d-flex align-items-center">
-                  <i class="bi bi-calendar-event me-2"></i>Gửi lúc
-                </label>
-                <div class="fw-bold text-dark fs-6">{{ selectedItem?.time }}</div>
+              <div class="incident-address">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                <span>{{ activeRequest.address }}</span>
+              </div>
+              <div class="incident-description" v-if="activeRequest.moTa">
+                {{ activeRequest.moTa }}
               </div>
             </div>
-          </div>
 
-          <div class="bg-white p-3 rounded-4 shadow-sm border mb-4">
-            <label class="fw-bold text-secondary text-uppercase mb-2 small d-flex align-items-center">
-              <i class="bi bi-geo-alt me-2"></i>Vị Trí Cần Cứu Hộ
-            </label>
-            <div class="fw-medium text-dark fs-6 lh-base">{{ selectedItem?.address }}</div>
-          </div>
+            <!-- Rescuer Info Card -->
+            <RescuerInfoCard
+              :show="true"
+              :name="rescuerInfo.name"
+              :phone="rescuerInfo.phone"
+              :team-name="rescuerInfo.teamName"
+              :role="rescuerInfo.role"
+              :eta="rescuerInfo.eta"
+              :distance="rescuerInfo.distance"
+              :status="rescuerInfo.status"
+              :loading="rescuerLoading"
+              :show-stats="rescuerInfo.eta !== null || rescuerInfo.distance !== null"
+            />
 
-          <div class="bg-white p-3 rounded-4 shadow-sm border mb-4">
-            <label class="fw-bold text-secondary text-uppercase mb-2 small d-flex align-items-center">
-              <i class="bi bi-card-text me-2"></i>Mô Tả Sự Cố
-            </label>
-            <div class="fw-medium text-dark fs-6 lh-base" style="white-space: pre-line;">
-              {{ selectedItem?.moTa || 'Không có mô tả chi tiết.' }}
+            <!-- Request Progress -->
+            <div class="progress-card">
+              <div class="card-section-header">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                </svg>
+                <span>Tiến trình cứu hộ</span>
+              </div>
+              <RequestProgress :step="currentProgressStep" />
             </div>
+
+          </div>
+
+          <!-- ─── MAP SECTION ──────────────────────────────────── -->
+          <div class="map-section" v-if="mapStep">
+            <RescueMap
+              :loading="mapLoading"
+              :error-msg="mapError"
+              :client-marker="clientMarker"
+              :rescuer-marker="rescuerMarker"
+              :incident-marker="incidentMarker"
+              :show-rescuer-marker="showRescuerMarker"
+              :show-client-marker="true"
+              :badge-text="mapBadgeText"
+              :badge-class="mapBadgeClass"
+              @zoom-in="zoomIn"
+              @zoom-out="zoomOut"
+              @locate="locateMe"
+              @retry="initMap"
+              @map-ready="onMapReady"
+            />
           </div>
 
         </div>
+      </div>
+    </main>
 
-        <!-- Modal Footer -->
-        <div class="p-3 bg-white border-top d-flex justify-content-end gap-2">
-          <button class="btn btn-light rounded-pill px-4 fw-bold border" @click="closeModal">
-            Đóng Lại
+    <!-- ─── CONTACT ACTIONS (floating) ─────────────────────── -->
+    <ContactActions
+      :show="contactActionsVisible"
+      :phone="rescuerInfo.phone"
+      :chat-url="rescuerInfo.chatUrl"
+      :navigate-url="navigateUrl"
+    />
+
+    <!-- ─── DETAIL MODAL ──────────────────────────────────── -->
+    <div v-if="showDetailModal" class="modal-overlay" @click.self="showDetailModal = false">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-header-left">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+            <h3 class="modal-title">Chi Tiết Yêu Cầu</h3>
+          </div>
+          <button class="modal-close-btn" @click="showDetailModal = false">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
           </button>
+        </div>
+        <div class="modal-body" v-if="activeRequest">
+          <div class="detail-row">
+            <span class="detail-label">Mã yêu cầu</span>
+            <span class="detail-value font-mono">#{{ activeRequest.id }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Loại sự cố</span>
+            <span class="detail-value">{{ activeRequest.loai }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Mức độ</span>
+            <span class="detail-value">
+              <span class="priority-pill" :class="priorityBannerClass">{{ activeRequest.mucDoKhanCap }}</span>
+            </span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Địa điểm</span>
+            <span class="detail-value">{{ activeRequest.address }}</span>
+          </div>
+          <div class="detail-row" v-if="activeRequest.moTa">
+            <span class="detail-label">Mô tả</span>
+            <span class="detail-value">{{ activeRequest.moTa }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Thời gian gửi</span>
+            <span class="detail-value">{{ formatTime(activeRequest.createdAt) }}</span>
+          </div>
+          <div class="detail-row" v-if="rescuerInfo.teamName">
+            <span class="detail-label">Đội cứu hộ</span>
+            <span class="detail-value">{{ rescuerInfo.teamName }}</span>
+          </div>
+          <div class="detail-row" v-if="rescuerInfo.name">
+            <span class="detail-label">Người phụ trách</span>
+            <span class="detail-value">{{ rescuerInfo.name }}</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn-cancel" @click="showDetailModal = false">Đóng</button>
+          <a v-if="navigateUrl" :href="navigateUrl" target="_blank" class="modal-btn-nav">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polygon points="3 11 22 2 13 21 11 13 3 11" />
+            </svg>
+            Chỉ đường
+          </a>
         </div>
       </div>
     </div>
@@ -219,77 +339,46 @@
 </template>
 
 <script>
-import { rescueRequestAPI } from "../../../services/api";
+import ConnectionStatusBanner from "../../common/ConnectionStatusBanner.vue";
+import RequestProgress from "./components/RequestProgress.vue";
+import RescueMap from "./components/RescueMap.vue";
+import ContactActions from "./components/ContactActions.vue";
+import RescuerInfoCard from "./components/RescuerInfoCard.vue";
+import { rescueRequestAPI, assignmentAPI } from "../../../services/api.js";
+import { loadOpenMap, createOpenMap, createOpenMapMarker, createOpenMapPopup } from "../../../utils/openMap.js";
+import { createToaster } from "@meforma/vue-toaster";
 
-const BASE_URL = "http://localhost:8000";
+const toaster = createToaster({ position: "top-right" });
 
-const TYPE_ICON = {
-  "y te": { icon: "bi-heart-pulse-fill", color: "#dc3545", bg: "#f8d7da" },
-  "chay no": { icon: "bi-fire", color: "#dc3545", bg: "#f8d7da" },
-  "chay": { icon: "bi-fire", color: "#dc3545", bg: "#f8d7da" },
-  "lu": { icon: "bi-water", color: "#0dcaf0", bg: "#cff4fc" },
-  "lu lut": { icon: "bi-water", color: "#0dcaf0", bg: "#cff4fc" },
-  "song than": { icon: "bi-tsunami", color: "#0dcaf0", bg: "#cff4fc" },
-  "han han": { icon: "bi-sun-fill", color: "#ffc107", bg: "#fff3cd" },
-  "tai nan": { icon: "bi-car-front-fill", color: "#ffc107", bg: "#fff3cd" },
-  "giao thong": { icon: "bi-cone-striped", color: "#fd7e14", bg: "#ffe5d0" },
-  "dong dat": { icon: "bi-house-slash-fill", color: "#6f42c1", bg: "#e0d4f5" },
+// ─── Helper constants ────────────────────────────────────────────────────────────
+
+const STATUS_STEP = {
+  CHO_XU_LY: 1,
+  DA_PHAN_CONG: 2,
+  DANG_XU_LY: 3,
+  DA_DEN_HIEN_TRUONG: 4,
+  HOAN_THANH: 5,
+  DA_HOAN_THANH: 5,
+  HUY_BO: 0,
+  DA_HUY: 0,
+  TU_CHOI: 0,
+  THAT_BAI: 0,
+  DONE: 5,
 };
+
+const CLOSED_STATUS = new Set(["HOAN_THANH", "DA_HOAN_THANH", "HUY_BO", "DA_HUY", "TU_CHOI", "THAT_BAI", "DONE"]);
+
+// ─── Helper functions ───────────────────────────────────────────────────────────
 
 function normalizeValue(value, fallback = "") {
   if (!value) return fallback;
   if (typeof value === "object") {
-    return normalizeValue(value.ten_danh_muc || value.ten_loai_su_co || value.ten || value.name || fallback, fallback);
+    return normalizeValue(
+      value.ten_danh_muc || value.ten_loai_su_co || value.ten || value.name || fallback,
+      fallback
+    );
   }
   return String(value);
-}
-
-function extractUserId(parsed) {
-  if (!parsed || typeof parsed !== "object") return null;
-  const keys = ["id_nguoi_dung", "id", "user_id", "ma_nguoi_dung", "nguoi_dung_id"];
-  for (const key of keys) {
-    if (parsed[key] !== undefined && parsed[key] !== null && parsed[key] !== "") {
-      return Number(parsed[key]);
-    }
-  }
-  return null;
-}
-
-function getCurrentUserId() {
-  const sources = ["user_token", "user", "client"];
-  for (const key of sources) {
-    const raw = localStorage.getItem(key);
-    if (!raw) continue;
-    try {
-      const parsed = JSON.parse(raw);
-      const id = extractUserId(parsed);
-      if (id) return id;
-    } catch (error) {
-      // ignore invalid json
-    }
-  }
-  return null;
-}
-
-function formatTime(value) {
-  if (!value) return "";
-  const time = new Date(value);
-  if (Number.isNaN(time.getTime())) return normalizeValue(value);
-  return time.toLocaleString("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
-function parseTypeIcon(rawType) {
-  const type = normalizeValue(rawType).toLowerCase();
-  for (const key of Object.keys(TYPE_ICON)) {
-    if (type.includes(key)) return TYPE_ICON[key];
-  }
-  return { icon: "bi-exclamation-triangle-fill", color: "#6c757d", bg: "#e2e3e5" };
 }
 
 function normalizeStatusCode(value) {
@@ -299,509 +388,1683 @@ function normalizeStatusCode(value) {
     .replace(/\s+/g, "_");
 }
 
-// ─── Progress Step Mapping (maps trang_thai → 4-step flow) ────────────────────
-// Backend canonical trang_thai values from yeu_cau_cuu_ho table:
-//   CHO_XU_LY       → step 0 (default/new request)
-//   DA_PHAN_CONG    → step 1 (admin dispatched a team)
-//   DANG_XU_LY      → step 2 (rescue team accepted / is handling)
-//   DA_DEN_HIEN_TRUONG → step 3 (team arrived at scene)
-//   HOAN_THANH      → step 4 (resolved)  -- filtered out in active list
-//   THAT_BAI        → step 4 (failed)    -- filtered out in active list
-//   HUY_BO          → step 4 (cancelled)-- filtered out in active list
-
-const STATUS_STEP_INDEX = {
-  CHO_XU_LY:            0,  // Đang điều phối
-  DA_PHAN_CONG:         1,  // Đã tiếp nhận
-  DANG_XU_LY:           2,  // Đội cứu hộ đã tới (accepted, en-route)
-  DA_DEN_HIEN_TRUONG:   3,  // Vấn đề đang được giải quyết (team on scene)
-};
-
-const STATUS_PROGRESS_PCT = {
-  0: 25,   // CHO_XU_LY          → Đang điều phối
-  1: 50,   // DA_PHAN_CONG       → Đã tiếp nhận
-  2: 75,   // DANG_XU_LY          → Đội cứu hộ đã tới
-  3: 100,  // DA_DEN_HIEN_TRUONG → Vấn đề đang được giải quyết
-};
-
-function getStepIndex(trangThai) {
-  if (!trangThai) return 0;
-  const key = normalizeStatusCode(trangThai);
-  return STATUS_STEP_INDEX[key] ?? 0;
+function formatTime(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return normalizeValue(value);
+  return d.toLocaleString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
 
-function getProgress(trangThai) {
-  return STATUS_PROGRESS_PCT[getStepIndex(trangThai)] ?? 0;
-}
-
-function getStepClass(stepIdx, currentIdx) {
-  if (stepIdx < currentIdx) return "step-done";
-  if (stepIdx === currentIdx) return "step-active";
-  return "step-pending";
-}
-
-function buildStatusMeta(requestStatus, assignmentStatus = "") {
-  const req = normalizeStatusCode(requestStatus);
-  const mission = normalizeStatusCode(assignmentStatus);
-  const status = mission || req;
-
-  if (status === "HOAN_THANH" || status === "DONE") {
-    return { text: "Đã hoàn thành", color: "#22c55e", progress: 100 };
-  }
-  if (status === "DA_DEN_HIEN_TRUONG") {
-    return { text: "Đội cứu hộ đã tới", color: "#2563eb", progress: 70 };
-  }
-  if (status === "DANG_XU_LY" || status === "PROCESSING") {
-    return { text: "Vấn đề đang được giải quyết", color: "#0ea5e9", progress: 90 };
-  }
-  if (
-    status === "DA_PHAN_CONG" ||
-    status === "DA_XAC_NHAN" ||
-    status === "DA_GIAO_VIEC" ||
-    status === "DANG_DI_CHUYEN"
-  ) {
-    return { text: "Đang điều phối đội cứu hộ", color: "#3b82f6", progress: 45 };
-  }
-  if (
-    status === "CHO_XU_LY" ||
-    status === "CHUA_XU_LY" ||
-    status === "CHO_XAC_NHAN" ||
-    status === "PENDING" ||
-    status === "WAITING"
-  ) {
-    return { text: "Đã tiếp nhận", color: "#f59e0b", progress: 20 };
-  }
-  return { text: "Đang theo dõi", color: "#6b7280", progress: 30 };
-}
-
-function getTrackingRequestId(item) {
-  return item?.id_yeu_cau || item?.id || item?.request_id || item?.ma_yeu_cau || null;
-}
-
-function buildTrackingMapFromResponse(rawData) {
-  const records = Array.isArray(rawData?.data) ? rawData.data : Array.isArray(rawData) ? rawData : [];
-  return records.reduce((acc, trackingItem) => {
-    const requestId = getTrackingRequestId(trackingItem);
-    if (!requestId) return acc;
-    acc[String(requestId)] = trackingItem;
-    return acc;
-  }, {});
-}
-
-function getImageUrl(image) {
-  if (!image) return null;
-  const raw = String(image);
-  if (/^(https?:|data:)/i.test(raw)) return raw;
-  if (raw.startsWith("uploads/") || raw.startsWith("/uploads/")) {
-    return BASE_URL + (raw.startsWith("/") ? "" : "/") + raw;
+function extractUserId() {
+  const sources = ["user_token", "user", "client"];
+  for (const key of sources) {
+    const raw = localStorage.getItem(key);
+    if (!raw) continue;
+    try {
+      const parsed = JSON.parse(raw);
+      const id = parsed?.id_nguoi_dung || parsed?.id || parsed?.user_id || parsed?.ma_nguoi_dung || parsed?.nguoi_dung_id;
+      if (id !== undefined && id !== null && id !== "") return Number(id);
+    } catch { /* ignore */ }
   }
   return null;
 }
 
+function getStepFromStatus(status) {
+  return STATUS_STEP[normalizeStatusCode(status)] ?? 1;
+}
+
 export default {
+  name: "ClientDangXuLy",
+  components: {
+    ConnectionStatusBanner,
+    RequestProgress,
+    RescueMap,
+    ContactActions,
+    RescuerInfoCard,
+  },
   data() {
     return {
-      danhsach: [],
       loading: false,
-      isSyncing: false,
-      searchQuery: "",
-      isModalOpen: false,
-      selectedItem: null,
-      pollInterval: null,
-      lastSyncAt: null,
+      refreshing: false,
+      requests: [],
+      viewMode: "list", // "list" | "detail"
+      activeRequest: null,
+      realtimeChannel: null,
+      fallbackPollingInterval: null,
+      map: null,
+      mapLoading: false,
+      mapError: "",
+      mapResizeObserver: null,
+      clientMarker: null,
+      rescuerMarker: null,
+      incidentMarker: null,
+      rescuerMarkerData: null,
+      routeLayer: null,
+      routeSource: null,
+      mapReady: false,
+      showDetailModal: false,
+      rescuerLoading: false,
+      rescuerLocationChannel: null,
     };
   },
   computed: {
-    filteredList() {
-      let result = [...this.danhsach];
-      if (this.searchQuery.trim()) {
-        const query = this.searchQuery.toLowerCase().trim();
-        result = result.filter((item) => {
-          const loai = (item.loai || "").toLowerCase();
-          const id = String(item.id || "").toLowerCase();
-          return loai.includes(query) || id.includes(query);
-        });
+    currentProgressStep() {
+      if (!this.activeRequest) return 1;
+      const status = this.activeRequest.trangThai;
+      return getStepFromStatus(status);
+    },
+    mapStep() {
+      return this.currentProgressStep >= 2;
+    },
+    showRescuerMarker() {
+      return this.rescuerMarkerData && this.currentProgressStep >= 2;
+    },
+    contactActionsVisible() {
+      return this.currentProgressStep >= 2 && this.rescuerInfo.phone;
+    },
+    mapBadgeText() {
+      const step = this.currentProgressStep;
+      if (step === 1) return "Đang tìm cứu hộ...";
+      if (step === 2) return "Đã nhận nhiệm vụ";
+      if (step === 3) return "Đang di chuyển";
+      if (step === 4) return "Đã đến hiện trường";
+      if (step >= 5) return "Hoàn thành";
+      return "";
+    },
+    mapBadgeClass() {
+      const step = this.currentProgressStep;
+      if (step === 1) return "badge-blue";
+      if (step === 2) return "badge-orange";
+      if (step === 3) return "badge-orange";
+      if (step === 4) return "badge-green";
+      return "badge-blue";
+    },
+    priorityBannerClass() {
+      const level = this.activeRequest?.mucDoKhanCap?.toUpperCase() || "";
+      if (level === "CRITICAL" || level === "HIGH") return "banner-danger";
+      if (level === "MEDIUM") return "banner-warning";
+      return "banner-success";
+    },
+    priorityText() {
+      const level = this.activeRequest?.mucDoKhanCap?.toUpperCase() || "";
+      if (level === "CRITICAL" || level === "HIGH") return "Khẩn cấp";
+      if (level === "MEDIUM") return "Trung bình";
+      return "Thường";
+    },
+    navigateUrl() {
+      if (!this.activeRequest?.address) return "";
+      return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(this.activeRequest.address)}`;
+    },
+    rescuerInfo() {
+      if (!this.activeRequest) {
+        return { name: "", phone: "", teamName: "", role: "", eta: null, distance: null, status: "", chatUrl: "" };
       }
-      return result.sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
+      const assignment = this.activeRequest.assignment;
+      const team = this.activeRequest.team;
+
+      let phone = "";
+      let name = "";
+      let status = "";
+      let eta = null;
+      let distance = null;
+
+      if (assignment) {
+        if (assignment.rescuer_phone || assignment.so_dien_thoai_thanh_vien) {
+          phone = assignment.rescuer_phone || assignment.so_dien_thoai_thanh_vien;
+        }
+        if (assignment.rescuer_name || assignment.ten_thanh_vien) {
+          name = assignment.rescuer_name || assignment.ten_thanh_vien;
+        }
+        status = assignment.trang_thai_nhiem_vu || assignment.status || "";
+        eta = assignment.eta || assignment.duoc_gian || null;
+        distance = assignment.distance || assignment.khoang_cach || null;
+      }
+
+      if (!phone && team?.so_dien_thoai) {
+        phone = team.so_dien_thoai;
+      }
+
+      const teamName = team?.ten_doi_cuu_ho || team?.ten_doi || this.activeRequest.tenDoiCuuHo || "";
+
+      let chatUrl = "";
+      if (phone) {
+        chatUrl = `https://zalo.me/${phone.replace(/\D/g, "")}`;
+      }
+
+      return { name, phone, teamName, role: "", eta, distance, status, chatUrl };
+    },
+  },
+  watch: {
+    activeRequest(newReq, oldReq) {
+      const newTeamId = newReq?.team?.id || newReq?.team?.id_doi_cuu_ho || newReq?.assignment?.id_doi_cuu_ho;
+      const oldTeamId = oldReq?.team?.id || oldReq?.team?.id_doi_cuu_ho || oldReq?.assignment?.id_doi_cuu_ho;
+      if (String(newTeamId) !== String(oldTeamId)) {
+        this.unsubscribeFromRescuerLocation();
+        if (this.currentProgressStep >= 2) {
+          this.subscribeToRescuerLocation();
+        }
+      }
     },
   },
   async created() {
-    await this.loadActiveRequests();
-    this.startSmartPolling();
+    await this.loadData();
+    this.subscribeToReverb();
+    this.startFallbackPolling();
   },
   beforeUnmount() {
-    this.stopPolling();
+    this.unsubscribeFromReverb();
+    this.stopFallbackPolling();
+    this.cleanupMap();
   },
   methods: {
-    // ─── Smart Polling ────────────────────────────────────────────────────────────
-    startSmartPolling() {
-      this.stopPolling();
-      // Poll every 15 seconds — delta-based so only changed items are fetched
-      this.pollInterval = setInterval(() => {
-        this.smartPoll();
-      }, 15000);
-    },
-    stopPolling() {
-      if (this.pollInterval) {
-        clearInterval(this.pollInterval);
-        this.pollInterval = null;
-      }
-    },
-    async smartPoll() {
-      // Skip if already syncing or no active requests remain
-      if (this.isSyncing) return;
-      if (this.danhsach.length === 0) {
-        this.stopPolling();
+    goBack() {
+      if (this.viewMode === "detail") {
+        this.viewMode = "list";
         return;
       }
-
-      this.isSyncing = true;
-      try {
-        const currentUserId = getCurrentUserId();
-        if (!currentUserId) return;
-
-        // Use delta endpoint when we have a last sync time
-        if (this.lastSyncAt) {
-          const since = encodeURIComponent(this.lastSyncAt);
-          try {
-            const deltaResp = await rescueRequestAPI.getTrackingDelta(since);
-            const delta = deltaResp?.data;
-            if (delta) {
-              const hasChanges =
-                (delta.items?.length > 0 || delta.updated?.length > 0) ||
-                (delta.removed_ids?.length > 0 || delta.removed?.length > 0);
-              if (hasChanges) {
-                await this.applyDelta(delta, currentUserId);
-              }
-              // Update lastSyncAt from server_time so next poll is a true delta
-              if (delta.server_time) {
-                this.lastSyncAt = delta.server_time;
-              } else {
-                this.lastSyncAt = new Date().toISOString();
-              }
-              return;
-            }
-          } catch (e) {
-            // Fall through to full reload if delta fails
-          }
-        }
-
-        // Full reload as fallback
-        await this.loadActiveRequests(true);
-      } catch (e) {
-        // Silently ignore polling errors
-      } finally {
-        this.isSyncing = false;
-      }
-    },
-    async applyDelta(delta, currentUserId) {
-      // Handle removed items (backend uses 'removed_ids' key)
-      const removedIds = delta.removed || delta.removed_ids || [];
-      if (removedIds.length > 0) {
-        const removedSet = new Set(removedIds.map(i => String(i.id_yeu_cau || i.id)));
-        this.danhsach = this.danhsach.filter(item => !removedSet.has(String(item.id)));
-      }
-
-      // Handle updated/new items (backend uses 'items' key)
-      const updatedItems = delta.updated || delta.items || [];
-      if (updatedItems.length > 0) {
-        for (const raw of updatedItems) {
-          const itemId = String(raw.id_yeu_cau || raw.id);
-
-          // Verify this item belongs to current user
-          const itemUserId = extractUserId(raw) || extractUserId(raw?.nguoi_dung);
-          if (itemUserId !== currentUserId) continue;
-
-          const reqStatus = normalizeStatusCode(raw.trang_thai || raw.status);
-          const closed = new Set(["HOAN_THANH", "DA_HOAN_THANH", "HUY_BO", "DA_HUY", "TU_CHOI", "THAT_BAI", "DONE"]);
-          if (closed.has(reqStatus)) {
-            // Remove completed item
-            this.danhsach = this.danhsach.filter(item => String(item.id) !== itemId);
-            continue;
-          }
-
-          // Find existing item and update in place
-          const idx = this.danhsach.findIndex(item => String(item.id) === itemId);
-          const trackingMap = {};
-          trackingMap[itemId] = raw;
-
-          if (idx >= 0) {
-            const normalized = this.normalizeResults([raw], trackingMap);
-            if (normalized.length > 0) {
-              this.danhsach.splice(idx, 1, normalized[0]);
-            }
-          } else {
-            // New item — add to list
-            const normalized = this.normalizeResults([raw], trackingMap);
-            if (normalized.length > 0) {
-              this.danhsach.unshift(normalized[0]);
-            }
-          }
-        }
-      }
-
-      // Update server_time so next poll is a true delta
-      if (delta.server_time) {
-        this.lastSyncAt = delta.server_time;
+      if (window.history.length > 2) {
+        this.$router.back();
       } else {
-        this.lastSyncAt = new Date().toISOString();
-      }
-      if (this.selectedItem?.id) {
-        const fresh = this.danhsach.find(item => String(item.id) === String(this.selectedItem.id));
-        if (fresh) {
-          this.selectedItem = fresh;
-        } else {
-          this.closeModal();
-        }
-      }
-
-      // Stop polling when list is empty
-      if (this.danhsach.length === 0) {
-        this.stopPolling();
+        this.$router.push("/");
       }
     },
-    // ─── Progress step helpers ────────────────────────────────────────────────
-    getStepIndex,
-    getProgress,
-    getStepClass,
 
-    normalizeResults(items, trackingMap = {}) {
-      if (!Array.isArray(items)) return [];
-      return items.map((item) => {
-        const id = item.id_yeu_cau || item.id || item.ma_ket_qua || "";
-        const tracking = trackingMap[String(id)] || {};
-
-        let typeLabel = "Không rõ";
-        if (item.loaiSuCo) {
-          typeLabel = normalizeValue(item.loaiSuCo.ten_danh_muc || item.loaiSuCo.ten_loai_su_co || item.loaiSuCo.ten || "Không rõ");
-        } else {
-          typeLabel = normalizeValue(item.ten_loai_su_co || item.loai_su_co || item.loai || item.chi_tiet || "Không rõ");
-        }
-
-        const typeMeta = parseTypeIcon(typeLabel);
-
-        let address = item.vi_tri_dia_chi || item.dia_chi || item.address || "Chưa xác định";
-        if (!item.vi_tri_dia_chi && !item.dia_chi && item.vi_tri_lat && item.vi_tri_lng) {
-          address = `${item.vi_tri_lat}, ${item.vi_tri_lng}`;
-        }
-
-        const time = formatTime(item.created_at || item.thoi_gian || item.time || item.updated_at);
-        const anhHienTruong = getImageUrl(item.hinh_anh) || getImageUrl(item.anh_hien_truong) || getImageUrl(item.anh) || getImageUrl(item.image);
-
-        const assignmentStatus =
-          tracking?.trang_thai_nhiem_vu ||
-          tracking?.phan_congs?.[0]?.trang_thai_nhiem_vu ||
-          item?.phan_congs?.[0]?.trang_thai_nhiem_vu ||
-          "";
-        const requestStatus = tracking?.trang_thai || item.trang_thai || item.status;
-        const statusMeta = buildStatusMeta(requestStatus, assignmentStatus);
-
-        const apiProgress = Number(
-          tracking?.tien_do ?? tracking?.progress ?? tracking?.phan_tram_hoan_thanh ?? Number.NaN
-        );
-        const progress = Number.isFinite(apiProgress)
-          ? Math.max(0, Math.min(100, apiProgress))
-          : statusMeta.progress;
-
-        return {
-          id,
-          loai: typeLabel,
-          moTa: normalizeValue(item.mo_ta || item.moTa || item.description || ""),
-          time: time || "Mới đây",
-          address,
-          icon: typeMeta.icon,
-          iconColor: typeMeta.color,
-          iconBg: typeMeta.bg,
-          anh_hien_truong: anhHienTruong,
-          trang_thai: requestStatus,
-          trang_thai_nhiem_vu: assignmentStatus,
-          trangThaiText: statusMeta.text,
-          trangThaiColor: statusMeta.color,
-          progress,
-          raw: item,
-          trackingRaw: tracking,
-        };
+    selectRequest(item) {
+      this.activeRequest = item;
+      this.viewMode = "detail";
+      // If assigned, load team info
+      if (this.currentProgressStep >= 2) {
+        this.loadRescuerInfo();
+        this.subscribeToRescuerLocation();
+      } else {
+        this.unsubscribeFromRescuerLocation();
+      }
+      // Update map if ready
+      this.$nextTick(() => {
+        if (this.mapReady) this.updateMapMarkers();
       });
     },
 
-    async loadActiveRequests(silent = false) {
+    // ─── Data Loading ─────────────────────────────────────────────────────────
+    async loadData(silent = false) {
       if (!silent) this.loading = true;
+      if (silent) this.refreshing = true;
+
       try {
-        const currentUserId = getCurrentUserId();
-        if (!currentUserId) {
-          this.danhsach = [];
+        const userId = extractUserId();
+        if (!userId) {
+          this.activeRequest = null;
           return;
         }
 
         let requestResponse;
         try {
-          requestResponse = await rescueRequestAPI.getByUser(currentUserId);
-        } catch (apiError) {
+          requestResponse = await rescueRequestAPI.getByUser(userId);
+        } catch {
           requestResponse = await rescueRequestAPI.getList();
         }
 
-        const rawData = requestResponse?.data;
-        const items = Array.isArray(rawData)
-          ? rawData
-          : Array.isArray(rawData?.data)
-          ? rawData.data
-          : Array.isArray(rawData?.data?.data)
-          ? rawData.data.data
+        const raw = requestResponse?.data;
+        const items = Array.isArray(raw)
+          ? raw
+          : Array.isArray(raw?.data)
+          ? raw.data
+          : Array.isArray(raw?.data?.data)
+          ? raw.data.data
           : [];
 
-        let trackingMap = {};
-        try {
-          const trackingResponse = await rescueRequestAPI.getTrackingList();
-          trackingMap = buildTrackingMapFromResponse(trackingResponse?.data?.data || trackingResponse?.data || []);
-        } catch (trackingError) {
-          trackingMap = {};
-        }
-
+        // Filter active (non-closed) requests for this user
         const activeItems = items.filter((item) => {
-          const itemUserId = extractUserId(item) || extractUserId(item?.nguoi_dung);
-          if (itemUserId !== currentUserId) return false;
-
-          const id = item.id_yeu_cau || item.id || item.ma_ket_qua || "";
-          const tracking = trackingMap[String(id)] || {};
-
-          const reqStatus = normalizeStatusCode(tracking?.trang_thai || item.trang_thai || item.status);
-          const missionStatus = normalizeStatusCode(
-            tracking?.trang_thai_nhiem_vu || tracking?.phan_congs?.[0]?.trang_thai_nhiem_vu || item?.phan_congs?.[0]?.trang_thai_nhiem_vu
-          );
-
-          const closed = new Set(["HOAN_THANH", "DA_HOAN_THANH", "HUY_BO", "DA_HUY", "TU_CHOI", "THAT_BAI", "DONE"]);
-          if (closed.has(reqStatus) || closed.has(missionStatus)) return false;
-
+          const itemUserId =
+            item.id_nguoi_dung ||
+            item.id ||
+            item.user_id ||
+            item.ma_nguoi_dung ||
+            item.nguoi_dung_id ||
+            item.nguoi_dung?.id_nguoi_dung ||
+            item.nguoi_dung?.id;
+          if (itemUserId && Number(itemUserId) !== Number(userId)) return false;
+          const reqStatus = normalizeStatusCode(item.trang_thai || item.status);
+          if (CLOSED_STATUS.has(reqStatus)) return false;
           return true;
         });
 
-        this.danhsach = this.normalizeResults(activeItems, trackingMap);
-        this.lastSyncAt = new Date().toISOString();
+        // Store all active requests in the list
+        this.requests = activeItems.map((item) => this.normalizeItem(item));
 
-        if (this.selectedItem?.id) {
-          const freshItem = this.danhsach.find((item) => String(item.id) === String(this.selectedItem.id));
-          if (freshItem) this.selectedItem = freshItem;
+        // Use first active request as the detail view
+        if (activeItems.length > 0) {
+          const item = activeItems[0];
+          // If viewing in detail mode already, keep the detail; otherwise start on list
+          if (this.viewMode === "detail" && this.activeRequest) {
+            // Keep the current detail view
+          } else {
+            this.activeRequest = this.normalizeItem(item);
+          }
+
+          // If assigned, load team info
+          if (this.currentProgressStep >= 2) {
+            this.loadRescuerInfo();
+            this.subscribeToRescuerLocation();
+          }
+
+          // Update map if ready
+          this.$nextTick(() => {
+            if (this.mapReady) this.updateMapMarkers();
+          });
+        } else {
+          this.activeRequest = null;
         }
-      } catch (error) {
-        console.error("Loi khi tai yeu cau dang xu ly:", error);
+      } catch (e) {
+        console.error("Lỗi tải dữ liệu:", e);
       } finally {
-        if (!silent) this.loading = false;
+        this.loading = false;
+        this.refreshing = false;
       }
     },
 
-    showDetailModal(item) {
-      this.selectedItem = item;
-      this.isModalOpen = true;
-      document.body.style.overflow = "hidden";
+    async refreshData() {
+      await this.loadData(true);
     },
 
-    closeModal() {
-      this.isModalOpen = false;
-      this.selectedItem = null;
-      document.body.style.overflow = "";
+    async loadRescuerInfo() {
+      if (!this.activeRequest?.id) return;
+      this.rescuerLoading = true;
+      try {
+        const requestId =
+          this.activeRequest.id_yeu_cau ||
+          this.activeRequest.id ||
+          this.activeRequest.yeu_cau?.id_yeu_cau;
+        if (!requestId) return;
+
+        const res = await rescueRequestAPI.getTrackingDetail(requestId);
+        const data = res?.data?.data || res?.data;
+
+        if (data) {
+          // Support both camelCase and snake_case from API
+          const phanCong =
+            data.phanCongs?.[0] ||
+            data.phan_congs?.[0] ||
+            data.phanCong ||
+            data.phan_cong ||
+            {};
+          const team =
+            phanCong.doiCuuHo ||
+            phanCong.doi_cuu_ho ||
+            data.team ||
+            data.doi_cuu_ho ||
+            {};
+          const members =
+            phanCong.thanhViens ||
+            phanCong.thanh_viens ||
+            team.thanhViens ||
+            team.thanh_viens ||
+            [];
+          const primaryMember =
+            members.find((m) => m.trang_thai === "online") ||
+            members[0];
+
+          this.activeRequest = {
+            ...this.activeRequest,
+            team: {
+              id: team.id_doi_cuu_ho || team.id || phanCong.id_doi,
+              ten_doi_cuu_ho: team.ten_doi || team.ten_co || team.tenDoi || phanCong.ten_doi || "",
+              so_dien_thoai: team.so_dien_thoai || team.sdt_hotline || "",
+              vi_tri_lat: phanCong.vi_tri_lat || phanCong.viTriLat || team.vi_tri_lat || null,
+              vi_tri_lng: phanCong.vi_tri_lng || phanCong.viTriLng || team.vi_tri_lng || null,
+            },
+            assignment: {
+              ...this.activeRequest.assignment,
+              id_phan_cong: phanCong.id_phan_cong || phanCong.id,
+              trang_thai_nhiem_vu:
+                phanCong.trang_thai_nhiem_vu || phanCong.trangThaiNhiemVu,
+              rescuer_name: primaryMember?.ho_ten || phanCong.ten_nguoi_tiep_nhan || "",
+              rescuer_phone:
+                primaryMember?.so_dien_thoai || phanCong.sdt_hotline || "",
+              thanh_viens: members,
+            },
+          };
+
+          // Update rescuer location if available
+          const rescuerLat = phanCong.vi_tri_lat || phanCong.viTriLat || team.vi_tri_lat;
+          const rescuerLng = phanCong.vi_tri_lng || phanCong.viTriLng || team.vi_tri_lng;
+          if (rescuerLat && rescuerLng) {
+            this.rescuerMarkerData = {
+              lat: Number(rescuerLat),
+              lng: Number(rescuerLng),
+            };
+            if (this.mapReady) this.updateRescuerMarker();
+          }
+
+          // Calculate ETA from route API
+          if (this.activeRequest.lat && this.activeRequest.lng && this.rescuerMarkerData) {
+            this.calculateETA();
+          }
+        }
+      } catch (e) {
+        console.warn("Không thể tải thông tin rescuer:", e);
+      } finally {
+        this.rescuerLoading = false;
+      }
+    },
+
+    normalizeItem(item) {
+      const lat = item.vi_tri_lat || item.lat;
+      const lng = item.vi_tri_lng || item.lng;
+      const address =
+        item.vi_tri_dia_chi || item.dia_chi || item.address || item.vi_tri || "Chưa xác định";
+
+      // Laravel serializes relationships as camelCase in JSON
+      // Support both camelCase (API response) and snake_case (internal)
+      const phanCongRaw =
+        item.phanCongs?.[0] ||
+        item.phan_congs?.[0] ||
+        item.phan_cong ||
+        item.phanCong ||
+        item.assignment ||
+        {};
+      const teamRaw =
+        item.doiCuuHo ||
+        item.doi_cuu_ho ||
+        item.team ||
+        phanCongRaw.doiCuuHo ||
+        phanCongRaw.doi_cuu_ho ||
+        {};
+
+      // Get team location from assignment or team object
+      const rescuerLat =
+        phanCongRaw.vi_tri_lat ||
+        phanCongRaw.viTriLat ||
+        teamRaw.vi_tri_lat ||
+        teamRaw.viTriLat ||
+        null;
+      const rescuerLng =
+        phanCongRaw.vi_tri_lng ||
+        phanCongRaw.viTriLng ||
+        teamRaw.vi_tri_lng ||
+        teamRaw.viTriLng ||
+        null;
+
+      // Get member info (thanhViens in camelCase)
+      const members =
+        phanCongRaw.thanhViens ||
+        phanCongRaw.thanh_viens ||
+        teamRaw.thanhViens ||
+        teamRaw.thanh_viens ||
+        [];
+      const primaryMember =
+        members.find((m) => m.trang_thai === "online") ||
+        members.find((m) => m.trangThai === "online") ||
+        members[0];
+
+      let typeLabel = "Yêu cầu cứu hộ";
+      if (item.loaiSuCo) {
+        typeLabel = normalizeValue(
+          item.loaiSuCo.ten_danh_muc || item.loaiSuCo.ten_loai_su_co || item.loaiSuCo.ten
+        );
+      } else if (item.loai_su_co) {
+        typeLabel = normalizeValue(item.loai_su_co);
+      } else {
+        typeLabel = normalizeValue(
+          item.ten_loai_su_co || item.loai_su_co || item.loai || item.chi_tiet
+        );
+      }
+
+      return {
+        id: item.id_yeu_cau || item.id || item.ma_yeu_cau,
+        loai: typeLabel,
+        moTa: normalizeValue(item.mo_ta || item.moTa || item.description),
+        address,
+        lat: lat ? Number(lat) : null,
+        lng: lng ? Number(lng) : null,
+        mucDoKhanCap: normalizeValue(
+          item.muc_do_khan_cap || item.mucDoKhanCap || item.priority
+        ),
+        trangThai: item.trang_thai || "CHO_XU_LY",
+        trangThaiNhiemVu: phanCongRaw.trang_thai_nhiem_vu || phanCongRaw.trangThaiNhiemVu || "",
+        createdAt:
+          item.thoi_gian_tao ||
+          item.thoiGianTao ||
+          item.created_at ||
+          item.thoi_gian ||
+          item.time,
+        // Assignment data
+        assignment: {
+          id_phan_cong: phanCongRaw.id_phan_cong || phanCongRaw.id_phanCong || phanCongRaw.id,
+          trang_thai_nhiem_vu:
+            phanCongRaw.trang_thai_nhiem_vu || phanCongRaw.trangThaiNhiemVu || "",
+          rescuer_name:
+            primaryMember?.ho_ten ||
+            phanCongRaw.ten_nguoi_tiep_nhan ||
+            "",
+          rescuer_phone:
+            primaryMember?.so_dien_thoai ||
+            phanCongRaw.sdt_hotline ||
+            "",
+          thanh_viens: members,
+          eta: null,
+          distance: null,
+        },
+        // Team data
+        team: {
+          id: teamRaw.id_doi_cuu_ho || teamRaw.id || phanCongRaw.id_doi,
+          ten_doi_cuu_ho:
+            teamRaw.ten_doi || teamRaw.ten_co || teamRaw.tenDoi || phanCongRaw.ten_doi || "",
+          so_dien_thoai:
+            teamRaw.so_dien_thoai ||
+            teamRaw.sdt_hotline ||
+            "",
+          vi_tri_lat: rescuerLat,
+          vi_tri_lng: rescuerLng,
+        },
+        // Backward compat
+        phanCongs: item.phanCongs || item.phan_congs,
+        raw: item,
+      };
+    },
+
+    // ─── Map ───────────────────────────────────────────────────────────────────
+    onMapReady(container) {
+      if (this.mapReady) return;
+      this.$nextTick(() => this.initMap(container));
+    },
+
+    async initMap(container) {
+      if (!container) {
+        container = this.$el?.querySelector(".map-canvas");
+      }
+      if (!container) return;
+
+      this.mapLoading = true;
+      this.mapError = "";
+
+      try {
+        const mapEl =
+          typeof container === "object" && container.getBoundingClientRect
+            ? container
+            : container.$el || container;
+
+        await loadOpenMap();
+        this.map = createOpenMap(mapEl, {
+          center: [108.2022, 16.0544],
+          zoom: 14,
+          mapStyle: "day-v1",
+        });
+
+        this.map.on("load", () => {
+          this.mapReady = true;
+          this.mapLoading = false;
+          this.updateMapMarkers();
+          this.observeMapContainer();
+        });
+      } catch (error) {
+        this.mapError = error?.message || "Không thể tải bản đồ";
+        this.mapLoading = false;
+      }
+    },
+
+    updateMapMarkers() {
+      if (!this.map || !this.activeRequest) return;
+
+      // Client / incident marker
+      if (this.activeRequest.lat && this.activeRequest.lng) {
+        if (this.incidentMarker) this.incidentMarker.remove();
+
+        const sev = this.activeRequest.mucDoKhanCap?.toUpperCase() || "";
+        const colorMap = { CRITICAL: "#7f1d1d", HIGH: "#dc2626", MEDIUM: "#f97316", LOW: "#22c55e" };
+        const color = colorMap[sev] || "#dc2626";
+
+        this.incidentMarker = createOpenMapMarker({
+          position: { lng: Number(this.activeRequest.lng), lat: Number(this.activeRequest.lat) },
+          fillColor: color,
+          label: { text: "!" },
+          title: this.activeRequest.loai,
+        }).addTo(this.map);
+
+        this.map.flyTo({
+          center: [Number(this.activeRequest.lng), Number(this.activeRequest.lat)],
+          zoom: 15,
+          essential: true,
+        });
+
+        // Draw route to incident if rescuer location known
+        if (this.rescuerMarkerData && this.currentProgressStep >= 3) {
+          this.drawRoute(
+            this.rescuerMarkerData.lat,
+            this.rescuerMarkerData.lng,
+            this.activeRequest.lat,
+            this.activeRequest.lng
+          );
+        }
+      }
+
+      this.updateRescuerMarker();
+    },
+
+    updateRescuerMarker() {
+      if (!this.map || !this.showRescuerMarker || !this.rescuerMarkerData) return;
+
+      const { lat, lng } = this.rescuerMarkerData;
+
+      if (this.rescuerMarker) {
+        this.rescuerMarker.setLngLat([Number(lng), Number(lat)]);
+      } else {
+        this.rescuerMarker = createOpenMapMarker({
+          position: { lng: Number(lng), lat: Number(lat) },
+          fillColor: "#10b981",
+          title: "Đội cứu hộ",
+        }).addTo(this.map);
+      }
+    },
+
+    async drawRoute(lat1, lng1, lat2, lng2) {
+      if (!this.map) return;
+      this.cleanupRoute();
+      try {
+        const response = await fetch(
+          `https://router.project-osrm.org/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=full&geometries=geojson`
+        );
+        const data = await response.json();
+        if (data.routes?.length > 0) {
+          const coordinates = data.routes[0].geometry.coordinates.map((c) => [c[0], c[1]]);
+          const routeGeoJSON = {
+            type: "Feature",
+            geometry: { type: "LineString", coordinates },
+          };
+          this.map.addSource("rescue-route", { type: "geojson", data: routeGeoJSON });
+          this.map.addLayer({
+            id: "rescue-route-line",
+            type: "line",
+            source: "rescue-route",
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: { "line-color": "#10b981", "line-width": 5, "line-opacity": 0.8 },
+          });
+          this.routeSource = "rescue-route";
+          this.routeLayer = "rescue-route-line";
+        }
+      } catch {
+        // silent
+      }
+    },
+
+    cleanupRoute() {
+      if (!this.map) return;
+      if (this.routeLayer && this.map.getLayer(this.routeLayer)) {
+        this.map.removeLayer(this.routeLayer);
+        this.routeLayer = null;
+      }
+      if (this.routeSource && this.map.getSource(this.routeSource)) {
+        this.map.removeSource(this.routeSource);
+        this.routeSource = null;
+      }
+    },
+
+    observeMapContainer() {
+      const mapEl = this.$el?.querySelector(".map-canvas");
+      if (!mapEl || typeof ResizeObserver === "undefined") return;
+      this.mapResizeObserver = new ResizeObserver(() => {
+        if (this.map) this.map.resize();
+      });
+      this.mapResizeObserver.observe(mapEl);
+    },
+
+    cleanupMap() {
+      if (this.mapResizeObserver) {
+        this.mapResizeObserver.disconnect();
+        this.mapResizeObserver = null;
+      }
+      if (this.map) {
+        this.map.remove();
+        this.map = null;
+      }
+      this.mapReady = false;
+      this.clientMarker = null;
+      this.rescuerMarker = null;
+      this.incidentMarker = null;
+    },
+
+    zoomIn() { if (this.map) this.map.zoomIn(); },
+    zoomOut() { if (this.map) this.map.zoomOut(); },
+    locateMe() {
+      if (!navigator.geolocation || !this.map) return;
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude: lat, longitude: lng } = pos.coords;
+          if (lat > 12 && lng > 107.5) {
+            this.map.flyTo({ center: [lng, lat], zoom: 15, essential: true });
+          }
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      );
+    },
+
+    async calculateETA() {
+      if (!this.rescuerMarkerData || !this.activeRequest?.lat) return;
+      try {
+        const { lat: lat1, lng: lng1 } = this.rescuerMarkerData;
+        const lat2 = this.activeRequest.lat;
+        const lng2 = this.activeRequest.lng;
+        const response = await fetch(
+          `https://router.project-osrm.org/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=false`
+        );
+        const data = await response.json();
+        if (data.routes?.length > 0) {
+          const durationSeconds = data.routes[0].duration;
+          const distanceMeters = data.routes[0].distance;
+          const etaMinutes = Math.ceil(durationSeconds / 60);
+          const distanceKm = distanceMeters / 1000;
+          this.activeRequest = {
+            ...this.activeRequest,
+            assignment: {
+              ...this.activeRequest.assignment,
+              eta: etaMinutes,
+              distance: parseFloat(distanceKm.toFixed(1)),
+            },
+          };
+        }
+      } catch { /* silent */ }
+    },
+
+    // ─── Realtime ─────────────────────────────────────────────────────────────
+    subscribeToReverb() {
+      if (!window.Echo) {
+        setTimeout(() => this.subscribeToReverb(), 2000);
+        return;
+      }
+      const connect = () => {
+        this.realtimeChannel = window.Echo.channel("rescue-requests");
+        this.realtimeChannel.listen("RescueRequestUpdated", (data) => {
+          this.handleReverbEvent(data);
+        });
+        // Subscribe to rescuer location updates for the current team
+        this.subscribeToRescuerLocation();
+      };
+      const conn = window.Echo.connector?.pusher?.connection;
+      if (conn?.state === "connected") {
+        connect();
+      } else if (conn) {
+        conn.bind("connected", connect);
+        setTimeout(() => { if (!this.realtimeChannel) connect(); }, 5000);
+      } else {
+        setTimeout(() => this.subscribeToReverb(), 2000);
+      }
+    },
+
+    unsubscribeFromReverb() {
+      if (this.realtimeChannel) {
+        this.realtimeChannel.stopListening("RescueRequestUpdated");
+        window.Echo.leave("rescue-requests");
+        this.realtimeChannel = null;
+      }
+      this.unsubscribeFromRescuerLocation();
+    },
+
+    subscribeToRescuerLocation() {
+      if (!window.Echo) return;
+      this.unsubscribeFromRescuerLocation();
+
+      const teamId = this.activeRequest?.team?.id || this.activeRequest?.team?.id_doi_cuu_ho || this.activeRequest?.assignment?.id_doi_cuu_ho;
+      if (!teamId) return;
+
+      this.rescuerLocationChannel = window.Echo.channel(`rescuer-location.${teamId}`);
+      this.rescuerLocationChannel.listen("location.updated", (data) => {
+        this.handleLocationEvent(data);
+      });
+    },
+
+    unsubscribeFromRescuerLocation() {
+      if (this.rescuerLocationChannel) {
+        this.rescuerLocationChannel.stopListening("location.updated");
+        const teamId = this.activeRequest?.team?.id || this.activeRequest?.team?.id_doi_cuu_ho || this.activeRequest?.assignment?.id_doi_cuu_ho;
+        if (teamId) {
+          window.Echo.leave(`rescuer-location.${teamId}`);
+        }
+        this.rescuerLocationChannel = null;
+      }
+    },
+
+    handleReverbEvent(data) {
+      const userId = extractUserId();
+      if (!userId) return;
+      const eventUserId = data.id_nguoi_dung ?? data.userId;
+      if (eventUserId && Number(eventUserId) !== Number(userId)) return;
+
+      const requestId = String(data.id_yeu_cau ?? data.id ?? "");
+      const closed = new Set(["HOAN_THANH", "DA_HOAN_THANH", "HUY_BO", "DA_HUY", "TU_CHOI", "THAT_BAI", "DONE"]);
+
+      if (closed.has(data.trang_thai)) {
+        this.activeRequest = null;
+        toaster.info("Yêu cầu đã hoàn thành hoặc bị hủy.");
+        return;
+      }
+
+      if (this.activeRequest && String(this.activeRequest.id) === requestId) {
+        this.activeRequest = {
+          ...this.activeRequest,
+          trangThai: data.trang_thai || this.activeRequest.trangThai,
+          trangThaiNhiemVu: data.trang_thai_nhiem_vu || data.assignmentStatus || this.activeRequest.trangThaiNhiemVu,
+          team: data.ten_doi_cuu_ho ? { ...this.activeRequest.team, ten_doi_cuu_ho: data.ten_doi_cuu_ho } : this.activeRequest.team,
+          assignment: data.id_phan_cong
+            ? {
+                ...this.activeRequest.assignment,
+                id_phan_cong: data.id_phan_cong,
+                rescuer_name: data.rescuer_name || this.activeRequest.assignment.rescuer_name,
+                rescuer_phone: data.rescuer_phone || this.activeRequest.assignment.rescuer_phone,
+                trang_thai_nhiem_vu: data.trang_thai_nhiem_vu || this.activeRequest.assignment.trang_thai_nhiem_vu,
+              }
+            : this.activeRequest.assignment,
+        };
+
+        const newStep = getStepFromStatus(data.trang_thai || data.trang_thai_nhiem_vu);
+        const oldStep = getStepFromStatus(this.activeRequest.trangThai);
+        if (newStep !== oldStep) {
+          const statusMessages = {
+            2: "Đã có đội cứu hộ nhận nhiệm vụ!",
+            3: "Đội cứu hộ đang di chuyển đến hiện trường!",
+            4: "Đội cứu hộ đã đến hiện trường!",
+            5: "Nhiệm vụ đã hoàn thành!",
+          };
+          if (statusMessages[newStep]) {
+            toaster.success(statusMessages[newStep]);
+          }
+          // Load rescuer info when first assigned
+          if (newStep >= 2) {
+            this.loadRescuerInfo();
+          }
+          // Subscribe to rescuer location updates when assigned
+          if (newStep >= 2) {
+            this.subscribeToRescuerLocation();
+          }
+          // Update map when step changes
+          this.$nextTick(() => {
+            if (this.mapReady) this.updateMapMarkers();
+          });
+        }
+      }
+    },
+
+    handleLocationEvent(data) {
+      if (!this.activeRequest) return;
+      const teamId = data.id_doi_cuu_ho ?? data.teamId;
+      const currentTeamId =
+        this.activeRequest.team?.id_doi_cuu_ho ||
+        this.activeRequest.team?.id ||
+        this.activeRequest.assignment?.id_doi_cuu_ho;
+      if (teamId && currentTeamId && String(teamId) !== String(currentTeamId)) return;
+
+      if (data.lat && data.lng) {
+        this.rescuerMarkerData = { lat: Number(data.lat), lng: Number(data.lng) };
+        if (this.mapReady) {
+          this.updateRescuerMarker();
+          this.calculateETA();
+        }
+      }
+    },
+
+    startFallbackPolling() {
+      this.stopFallbackPolling();
+      this.fallbackPollingInterval = setInterval(async () => {
+        const status = window.realtimeConnectionStatus || "connecting";
+        if (status === "connected") return;
+        try {
+          await this.loadData(true);
+        } catch { /* silent */ }
+      }, 30000);
+    },
+
+    stopFallbackPolling() {
+      if (this.fallbackPollingInterval) {
+        clearInterval(this.fallbackPollingInterval);
+        this.fallbackPollingInterval = null;
+      }
+    },
+
+    formatTime,
+    getPriorityClass(item) {
+      const level = item?.mucDoKhanCap?.toUpperCase() || "";
+      if (level === "CRITICAL" || level === "HIGH") return "dot-danger";
+      if (level === "MEDIUM") return "dot-warning";
+      return "dot-normal";
+    },
+    getStatusText(item) {
+      const step = getStepFromStatus(item?.trangThai);
+      const statusMap = { 1: "Chờ xử lý", 2: "Đã phân công", 3: "Đang xử lý", 4: "Đã đến hiện trường", 5: "Hoàn thành" };
+      return statusMap[step] || "Chờ xử lý";
+    },
+    getStatusClass(item) {
+      const step = getStepFromStatus(item?.trangThai);
+      if (step >= 5) return "badge-success";
+      if (step >= 3) return "badge-orange";
+      if (step >= 2) return "badge-blue";
+      return "badge-gray";
     },
   },
 };
 </script>
 
 <style scoped>
-/* Typography */
-h1, h2, h3, h4, h5, .font-headline {
-  font-family: 'Manrope', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  letter-spacing: -0.02em;
+/* ─── Page Layout ──────────────────────────────────────────────────────────── */
+.dang-xu-ly-page {
+  min-height: calc(100vh - 130px);
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --page-px: 1rem;
 }
 
-/* Animations */
-@keyframes pulse-dot {
-  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-  70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-}
-
-@keyframes pulse-light {
-  0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
-  70% { box-shadow: 0 0 0 6px rgba(255, 255, 255, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
-}
-
-.pulse-dot {
-  width: 10px;
-  height: 10px;
-  background-color: #ef4444;
-  border-radius: 50%;
-  display: inline-block;
-  animation: pulse-dot 2s infinite;
-}
-
-.pulse-dot-small {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
-  animation: pulse-light 2s infinite;
-}
-
-/* Cards */
-.active-card {
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  border: 1px solid rgba(0,0,0,0.05);
-}
-
-.active-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.08) !important;
-  border-color: rgba(0,0,0,0.1);
-}
-
-.object-fit-cover {
-  object-fit: cover;
-}
-
-/* ─── Progress Step Indicators ─────────────────────────────────────────────── */
-.step-done {
-  color: #16a34a !important;
-  font-weight: 700;
-}
-
-.step-active {
-  color: #2563eb !important;
-  font-weight: 800;
-  opacity: 1 !important;
-}
-
-.step-pending {
-  opacity: 0.4;
-}
-
-/* Modal styling */
-.modal-overlay {
-  position: fixed;
+/* ─── Header ─────────────────────────────────────────────────────────────── */
+.page-header {
+  background: #1e293b;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(17, 24, 39, 0.6);
-  backdrop-filter: blur(4px);
+  z-index: 50;
+  flex-shrink: 0;
+}
+
+.header-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 1.25rem;
+}
+
+.back-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1050;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.header-title-group {
+  flex: 1;
+  min-width: 0;
+}
+
+.header-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.1rem;
+}
+
+.status-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: header-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes header-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239, 68, 69, 0.6); }
+  50% { opacity: 0.8; box-shadow: 0 0 0 5px rgba(239, 68, 69, 0); }
+}
+
+.status-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #ef4444;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.header-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #f1f5f9;
+  margin: 0;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.request-id-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 20px;
+  background: rgba(37, 99, 235, 0.25);
+  color: #93c5fd;
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-family: monospace;
+  white-space: nowrap;
+}
+
+.refresh-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Content ────────────────────────────────────────────────────────────── */
+.page-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ─── Loading State ─────────────────────────────────────────────────────── */
+.loading-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-spinner-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.loading-text {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+/* ─── Empty State ───────────────────────────────────────────────────────── */
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+.empty-icon-wrap {
+  color: #cbd5e1;
+  margin-bottom: 1.25rem;
+}
+
+.empty-heading {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #334155;
+  margin-bottom: 0.5rem;
+}
+
+.empty-desc {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+  max-width: 360px;
+}
+
+.empty-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.25rem;
+  border-radius: 12px;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.empty-action-btn:hover {
+  background: #b91c1c;
+  color: #ffffff;
+}
+
+.empty-action-btn:active {
+  opacity: 0.85;
+}
+
+/* ─── Active Layout ─────────────────────────────────────────────────────── */
+.active-layout {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.active-layout.map-visible {
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+@media (min-width: 1024px) {
+  .active-layout.map-visible {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    grid-template-rows: 1fr;
+    height: calc(100vh - 130px);
+  }
+
+  .info-section {
+    overflow-y: auto;
+    height: 100%;
+  }
+
+  .map-section {
+    height: 100% !important;
+  }
+}
+
+/* ─── Info Section ──────────────────────────────────────────────────────── */
+.info-section {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1rem 5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.info-section::-webkit-scrollbar {
+  width: 4px;
+}
+.info-section::-webkit-scrollbar-track { background: transparent; }
+.info-section::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
+
+/* ─── Priority Banner ────────────────────────────────────────────────────── */
+.priority-banner {
+  border-radius: 14px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.banner-danger { background: #fef2f2; border: 1px solid #fecaca; }
+.banner-warning { background: #fefce8; border: 1px solid #fde047; }
+.banner-success { background: #f0fdf4; border: 1px solid #bbf7d0; }
+
+.banner-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.banner-danger .banner-icon { background: #dc2626; color: #ffffff; }
+.banner-warning .banner-icon { background: #ca8a04; color: #ffffff; }
+.banner-success .banner-icon { background: #16a34a; color: #ffffff; }
+
+.banner-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.banner-level {
+  font-size: 0.85rem;
+  font-weight: 800;
+  display: block;
+}
+
+.banner-danger .banner-level { color: #991b1b; }
+.banner-warning .banner-level { color: #713f12; }
+.banner-success .banner-level { color: #14532d; }
+
+.banner-type {
+  font-size: 0.7rem;
+  font-weight: 600;
+  opacity: 0.6;
+}
+
+.banner-time {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #94a3b8;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ─── Incident Card ─────────────────────────────────────────────────────── */
+.incident-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
   padding: 1rem;
 }
 
-.modal-content {
+.incident-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.incident-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.incident-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.incident-address {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-bottom: 0.5rem;
+}
+
+.incident-address svg {
+  color: #ef4444;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.incident-description {
+  font-size: 0.82rem;
+  color: #94a3b8;
+  line-height: 1.5;
+  padding-top: 0.5rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* ─── Progress Card ─────────────────────────────────────────────────────── */
+.progress-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.card-section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.875rem;
+}
+
+/* ─── Map Section ───────────────────────────────────────────────────────── */
+.map-section {
+  height: 280px;
+  flex-shrink: 0;
+}
+
+/* ─── Detail Modal ──────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 200;
+  padding: 0;
+}
+
+.modal-card {
+  background: #ffffff;
+  border-radius: 20px 20px 0 0;
   width: 100%;
-  max-height: 90vh;
+  max-width: 600px;
+  max-height: 85vh;
   overflow-y: auto;
   animation: modal-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+@media (min-width: 640px) {
+  .modal-overlay {
+    align-items: center;
+    padding: 1rem;
+  }
+  .modal-card {
+    border-radius: 20px;
+  }
+}
+
 @keyframes modal-enter {
-  from { opacity: 0; transform: translateY(20px) scale(0.98); }
+  from { opacity: 0; transform: translateY(30px) scale(0.97); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* Utilities */
-.tracking-wider { letter-spacing: 0.05em; }
-.tracking-tight { letter-spacing: -0.02em; }
-.shrink-0 { flex-shrink: 0; }
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.25rem 0;
+  position: sticky;
+  top: 0;
+  background: #ffffff;
+  z-index: 1;
+}
+
+.modal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: #2563eb;
+}
+
+.modal-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.modal-close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: #f1f5f9;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modal-close-btn:hover {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.modal-body {
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.detail-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.detail-value {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1e293b;
+  text-align: right;
+  line-height: 1.4;
+}
+
+.font-mono {
+  font-family: monospace;
+  font-weight: 800;
+  color: #2563eb;
+}
+
+.priority-pill {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.priority-pill.banner-danger { background: #fef2f2; color: #991b1b; }
+.priority-pill.banner-warning { background: #fefce8; color: #713f12; }
+.priority-pill.banner-success { background: #f0fdf4; color: #14532d; }
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding: 0.75rem 1.25rem 1.25rem;
+  position: sticky;
+  bottom: 0;
+  background: #ffffff;
+}
+
+.modal-btn-cancel {
+  padding: 0.6rem 1.25rem;
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: "Inter", sans-serif;
+}
+
+.modal-btn-cancel:hover {
+  border-color: #cbd5e1;
+  color: #334155;
+  background: #f8fafc;
+}
+
+.modal-btn-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: 10px;
+  border: none;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: "Inter", sans-serif;
+}
+
+.modal-btn-nav:hover {
+  background: #b91c1c;
+  color: #ffffff;
+}
+
+/* ─── List View ──────────────────────────────────────────────────────── */
+.list-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.request-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.request-list::-webkit-scrollbar { width: 4px; }
+.request-list::-webkit-scrollbar-track { background: transparent; }
+.request-list::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
+
+.request-list-item {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.875rem 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.request-list-item:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.request-list-item:active {
+  opacity: 0.85;
+}
+
+.list-item-priority-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 0.3rem;
+}
+
+.dot-danger { background: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 69, 0.2); }
+.dot-warning { background: #f97316; box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2); }
+.dot-normal { background: #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2); }
+
+.list-item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.list-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.list-item-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+}
+
+.list-item-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.list-item-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.badge-success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.badge-orange { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+.badge-blue { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.badge-gray { background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; }
+
+.list-item-arrow {
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.list-item-address {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.375rem;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.list-item-address svg {
+  color: #ef4444;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.list-item-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.list-item-time {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.list-item-id {
+  font-size: 0.65rem;
+  font-weight: 700;
+  font-family: monospace;
+  color: #2563eb;
+  background: #eff6ff;
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+}
+
+/* ─── Detail View ─────────────────────────────────────────────────────── */
+.detail-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ─── Request Count Chip ─────────────────────────────────────────────── */
+.request-count-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 20px;
+  background: rgba(37, 99, 235, 0.15);
+  color: #93c5fd;
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ─── Responsive ────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .header-inner {
+    padding: 0.75rem 1rem;
+    gap: 0.75rem;
+  }
+
+  .header-title {
+    font-size: 0.9rem;
+  }
+
+  .info-section {
+    padding: 0.75rem 0.75rem 6rem;
+    gap: 0.75rem;
+  }
+
+  .map-section {
+    height: 240px;
+  }
+
+  .incident-card,
+  .progress-card {
+    padding: 0.875rem;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .map-section {
+    height: 320px;
+  }
+}
 </style>

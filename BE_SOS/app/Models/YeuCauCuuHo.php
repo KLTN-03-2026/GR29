@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\ChiTietLoaiSuCo;
 use Illuminate\Database\Eloquent\Model;
 
 class YeuCauCuuHo extends Model
 {
     protected $table = 'yeu_cau_cuu_ho';
     protected $primaryKey = 'id_yeu_cau';
-    protected $fillable = ['id_nguoi_dung', 'id_loai_su_co', 'vi_tri_lat', 'vi_tri_lng', 'vi_tri_dia_chi', 'chi_tiet', 'mo_ta', 'hinh_anh', 'so_nguoi_bi_anh_huong', 'muc_do_khan_cap', 'diem_uu_tien', 'trang_thai', 'thoi_gian_gui'];
+    protected $fillable = ['id_nguoi_dung', 'id_loai_su_co', 'vi_tri_lat', 'vi_tri_lng', 'vi_tri_dia_chi', 'chi_tiet', 'mo_ta', 'hinh_anh', 'so_nguoi_bi_anh_huong', 'muc_do_khan_cap', 'diem_uu_tien', 'trang_thai', 'thoi_gian_gui', 'device_id', 'guest_session_id'];
 
     /**
      * Relationship with NguoiDung (User)
@@ -72,6 +73,28 @@ class YeuCauCuuHo extends Model
     public function baoCao()
     {
         return $this->hasOne(RescueReport::class, 'id_yeu_cau', 'id_yeu_cau');
+    }
+
+    /**
+     * Relationship with GuestSession (if request was sent by non-logged-in guest)
+     */
+    public function guestSession()
+    {
+        return $this->belongsTo(GuestSession::class, 'guest_session_id', 'id');
+    }
+    /**
+     * Relationship with ChiTietLoaiSuCo (via chi_tiet field or loaiSuCo.chiTiets)
+     */
+    public function chiTiet()
+    {
+        return $this->hasManyThrough(
+            ChiTietLoaiSuCo::class,
+            LoaiSuCo::class,
+            'id_loai_su_co',
+            'id_loai_su_co',
+            'id_loai_su_co',
+            'id_loai_su_co'
+        );
     }
 
     /**

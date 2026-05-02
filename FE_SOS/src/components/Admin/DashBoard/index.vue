@@ -270,7 +270,7 @@
                   <h6 class="mb-0 fw-semibold">Trạng thái đội cứu hộ</h6>
                   <small class="text-muted">Tổng {{ stats.totalTeams }} đội</small>
                 </div>
-                <router-link to="/admin/resources" class="btn btn-sm btn-outline-primary">
+                <router-link to="/admin/doi-cuu-ho" class="btn btn-sm btn-outline-primary">
                   Quản lý <i class="fa-solid fa-arrow-right ms-1"></i>
                 </router-link>
               </div>
@@ -676,7 +676,7 @@ export default {
         : Array.isArray(rawData?.data?.data) ? rawData.data.data
         : [];
       return items.map(item => {
-        const name = normalizeText(item.ten_co || item.name || "Đội không tên");
+        const name = normalizeText(item.ten_doi || item.ten_co || item.name || "Đội không tên");
         const area = normalizeText(item.khu_vuc_quan_ly || item.area || "");
         const st = item.trang_thai || "SanSang";
         const stNorm = normalizeStatus(st);

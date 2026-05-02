@@ -8,7 +8,7 @@ class PhanCongCuuHo extends Model
 {
     protected $table = 'phan_cong_cuu_ho';
     protected $primaryKey = 'id_phan_cong';
-    protected $fillable = ['id_yeu_cau', 'id_doi_cuu_ho', 'id_chi_tiet_su_co', 'mo_ta', 'thoi_gian_phan_cong', 'trang_thai_nhiem_vu'];
+    protected $fillable = ['id_yeu_cau', 'id_doi_cuu_ho', 'id_chi_tiet_su_co', 'mo_ta', 'id_thanh_vien_tiep_nhan', 'nguoi_dieu_phoi', 'thoi_gian_phan_cong', 'trang_thai_nhiem_vu', 'vi_tri_lat', 'vi_tri_lng'];
 
     /**
      * Relationship with YeuCauCuuHo
@@ -32,5 +32,13 @@ class PhanCongCuuHo extends Model
     public function ketQua()
     {
         return $this->hasOne(KetQuaCuuHo::class, 'id_phan_cong', 'id_phan_cong');
+    }
+
+    /**
+     * Relationship with ThanhVienDoi who accepted this assignment
+     */
+    public function thanhVienTiepNhan()
+    {
+        return $this->belongsTo(ThanhVienDoi::class, 'id_thanh_vien_tiep_nhan', 'id_thanh_vien_doi');
     }
 }

@@ -47,28 +47,33 @@
         <i class="fa-solid fa-chart-column me-2"></i>Báo cáo thống kê
       </router-link>
 
-      <div class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mt-3 mb-2">Cấu hình</div>
-      <router-link class="nav-item-link" to="/admin/incident-types">
-        <i class="fa-solid fa-bolt me-2"></i>Loại sự cố
+      <div v-if="canViewConfig" class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mt-3 mb-2">Cấu hình
+      </div>
+      <router-link v-if="canViewConfig" class="nav-item-link" to="/admin/realtime-dispatch">
+        <i class="fa-solid fa-bolt me-2"></i>Auto Dispatch
       </router-link>
-      <router-link class="nav-item-link" to="/admin/resources">
-        <i class="fa-solid fa-helmet-safety me-2"></i>Đội cứu hộ & tài nguyên
-      </router-link>
-      <router-link class="nav-item-link" to="/admin/ai-scoring">
+      
+      <router-link v-if="canViewConfig" class="nav-item-link" to="/admin/ai-scoring">
         <i class="fa-solid fa-brain me-2"></i>Trọng số AI scoring
       </router-link>
 
 
-      <div class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mt-3 mb-2">Tài khoản & phân quyền</div>
-      <router-link class="nav-item-link" to="/admin/accounts/admin">
+      <div v-if="canViewAccounts" class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mt-3 mb-2">Quản Lý</div>
+        <router-link v-if="canViewConfig" class="nav-item-link" to="/admin/tai-nguyen">
+        <i class="fa-solid fa-helmet-safety me-2"></i>Tài nguyên
+      </router-link>
+      <router-link v-if="canViewConfig" class="nav-item-link" to="/admin/doi-cuu-ho">
+        <i class="fa-solid fa-helmet-safety me-2"></i>Đội cứu hộ 
+      </router-link>
+      <router-link v-if="canViewAccounts" class="nav-item-link" to="/admin/accounts/admin">
         <i class="fa-solid fa-user-shield me-2"></i>Tài khoản ADMIN
       </router-link>
 
-      <router-link class="nav-item-link" to="/admin/accounts/user">
+      <router-link v-if="canViewAccounts" class="nav-item-link" to="/admin/accounts/user">
         <i class="fa-solid fa-user me-2"></i>Tài khoản USER
       </router-link>
 
-      <router-link class="nav-item-link" to="/admin/accounts/rescuer">
+      <router-link v-if="canViewAccounts" class="nav-item-link" to="/admin/accounts/rescuer">
         <i class="fa-solid fa-user-nurse me-2"></i>Tài khoản RESCUER
       </router-link>
     </nav>
@@ -76,8 +81,37 @@
 </template>
 
 <script>
+import { ADMIN, MANAGER_OPERATOR, OPERATOR } from "../../constants/roles.js";
+
+const ROLE_SLUGS = {
+  [ADMIN]: "admin",
+  [MANAGER_OPERATOR]: "manager_operator",
+  [OPERATOR]: "operator",
+};
+
 export default {
   name: "MenuAdmin",
+  computed: {
+    currentRole() {
+      try {
+        const raw = localStorage.getItem("admin_user");
+        if (!raw) return null;
+        const user = JSON.parse(raw);
+        return user.chuc_vu?.slug_chuc_vu
+          || user.chucVu?.slug_chuc_vu
+          || ROLE_SLUGS[user.id_chuc_vu || user.chuc_vu?.id_chuc_vu || user.chucVu?.id_chuc_vu]
+          || null;
+      } catch {
+        return null;
+      }
+    },
+    canViewConfig() {
+      return ["admin", "manager_operator"].includes(this.currentRole);
+    },
+    canViewAccounts() {
+      return this.currentRole === "admin";
+    },
+  },
 };
 </script>
 

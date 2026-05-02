@@ -15,6 +15,19 @@ class ChiTietLoaiSuCoSeeder extends Seeder
     {
         ChiTietLoaiSuCo::query()->delete();
 
+        $priorityScores = [
+            'Cứu nạn - mắc kẹt' => 10,
+            'Hỗ trợ y tế' => 9,
+            'Hỗ trợ di dời' => 8,
+            'Hỗ trợ người yếu thế' => 8,
+            'Cung cấp nước sạch' => 7,
+            'Cung cấp lương thực' => 6,
+            'Hỗ trợ sinh hoạt' => 5,
+            'Khắc phục giao thông' => 4,
+            'Khắc phục công trình' => 4,
+            'Khắc phục nhà cửa' => 3,
+        ];
+
         $details = [
             1 => [ // Lũ lụt
                 'Cứu nạn - mắc kẹt',
@@ -22,7 +35,6 @@ class ChiTietLoaiSuCoSeeder extends Seeder
                 'Cung cấp lương thực',
                 'Cung cấp nước sạch',
                 'Hỗ trợ di dời',
-                'Tìm kiếm người mất tích',
                 'Hỗ trợ người yếu thế'
             ],
 
@@ -33,14 +45,12 @@ class ChiTietLoaiSuCoSeeder extends Seeder
                 'Cung cấp nước sạch',
                 'Hỗ trợ di dời',
                 'Khắc phục nhà cửa',
-                'Tìm kiếm người mất tích',
                 'Hỗ trợ người yếu thế'
             ],
 
             3 => [ // Sạt lở đất
                 'Cứu nạn - mắc kẹt',
                 'Hỗ trợ y tế',
-                'Tìm kiếm người mất tích',
                 'Hỗ trợ di dời',
                 'Khắc phục giao thông',
                 'Hỗ trợ người yếu thế'
@@ -49,7 +59,6 @@ class ChiTietLoaiSuCoSeeder extends Seeder
             4 => [ // Động đất
                 'Cứu nạn - mắc kẹt',
                 'Hỗ trợ y tế',
-                'Tìm kiếm người mất tích',
                 'Hỗ trợ di dời',
                 'Khắc phục công trình',
                 'Hỗ trợ người yếu thế'
@@ -61,7 +70,6 @@ class ChiTietLoaiSuCoSeeder extends Seeder
                 'Cung cấp lương thực',
                 'Cung cấp nước sạch',
                 'Hỗ trợ di dời',
-                'Tìm kiếm người mất tích',
                 'Hỗ trợ người yếu thế'
             ],
 
@@ -82,7 +90,8 @@ class ChiTietLoaiSuCoSeeder extends Seeder
                 ChiTietLoaiSuCo::create([
                     'id_loai_su_co' => $idLoaiSuCo,
                     'ten_chi_tiet' => $detail,
-                    'mo_ta' => "Chi tiết: {$detail}"
+                    'mo_ta' => "Chi tiết: {$detail}",
+                    'diem_uu_tien' => $priorityScores[$detail],
                 ]);
                 $count++;
             }

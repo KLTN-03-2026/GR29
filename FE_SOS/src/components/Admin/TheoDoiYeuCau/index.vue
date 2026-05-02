@@ -70,7 +70,7 @@
               </div>
               <div v-if="item.doi_cuu_ho" class="mt-2">
                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 small fw-medium">
-                  <i class="fa-solid fa-truck-medical me-1"></i>{{ item.doi_cuu_ho.ten_co }}
+                  <i class="fa-solid fa-truck-medical me-1"></i>{{ item.doi_cuu_ho.ten_doi || item.doi_cuu_ho.ten_co }}
                 </span>
               </div>
             </div>
@@ -127,7 +127,7 @@
                         <i class="fa-solid fa-user-shield"></i>
                       </div>
                       <div class="flex-grow-1">
-                        <h5 class="mb-1 fw-bold">{{ pc.ten_doi }}</h5>
+                        <h5 class="mb-1 fw-bold">{{ pc.ten_doi || 'Chưa xác định' }}</h5>
                         <p class="text-muted mb-0 small">
                           <i class="fa-solid fa-phone me-1"></i> {{ pc.sdt_hotline || 'N/A' }}
                           <span v-if="pc.khu_vuc"> &bull; {{ pc.khu_vuc }}</span>
@@ -139,13 +139,18 @@
                     </div>
 
                     <!-- Members -->
-                    <div v-if="pc.thanh_viens && pc.thanh_viens.length > 0" class="mb-3">
+                    <div class="mb-3">
                       <small class="text-muted fw-semibold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">
-                        <i class="fa-solid fa-users me-1"></i> Thành viên ({{ pc.thanh_viens.length }})
+                        <i class="fa-solid fa-user-check me-1"></i> Người tiếp nhận
                       </small>
                       <div class="d-flex flex-wrap gap-2 mt-2">
-                        <span v-for="m in pc.thanh_viens" :key="m.id" class="badge bg-light text-dark border px-2 py-1 fw-medium">
-                          <i class="fa-solid fa-user me-1 text-primary"></i>{{ m.ho_ten }}
+                        <template v-if="pc.thanh_viens && pc.thanh_viens.length > 0">
+                          <span v-for="m in pc.thanh_viens" :key="m.id" class="badge bg-success-subtle text-success border border-success px-2 py-1 fw-medium">
+                            <i class="fa-solid fa-user-check me-1"></i>{{ m.ho_ten }}
+                          </span>
+                        </template>
+                        <span v-else class="badge bg-warning-subtle text-warning border border-warning px-2 py-1 fw-medium">
+                          <i class="fa-solid fa-hourglass-half me-1"></i>Chưa tiếp nhận
                         </span>
                       </div>
                     </div>
@@ -283,6 +288,110 @@
         </template>
       </div>
     </div>
+
+    <!-- ===== MODAL ĐÁNH GIÁ ===== -->
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="isRatingModalOpen" class="modal-overlay" @click.self="closeRatingModal">
+          <div class="rating-modal">
+            <!-- Header -->
+            <div class="rating-header">
+              <div class="rating-header-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+                </svg>
+              </div>
+              <div>
+                <h3 class="rating-title">Đánh giá dịch vụ cứu hộ</h3>
+                <p class="rating-subtitle">#{{ ratingItem?.id }} · {{ ratingItem?.loai_su_co?.ten || ratingItem?.loai_su_co || "N/A" }}</p>
+              </div>
+              <button class="rating-close-btn" @click="closeRatingModal" aria-label="Đóng">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <!-- Stars -->
+            <div class="rating-stars-section">
+              <p class="rating-label">Bạn hài lòng với dịch vụ cứu hộ không?</p>
+              <div class="stars-row">
+                <button
+                  v-for="n in 5" :key="n" type="button"
+                  class="star-btn"
+                  :class="{ active: n <= hoveredStar, selected: n <= ratingData.selectedRating }"
+                  @mouseenter="ratingData.hoveredStar = n"
+                  @mouseleave="ratingData.hoveredStar = 0"
+                  @click="selectRating(n)"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" :fill="n <= ratingData.selectedRating || n <= ratingData.hoveredStar ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+                  </svg>
+                </button>
+              </div>
+              <Transition name="label-fade">
+                <p v-if="ratingData.selectedRating > 0" class="rating-feedback-text" :class="`rating-${ratingData.selectedRating}`">
+                  {{ ratingLabel }}
+                </p>
+              </Transition>
+            </div>
+
+            <!-- Tags -->
+            <div class="rating-tags-section">
+              <p class="rating-label">Chia sẻ trải nghiệm của bạn</p>
+              <div class="tags-grid">
+                <button
+                  v-for="tag in allTags" :key="tag.label"
+                  type="button"
+                  class="tag-chip"
+                  :class="{ selected: ratingData.selectedTags.includes(tag.label) }"
+                  @click="toggleTag(tag.label)"
+                >
+                  <span>{{ tag.icon }}</span>
+                  {{ tag.label }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Comment -->
+            <div class="rating-comment-section">
+              <label class="rating-label">Nhận xét thêm <span class="optional-label">(tùy chọn)</span></label>
+              <textarea
+                v-model="ratingData.comment"
+                class="rating-textarea"
+                :class="{ 'has-content': ratingData.comment.length > 0 }"
+                placeholder="Mô tả chi tiết trải nghiệm của bạn..."
+                rows="3" maxlength="500"
+                :disabled="ratingData.submitting"
+              ></textarea>
+              <div class="char-counter" :class="{ warning: ratingData.comment.length > 450 }">
+                {{ ratingData.comment.length }}/500
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="rating-actions">
+              <button type="button" class="btn-cancel" @click="closeRatingModal" :disabled="ratingData.submitting">Hủy</button>
+              <button
+                type="button"
+                class="btn-submit"
+                :disabled="ratingData.selectedRating === 0 || ratingData.submitting"
+                @click="submitRating"
+              >
+                <span v-if="ratingData.submitting" class="btn-spinner"></span>
+                <span v-else>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                  </svg>
+                  Gửi đánh giá
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
   </div>
 </template>
 
@@ -294,10 +403,6 @@ const SEVERITY_MAP = {
   'HIGH':     { label: 'HIGH',     badge: 'lv-high' },
   'MEDIUM':   { label: 'MEDIUM',   badge: 'lv-medium' },
   'LOW':      { label: 'LOW',      badge: 'lv-low' },
-};
-
-const SEVERITY_NUM_MAP = {
-  4: 'CRITICAL', 3: 'HIGH', 2: 'MEDIUM', 1: 'LOW',
 };
 
 function getSeverityInfo(rawSev) {
@@ -317,21 +422,21 @@ function getSeverityInfo(rawSev) {
   return SEVERITY_MAP['CRITICAL'];
 }
 
-function formatTime(value) {
-  if (!value) return "";
-  const t = new Date(value);
-  if (Number.isNaN(t.getTime())) return value;
-  return t.toLocaleString("vi-VN", {
-    hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric",
-  });
-}
-
 function formatTimeShort(value) {
   if (!value) return "";
   const t = new Date(value);
   if (Number.isNaN(t.getTime())) return value;
   return t.toLocaleString("vi-VN", {
     hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit",
+  });
+}
+
+function formatTime(value) {
+  if (!value) return "";
+  const t = new Date(value);
+  if (Number.isNaN(t.getTime())) return value;
+  return t.toLocaleString("vi-VN", {
+    hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric",
   });
 }
 
@@ -345,53 +450,147 @@ export default {
       loadingList: false,
       loadingDetail: false,
       completing: false,
-      // Smart polling state
-      pollTimer: null,
-      lastSyncTime: null,      // ISO timestamp of last successful sync
+      realtimeChannel: null,
       isDetailRefreshing: false,
-      // Track previous status per item to detect changes
       prevStatusMap: {},
-      // Track whether user has dismissed the completed-notice for an item
-      dismissedItems: new Set(),
+      isRatingModalOpen: false,
+      ratingItem: null,
+      ratingData: {
+        selectedRating: 0,
+        hoveredStar: 0,
+        selectedTags: [],
+        comment: "",
+        submitting: false,
+      },
+      allTags: [
+        { label: "Phản hồi nhanh", icon: "⚡" },
+        { label: "Thái độ tốt", icon: "😊" },
+        { label: "Chuyên nghiệp", icon: "🏅" },
+        { label: "Trang thiết bị đầy đủ", icon: "🔧" },
+        { label: "Xử lý hiệu quả", icon: "✅" },
+        { label: "Thông tin rõ ràng", icon: "📋" },
+        { label: "Hỗ trợ tận tâm", icon: "🤝" },
+        { label: "An toàn", icon: "🛡" },
+      ],
     };
   },
   created() {
-    // Initial full load, then start smart polling
-    this.loadTrackingList().then(() => {
-      this.startSmartPolling();
-    });
+    this.loadTrackingList();
+    this.subscribeToReverb();
   },
   beforeUnmount() {
-    this.stopPolling();
+    this.unsubscribeFromReverb();
   },
   mounted() {
-    // Handle ?id=... query parameter — select item on page load
     const queryId = this.$route.query.id;
     if (queryId && this.trackingList.length > 0) {
-      const item = this.trackingList.find(r => String(r.id) === String(queryId) || String(r.id_yeu_cau) === String(queryId));
-      if (item) {
-        this.$nextTick(() => this.selectRequest(item));
-      }
+      this.$nextTick(() => {
+        const item = this.trackingList.find(r => String(r.id) === String(queryId) || String(r.id_yeu_cau) === String(queryId));
+        if (item) this.selectRequest(item);
+      });
     }
+  },
+  computed: {
+    ratingLabel() {
+      const labels = { 1: "Rất không hài lòng", 2: "Không hài lòng", 3: "Bình thường", 4: "Hài lòng", 5: "Rất hài lòng" };
+      return labels[this.ratingData.selectedRating] || "";
+    },
   },
   watch: {
     trackingList(val) {
       const queryId = this.$route.query.id;
       if (queryId && !this.selectedId && val.length > 0) {
         const item = val.find(r => String(r.id) === String(queryId) || String(r.id_yeu_cau) === String(queryId));
-        if (item) {
-          this.selectRequest(item);
-        }
+        if (item) this.selectRequest(item);
       }
     },
   },
   methods: {
-    getSeverityBadge(sev) {
-      return getSeverityInfo(sev).badge;
+    // ─── Reverb WebSocket ────────────────────────────────────────────────────────
+    subscribeToReverb() {
+      if (!window.Echo) {
+        console.warn('[Reverb] Echo not available');
+        return;
+      }
+
+      const connect = () => {
+        this.realtimeChannel = window.Echo.channel('rescue-requests');
+        this.realtimeChannel.listen('RescueRequestUpdated', (data) => {
+          this.handleReverbEvent(data);
+        });
+      };
+
+      const conn = window.Echo.connector?.pusher?.connection;
+      if (conn?.state === 'connected') {
+        connect();
+      } else if (conn) {
+        conn.bind('connected', () => connect());
+        setTimeout(() => { if (!this.realtimeChannel) connect(); }, 5000);
+      } else {
+        setTimeout(() => {
+          const retryConn = window.Echo?.connector?.pusher?.connection;
+          if (retryConn?.state === 'connected') connect();
+          else if (retryConn) retryConn.bind('connected', () => connect());
+        }, 2000);
+      }
     },
-    getSeverityLabel(sev) {
-      return getSeverityInfo(sev).label;
+
+    unsubscribeFromReverb() {
+      if (this.realtimeChannel) {
+        this.realtimeChannel.stopListening('RescueRequestUpdated');
+        window.Echo.leave('rescue-requests');
+        this.realtimeChannel = null;
+      }
     },
+
+    handleReverbEvent(data) {
+      const requestId = Number(data.id_yeu_cau ?? data.id ?? 0);
+      if (!requestId) return;
+
+      const closed = new Set(["HOAN_THANH", "DA_HOAN_THANH", "HUY_BO", "DA_HUY", "TU_CHOI", "THAT_BAI", "DONE"]);
+
+      if (closed.has(data.trang_thai)) {
+        const idx = this.trackingList.findIndex(i => Number(i.id) === requestId);
+        if (idx !== -1) this.trackingList.splice(idx, 1);
+        if (this.selectedId === requestId) this.clearSelection();
+        return;
+      }
+
+      const idx = this.trackingList.findIndex(i => Number(i.id) === requestId);
+      if (idx !== -1) {
+        const prevStatus = this.prevStatusMap[requestId];
+        const newStatus = data.trang_thai;
+
+        Object.assign(this.trackingList[idx], {
+          trang_thai: data.trang_thai,
+          trang_thai_nhiem_vu: data.trang_thai_nhiem_vu,
+          thoi_gian_cap_nhat: data.updated_at,
+          doi_cuu_ho: data.ten_doi ? { ten_co: data.ten_doi } : this.trackingList[idx].doi_cuu_ho,
+          phan_congs: data.phan_congs || this.trackingList[idx].phan_congs,
+        });
+        this.prevStatusMap[requestId] = newStatus;
+
+        if (prevStatus && prevStatus !== newStatus && requestId === Number(this.selectedId)) {
+          this.refreshDetailSilently();
+        }
+      } else {
+        this.trackingList.unshift({
+          id: requestId,
+          trang_thai: data.trang_thai,
+          trang_thai_nhiem_vu: data.trang_thai_nhiem_vu,
+          thoi_gian_cap_nhat: data.updated_at,
+          loai_su_co: data.loai_su_co,
+          vi_tri_dia_chi: data.vi_tri_dia_chi,
+          doi_cuu_ho: data.ten_doi ? { ten_co: data.ten_doi } : null,
+          phan_congs: data.phan_congs || [],
+        });
+        this.prevStatusMap[requestId] = data.trang_thai;
+      }
+    },
+
+    // ─── Helpers ─────────────────────────────────────────────────────────────────
+    getSeverityBadge(sev) { return getSeverityInfo(sev).badge; },
+    getSeverityLabel(sev) { return getSeverityInfo(sev).label; },
     formatTimeShort,
     statusLabel(status) {
       const map = {
@@ -430,14 +629,12 @@ export default {
       ];
 
       if (pcStatus === 'HOAN_THANH') {
-        steps[2].status = 'done';
-        steps[3].status = 'done';
-        steps[4].status = 'done';
+        steps[2].status = steps[3].status = steps[4].status = 'done';
         steps[4].time = pc?.ket_qua?.thoi_gian_hoan_thanh ? formatTime(pc.ket_qua.thoi_gian_hoan_thanh) : formatTime(detail.thoi_gian_cap_nhat);
         return steps;
       }
       if (pcStatus === 'DA_DEN_HIEN_TRUONG') {
-        steps[2].status = 'done';
+        steps[2].status = steps[3].status = 'done';
         steps[3].status = 'current';
         return steps;
       }
@@ -448,85 +645,24 @@ export default {
       return steps;
     },
 
-    // ─── Smart Polling ─────────────────────────────────────────────────────────
-
-    /**
-     * Start the unified smart polling timer.
-     * Uses delta API when possible (lastSyncTime available), falls back to full list on first load.
-     */
-    startSmartPolling() {
-      this.stopPolling();
-      // 10s interval — much gentler than the old 3s/5s dual polling
-      this.pollTimer = setInterval(() => {
-        this.syncList();
-      }, 10000);
-    },
-
-    stopPolling() {
-      if (this.pollTimer) {
-        clearInterval(this.pollTimer);
-        this.pollTimer = null;
-      }
-    },
-
-    /**
-     * Sync list: uses delta API with `since` parameter when available,
-     * otherwise falls back to full list load.
-     * Runs in the background (no loading spinner) unless it's the initial load.
-     */
-    async syncList() {
-      if (this.loadingList) return;
-
-      try {
-        let response;
-        if (this.lastSyncTime) {
-          // Delta update: only fetch items changed since last sync
-          response = await rescueRequestAPI.getTrackingDelta(this.lastSyncTime);
-        } else {
-          // Fallback: full list (shouldn't happen after first load)
-          response = await rescueRequestAPI.getTrackingList();
-        }
-
-        const data = response?.data;
-
-        if (data && data.items) {
-          // Delta response: items + server_time + removed_ids
-          const { items: newItems, server_time: serverTime, removed_ids: removedIds } = data;
-
-          if (Array.isArray(newItems)) {
-            this._applyDeltaUpdate(newItems, removedIds || []);
-          }
-
-          // Update sync timestamp from server to handle clock drift
-          if (serverTime) {
-            this.lastSyncTime = serverTime;
-          }
-        } else {
-          // Full list fallback response
-          const rawData = data?.data || data || [];
-          const newList = Array.isArray(rawData) ? rawData : [];
-          this._applyFullUpdate(newList);
-        }
-      } catch (error) {
-        // Network hiccup — silently retry next cycle
-      }
-    },
-
-    /**
-     * Full list load (used for initial page load and when user selects an item).
-     * Clears dismissed set and applies a full replacement.
-     */
+    // ─── Data Loading ─────────────────────────────────────────────────────────────
     async loadTrackingList() {
       if (this.loadingList) return;
       this.loadingList = true;
-
       try {
         const response = await rescueRequestAPI.getTrackingList();
         const rawData = response?.data?.data || response?.data || [];
         const newList = Array.isArray(rawData) ? rawData : [];
-        this._applyFullUpdate(newList);
-        // Record sync time from client after successful full load
-        this.lastSyncTime = new Date().toISOString();
+
+        if (this.selectedId && !newList.find(i => Number(i.id) === Number(this.selectedId))) {
+          this.clearSelection();
+        }
+
+        this.trackingList = newList;
+        this.prevStatusMap = {};
+        newList.forEach(item => {
+          this.prevStatusMap[Number(item.id)] = item.trang_thai;
+        });
       } catch (error) {
         console.error('Lỗi tải danh sách theo dõi:', error);
       } finally {
@@ -534,145 +670,18 @@ export default {
       }
     },
 
-    /**
-     * Full update: replace entire list.
-     * Used on initial load and when user manually triggers refresh.
-     */
-    _applyFullUpdate(newItems) {
-      // Track which items we're losing (completed/cancelled)
-      const newIds = new Set(newItems.map(i => i.id));
-      const removedItems = this.trackingList.filter(i => !newIds.has(i.id));
-      const removedIds = removedItems.map(i => i.id);
-
-      // If the currently selected item was removed, close the detail panel
-      if (this.selectedId && removedIds.includes(this.selectedId)) {
-        this.clearSelection();
-      }
-
-      // Replace list — Vue's reactivity handles the DOM update
-      this.trackingList = newItems;
-
-      // Rebuild status map
-      this._rebuildStatusMap(newItems);
-    },
-
-    /**
-     * Delta update: merge changes in-place, remove completed items.
-     * Minimal DOM churn — only changed/new items trigger Vue reactivity.
-     */
-    _applyDeltaUpdate(newItems, removedIds) {
-      if (!removedIds || removedIds.length === 0) {
-        // No removals — just merge updates in-place
-        this._mergeItemsInPlace(newItems);
-        return;
-      }
-
-      // Filter out items that have been completed/cancelled from the backend
-      const safeIds = new Set(removedIds.map(id => Number(id)));
-      const hadSelected = this.selectedId && safeIds.has(Number(this.selectedId));
-
-      if (hadSelected) {
-        // Selected item just completed — close the detail panel
-        this.clearSelection();
-      }
-
-      // Remove from tracking list (in-place mutation triggers Vue reactivity)
-      const filtered = this.trackingList.filter(item => !safeIds.has(Number(item.id)));
-
-      if (filtered.length !== this.trackingList.length) {
-        this.trackingList = filtered;
-      }
-
-      // Merge any remaining new/changed items
-      this._mergeItemsInPlace(newItems);
-    },
-
-    /**
-     * Merge new/changed items into existing list without losing selected state.
-     * Preserves Vue object references for unchanged items — no unnecessary re-renders.
-     */
-    _mergeItemsInPlace(newItems) {
-      const existingMap = new Map(this.trackingList.map(i => [Number(i.id), i]));
-      const processedIds = new Set();
-
-      newItems.forEach(newItem => {
-        const id = Number(newItem.id);
-        processedIds.add(id);
-        const existing = existingMap.get(id);
-
-        if (existing) {
-          // Detect status change for selected item
-          const prevStatus = this.prevStatusMap[id];
-          const newStatus = newItem.trang_thai;
-          const statusChanged = prevStatus && prevStatus !== newStatus;
-
-          // In-place mutation — Vue's reactive system detects changes
-          Object.assign(existing, newItem);
-          this.prevStatusMap[id] = newStatus;
-
-          // Auto-refresh detail when selected item's status changes
-          if (statusChanged && id === Number(this.selectedId)) {
-            this.refreshDetailSilently();
-          }
-        } else {
-          // New item — add to list
-          this.trackingList.unshift(newItem);
-          this.prevStatusMap[id] = newItem.trang_thai;
-        }
-      });
-    },
-
-    _rebuildStatusMap(items) {
-      this.prevStatusMap = {};
-      items.forEach(item => {
-        this.prevStatusMap[Number(item.id)] = item.trang_thai;
-      });
-    },
-
-    /**
-     * Reload detail silently when selected item's status changes (no spinner flash).
-     */
-    async refreshDetailSilently() {
-      if (!this.selectedId) return;
-      this.isDetailRefreshing = true;
-      try {
-        const response = await rescueRequestAPI.getTrackingDetail(this.selectedId);
-        this.trackingDetail = response?.data?.data || response?.data;
-
-        // Check if selected item just completed → remove it from list and close detail
-        if (this.trackingDetail && this.trackingDetail.trang_thai === 'HOAN_THANH') {
-          const idNum = Number(this.selectedId);
-          const idx = this.trackingList.findIndex(i => Number(i.id) === idNum);
-          if (idx !== -1) {
-            this.trackingList.splice(idx, 1);
-          }
-          this.clearSelection();
-        }
-      } catch (error) {
-        // Silently fail on network errors
-      } finally {
-        this.isDetailRefreshing = false;
-      }
-    },
-
     async selectRequest(item) {
       this.selectedId = item.id;
       this.trackingDetail = null;
       this.loadingDetail = true;
-
       try {
         const response = await rescueRequestAPI.getTrackingDetail(item.id);
         const detail = response?.data?.data || response?.data;
-
-        // If somehow the selected item is already completed, close detail
         if (detail && detail.trang_thai === 'HOAN_THANH') {
           this.clearSelection();
           return;
         }
-
         this.trackingDetail = detail;
-
-        // Update the item in the list with fresh data
         const idx = this.trackingList.findIndex(i => Number(i.id) === Number(item.id));
         if (idx !== -1) {
           this.trackingList[idx] = { ...this.trackingList[idx], ...detail };
@@ -683,19 +692,31 @@ export default {
       } finally {
         this.loadingDetail = false;
       }
+    },
 
-      // Keep polling the LIST in background — detail refreshes via status-change detection
+    async refreshDetailSilently() {
+      if (!this.selectedId) return;
+      this.isDetailRefreshing = true;
+      try {
+        const response = await rescueRequestAPI.getTrackingDetail(this.selectedId);
+        const detail = response?.data?.data || response?.data;
+        this.trackingDetail = detail;
+        if (detail && detail.trang_thai === 'HOAN_THANH') {
+          const idx = this.trackingList.findIndex(i => Number(i.id) === Number(this.selectedId));
+          if (idx !== -1) this.trackingList.splice(idx, 1);
+          this.clearSelection();
+        }
+      } catch { /* silent */ } finally {
+        this.isDetailRefreshing = false;
+      }
     },
 
     clearSelection() {
       this.selectedId = null;
       this.trackingDetail = null;
-      // Resume list polling if it was stopped (safety net)
-      if (!this.pollTimer) {
-        this.startSmartPolling();
-      }
     },
 
+    // ─── Actions ──────────────────────────────────────────────────────────────────
     callTeam(phone) {
       if (!phone) return;
       window.open(`tel:${phone}`);
@@ -707,13 +728,11 @@ export default {
     contactTeam(phanCongs) {
       if (!phanCongs || phanCongs.length === 0) return;
       const first = phanCongs[0];
-      if (first.sdt_hotline) {
-        window.open(`tel:${first.sdt_hotline}`);
-      }
+      if (first.sdt_hotline) window.open(`tel:${first.sdt_hotline}`);
     },
     async markComplete() {
       if (!this.selectedId) return;
-      if (!confirm(`Xác nhận đánh dấu hoàn thành yêu cầu #${this.selectedId}?`)) return;
+      if (!confirm(`Xác nhận hoàn thành yêu cầu #${this.selectedId}?`)) return;
       this.completing = true;
       try {
         await rescueRequestAPI.changeStatus(this.selectedId, { trang_thai: 'HOAN_THANH' });
@@ -727,8 +746,66 @@ export default {
     },
     cancelTask() {
       if (!this.selectedId) return;
-      if (!confirm("Bạn có chắc chắn muốn huỷ nhiệm vụ này? Hành động này không thể hoàn tác.")) return;
-      alert("Chức năng hủy nhiệm vụ đang được phát triển.");
+      if (!confirm("Huỷ nhiệm vụ này? Thao tác không thể hoàn tác.")) return;
+      alert("Chức năng đang phát triển.");
+    },
+
+    // ─── Rating Modal ────────────────────────────────────────────────────────────
+    openRatingModal(item) {
+      this.ratingItem = item;
+      this.ratingData.selectedRating = 0;
+      this.ratingData.hoveredStar = 0;
+      this.ratingData.selectedTags = [];
+      this.ratingData.comment = "";
+      this.ratingData.submitting = false;
+      this.isRatingModalOpen = true;
+      document.body.style.overflow = "hidden";
+    },
+
+    closeRatingModal() {
+      this.isRatingModalOpen = false;
+      this.ratingItem = null;
+      document.body.style.overflow = "";
+    },
+
+    selectRating(n) {
+      this.ratingData.selectedRating = n;
+    },
+
+    toggleTag(label) {
+      const idx = this.ratingData.selectedTags.indexOf(label);
+      if (idx > -1) {
+        this.ratingData.selectedTags.splice(idx, 1);
+      } else {
+        this.ratingData.selectedTags.push(label);
+      }
+    },
+
+    async submitRating() {
+      if (this.ratingData.selectedRating === 0 || this.ratingData.submitting) return;
+      this.ratingData.submitting = true;
+      try {
+        await rescueRequestAPI.submitRating(this.ratingItem.id, {
+          diem_danh_gia: this.ratingData.selectedRating,
+          noi_dung: this.ratingData.comment,
+          tags: this.ratingData.selectedTags.join(", "),
+        });
+        this.closeRatingModal();
+        if (this.$toast?.success) {
+          this.$toast.success("Cảm ơn bạn! Đánh giá đã được gửi.", { position: "top-right", duration: 3500 });
+        } else {
+          alert("Cảm ơn bạn! Đánh giá đã được gửi.");
+        }
+      } catch (error) {
+        console.error("Lỗi gửi đánh giá:", error);
+        if (this.$toast?.error) {
+          this.$toast.error(error?.response?.data?.message || "Gửi đánh giá thất bại. Vui lòng thử lại.", { position: "top-right", duration: 3500 });
+        } else {
+          alert("Gửi đánh giá thất bại. Vui lòng thử lại.");
+        }
+      } finally {
+        this.ratingData.submitting = false;
+      }
     },
   },
 };
@@ -926,4 +1003,164 @@ export default {
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ===== RATING MODAL ===== */
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.25s ease; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
+.modal-fade-enter-from .rating-modal, .modal-fade-leave-to .rating-modal { transform: scale(0.95) translateY(8px); }
+.label-fade-enter-active, .label-fade-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
+.label-fade-enter-from, .label-fade-leave-to { opacity: 0; transform: translateY(-4px); }
+
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999; padding: 1rem;
+}
+
+.rating-modal {
+  background: #ffffff; border-radius: 20px;
+  width: 100%; max-width: 520px; max-height: 90vh;
+  overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+  overscroll-behavior: contain;
+}
+
+.rating-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 22px 22px 18px; border-bottom: 1px solid #f1f5f9;
+}
+
+.rating-header-icon {
+  width: 44px; height: 44px; min-width: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #0369a1, #0ea5e9);
+  display: flex; align-items: center; justify-content: center;
+  color: #ffffff; box-shadow: 0 4px 14px rgba(3,105,161,0.35);
+  flex-shrink: 0;
+}
+
+.rating-title {
+  font-size: 1.05rem; font-weight: 700; color: #0f172a; margin: 0;
+}
+
+.rating-subtitle {
+  font-size: 0.78rem; color: #64748b; margin: 2px 0 0;
+}
+
+.rating-close-btn {
+  margin-left: auto; background: #f1f5f9; border: none;
+  border-radius: 10px; width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  color: #64748b; cursor: pointer; transition: all 0.2s ease; flex-shrink: 0;
+}
+
+.rating-close-btn:hover { background: #e2e8f0; color: #0f172a; }
+.rating-close-btn:focus-visible { outline: 2px solid #0369a1; outline-offset: 2px; }
+
+.rating-stars-section, .rating-tags-section, .rating-comment-section {
+  padding: 18px 22px 0;
+}
+
+.rating-label {
+  font-size: 0.78rem; font-weight: 600; color: #475569;
+  text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 10px;
+}
+
+.optional-label { font-weight: 400; text-transform: none; letter-spacing: 0; color: #94a3b8; }
+
+.stars-row { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
+
+.star-btn {
+  background: none; border: none; padding: 4px;
+  cursor: pointer; color: #e2e8f0;
+  transition: all 0.15s ease; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.star-btn:hover, .star-btn.active { color: #f59e0b; transform: scale(1.12); }
+.star-btn.selected { color: #f59e0b; }
+.star-btn:focus-visible { outline: 2px solid #0369a1; outline-offset: 2px; }
+.star-btn:active { transform: scale(0.9); }
+
+.rating-feedback-text { font-size: 0.875rem; font-weight: 600; margin: 0 0 2px; }
+.rating-1 { color: #dc2626; }
+.rating-2 { color: #f97316; }
+.rating-3 { color: #eab308; }
+.rating-4 { color: #22c55e; }
+.rating-5 { color: #10b981; }
+
+.tags-grid { display: flex; flex-wrap: wrap; gap: 7px; }
+
+.tag-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 11px; border-radius: 20px;
+  border: 1.5px solid #e2e8f0; background: #f8fafc;
+  font-size: 0.78rem; font-weight: 500; color: #475569;
+  cursor: pointer; transition: all 0.15s ease;
+}
+
+.tag-chip:hover { border-color: #0369a1; background: #eff6ff; color: #0369a1; }
+.tag-chip.selected { border-color: #0369a1; background: #0369a1; color: #ffffff; }
+.tag-chip:focus-visible { outline: 2px solid #0369a1; outline-offset: 2px; }
+
+.rating-textarea {
+  width: 100%; border: 1.5px solid #e2e8f0;
+  border-radius: 12px; padding: 10px 12px;
+  font-size: 0.875rem; font-family: inherit; color: #0f172a;
+  resize: vertical; min-height: 76px; background: #f8fafc;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
+}
+
+.rating-textarea::placeholder { color: #94a3b8; }
+.rating-textarea:focus { outline: none; border-color: #0369a1; box-shadow: 0 0 0 3px rgba(3,105,161,0.1); background: #fff; }
+.rating-textarea:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.char-counter { text-align: right; font-size: 0.73rem; color: #94a3b8; margin-top: 3px; transition: color 0.2s ease; }
+.char-counter.warning { color: #f59e0b; }
+
+.rating-actions { display: flex; align-items: center; gap: 10px; padding: 18px 22px 22px; }
+
+.btn-cancel {
+  flex: 0 0 auto; padding: 9px 18px; border-radius: 12px;
+  border: 1.5px solid #e2e8f0; background: #fff;
+  font-size: 0.875rem; font-weight: 600; color: #475569;
+  cursor: pointer; transition: all 0.2s ease;
+}
+
+.btn-cancel:hover:not(:disabled) { border-color: #94a3b8; color: #0f172a; background: #f8fafc; }
+.btn-cancel:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-submit {
+  flex: 1; padding: 10px 18px; border-radius: 12px; border: none;
+  background: linear-gradient(135deg, #0369a1, #0ea5e9);
+  color: #fff; font-size: 0.875rem; font-weight: 700;
+  cursor: pointer; transition: all 0.2s ease;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  box-shadow: 0 4px 14px rgba(3,105,161,0.3);
+}
+
+.btn-submit:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(3,105,161,0.4); }
+.btn-submit:active:not(:disabled) { transform: translateY(0); }
+.btn-submit:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn-spinner {
+  width: 17px; height: 17px;
+  border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+  border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.rating-modal::-webkit-scrollbar { width: 4px; }
+.rating-modal::-webkit-scrollbar-track { background: transparent; }
+.rating-modal::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+@media (max-width: 480px) {
+  .rating-modal { max-height: 85vh; border-radius: 20px 20px 0 0; position: fixed; bottom: 0; left: 0; right: 0; max-width: 100%; }
+  .modal-overlay { align-items: flex-end; padding: 0; }
+  .rating-header, .rating-stars-section, .rating-tags-section, .rating-comment-section, .rating-actions { padding-left: 16px; padding-right: 16px; }
+}
 </style>
