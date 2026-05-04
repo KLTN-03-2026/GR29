@@ -556,6 +556,7 @@ export default {
       saving: false,
       uptimeSeconds: 0,
       uptimeInterval: null,
+      realtimeChannel: null,
       showRuleModal: false,
       editingRule: null,
       customRules: [],
@@ -591,10 +592,14 @@ export default {
       uptimeStart: null,
 
       ruleForm: {
-        typeSearch: "", detailSearch: "",
-        typeDropdown: false, detailDropdown: false,
-        selectedType: null, selectedDetail: null,
-        priority: 3, color: "#16a34a",
+        typeSearch: "",
+        detailSearch: "",
+        typeDropdown: false,
+        detailDropdown: false,
+        selectedType: null,
+        selectedDetail: null,
+        priority: 3,
+        color: "#16a34a",
       },
 
       priorityLevels: [
@@ -606,10 +611,18 @@ export default {
       ],
 
       colorPalette: [
-        "#dc2626", "#ea580c", "#ca8a04", "#16a34a",
-        "#0d9488", "#2563eb", "#7c3aed", "#db2777",
-        "#0891b2", "#9333ea",
+        "#dc2626",
+        "#ea580c",
+        "#ca8a04",
+        "#16a34a",
+        "#0d9488",
+        "#2563eb",
+        "#7c3aed",
+        "#db2777",
+        "#0891b2",
+        "#9333ea",
       ],
+
     };
   },
 
@@ -631,40 +644,60 @@ export default {
       const autoRate = this.successRate;
       return [
         {
-          label: "Yêu cầu đang chờ", value: this.monitoredStats.pendingRequests, icon: "pending",
-          iconBg: "rgba(217, 119, 6, 0.12)", iconColor: "#d97706",
+          label: "Yêu cầu đang chờ",
+          value: this.monitoredStats.pendingRequests,
+          icon: "pending",
+          iconBg: "rgba(217, 119, 6, 0.12)",
+          iconColor: "#d97706",
           valueColor: "#d97706",
           trendText: this.monitoredStats.pendingRequests > 0 ? "Cần xử lý" : "Trống",
-          trendBg: this.monitoredStats.pendingRequests > 0 ? "rgba(217, 119, 6, 0.12)" : "rgba(22, 163, 74, 0.12)", 
-          trendColor: this.monitoredStats.pendingRequests > 0 ? "#d97706" : "#16a34a", trendIcon: "up",
-          progress: undefined, progressColor: "",
+          trendBg: this.monitoredStats.pendingRequests > 0 ? "rgba(217, 119, 6, 0.12)" : "rgba(22, 163, 74, 0.12)",
+          trendColor: this.monitoredStats.pendingRequests > 0 ? "#d97706" : "#16a34a",
+          trendIcon: "up",
+          progress: undefined,
+          progressColor: "",
         },
         {
-          label: "Đã auto-dispatch", value: this.monitoredStats.autoDispatched, icon: "auto",
-          iconBg: "rgba(22, 163, 74, 0.12)", iconColor: "#16a34a",
+          label: "Đã auto-dispatch",
+          value: this.monitoredStats.autoDispatched,
+          icon: "auto",
+          iconBg: "rgba(22, 163, 74, 0.12)",
+          iconColor: "#16a34a",
           valueColor: "#16a34a",
           trendText: autoRate > 0 ? autoRate + "% tỷ lệ" : null,
-          trendBg: "rgba(37, 99, 235, 0.12)", trendColor: "#2563eb", trendIcon: "up",
-          progress: autoRate, progressColor: "#16a34a",
+          trendBg: "rgba(37, 99, 235, 0.12)",
+          trendColor: "#2563eb",
+          trendIcon: "up",
+          progress: autoRate,
+          progressColor: "#16a34a",
         },
         {
-          label: ">30p chưa tiếp nhận", value: this.monitoredStats.over30Mins, icon: "escalate",
+          label: ">30p chưa tiếp nhận",
+          value: this.monitoredStats.over30Mins,
+          icon: "escalate",
           iconBg: this.monitoredStats.over30Mins > 0 ? "rgba(220, 38, 38, 0.1)" : "rgba(148, 163, 184, 0.1)",
           iconColor: this.monitoredStats.over30Mins > 0 ? "#dc2626" : "#94a3b8",
           valueColor: this.monitoredStats.over30Mins > 0 ? "#dc2626" : "#94a3b8",
           trendText: this.monitoredStats.over30Mins > 0 ? "Cần can thiệp" : "Bình thường",
           trendBg: this.monitoredStats.over30Mins > 0 ? "rgba(220, 38, 38, 0.1)" : "rgba(22, 163, 74, 0.1)",
-          trendColor: this.monitoredStats.over30Mins > 0 ? "#dc2626" : "#16a34a", trendIcon: "up",
-          progress: undefined, progressColor: "",
+          trendColor: this.monitoredStats.over30Mins > 0 ? "#dc2626" : "#16a34a",
+          trendIcon: "up",
+          progress: undefined,
+          progressColor: "",
         },
         {
-          label: "Retry dispatch", value: this.monitoredStats.retryDispatch, icon: "retry",
-          iconBg: "rgba(147, 51, 234, 0.12)", iconColor: "#9333ea",
+          label: "Retry dispatch",
+          value: this.monitoredStats.retryDispatch,
+          icon: "retry",
+          iconBg: "rgba(147, 51, 234, 0.12)",
+          iconColor: "#9333ea",
           valueColor: "#9333ea",
           trendText: this.monitoredStats.retryDispatch > 0 ? "Đang tìm lại" : "Ổn định",
-          trendBg: this.monitoredStats.retryDispatch > 0 ? "rgba(147, 51, 234, 0.12)" : "rgba(22, 163, 74, 0.12)", 
-          trendColor: this.monitoredStats.retryDispatch > 0 ? "#9333ea" : "#16a34a", trendIcon: "up",
-          progress: undefined, progressColor: "",
+          trendBg: this.monitoredStats.retryDispatch > 0 ? "rgba(147, 51, 234, 0.12)" : "rgba(22, 163, 74, 0.12)",
+          trendColor: this.monitoredStats.retryDispatch > 0 ? "#9333ea" : "#16a34a",
+          trendIcon: "up",
+          progress: undefined,
+          progressColor: "",
         },
       ];
     },
@@ -674,34 +707,65 @@ export default {
       const autoRate = this.successRate;
       const pendingRate = total > 0 ? Math.round((this.monitoredStats.pendingAuto / total) * 100) : 0;
       return [
-        { label: "Tổng yêu cầu", value: total, sub: `${this.customRules.length} quy tắc ưu tiên`, icon: "total", iconBg: "rgba(37, 99, 235, 0.12)", iconColor: "#2563eb", valueColor: "#0f172a", progress: undefined, progressColor: "" },
-        { label: "Tỷ lệ auto", value: autoRate + "%", sub: `${this.monitoredStats.autoDispatched} đã gán tự động`, icon: "auto", iconBg: "rgba(22, 163, 74, 0.12)", iconColor: "#16a34a", valueColor: "#16a34a", progress: autoRate, progressColor: "#16a34a" },
-        { label: "Chờ xử lý", value: this.monitoredStats.pendingAuto, sub: `${pendingRate}% trên tổng yêu cầu`, icon: "pending", iconBg: this.monitoredStats.pendingAuto > 0 ? "rgba(217, 119, 6, 0.12)" : "rgba(148, 163, 184, 0.1)", iconColor: this.monitoredStats.pendingAuto > 0 ? "#d97706" : "#94a3b8", valueColor: this.monitoredStats.pendingAuto > 0 ? "#d97706" : "#94a3b8", progress: pendingRate, progressColor: this.monitoredStats.pendingAuto > 0 ? "#d97706" : "#94a3b8" },
+        {
+          label: "Tổng yêu cầu",
+          value: total,
+          sub: `${this.customRules.length} quy tắc ưu tiên`,
+          icon: "total",
+          iconBg: "rgba(37, 99, 235, 0.12)",
+          iconColor: "#2563eb",
+          valueColor: "#0f172a",
+          progress: undefined,
+          progressColor: "",
+        },
+        {
+          label: "Tỷ lệ auto",
+          value: autoRate + "%",
+          sub: `${this.monitoredStats.autoDispatched} đã gán tự động`,
+          icon: "auto",
+          iconBg: "rgba(22, 163, 74, 0.12)",
+          iconColor: "#16a34a",
+          valueColor: "#16a34a",
+          progress: autoRate,
+          progressColor: "#16a34a",
+        },
+        {
+          label: "Chờ xử lý",
+          value: this.monitoredStats.pendingAuto,
+          sub: `${pendingRate}% trên tổng yêu cầu`,
+          icon: "pending",
+          iconBg: this.monitoredStats.pendingAuto > 0 ? "rgba(217, 119, 6, 0.12)" : "rgba(148, 163, 184, 0.1)",
+          iconColor: this.monitoredStats.pendingAuto > 0 ? "#d97706" : "#94a3b8",
+          valueColor: this.monitoredStats.pendingAuto > 0 ? "#d97706" : "#94a3b8",
+          progress: pendingRate,
+          progressColor: this.monitoredStats.pendingAuto > 0 ? "#d97706" : "#94a3b8",
+        },
       ];
     },
 
     filteredActivities() {
       if (this.activityFilter === "all") return this.activities;
-      return this.activities.filter(a => a.type === this.activityFilter);
+      return this.activities.filter((a) => a.type === this.activityFilter);
     },
 
     ruleFilteredTypes() {
       if (!this.ruleForm.typeSearch) return this.incidentTypes.slice(0, 10);
       const q = this.ruleForm.typeSearch.toLowerCase();
-      return this.incidentTypes.filter(t =>
-        (t.ten_loai_su_co || t.name || "").toLowerCase().includes(q) ||
-        (t.ten_danh_muc || t.category || "").toLowerCase().includes(q)
+      return this.incidentTypes.filter(
+        (t) =>
+          (t.ten_loai_su_co || t.name || "").toLowerCase().includes(q) ||
+          (t.ten_danh_muc || t.category || "").toLowerCase().includes(q)
       );
     },
 
     ruleFilteredDetails() {
       if (!this.ruleForm.selectedType) return [];
       const typeId = this.ruleForm.selectedType.id;
-      const type = this.incidentTypes.find(t => t.id === typeId);
+      const type = this.incidentTypes.find((t) => t.id === typeId);
       const details = type?.chi_tiet_loai_su_co || type?.details || [];
       if (!this.ruleForm.detailSearch) return details.slice(0, 10);
       const q = this.ruleForm.detailSearch.toLowerCase();
-      return details.filter(d => (d.ten_chi_tiet || d.name || "").toLowerCase().includes(q));
+      return details.filter((d) => (d.ten_chi_tiet || d.name || "").toLowerCase().includes(q));
     },
   },
 
@@ -710,12 +774,18 @@ export default {
     this.loadIncidentTypes();
     this.loadMonitoredStats();
     this.loadActivities();
+    this.subscribeRealtime();
     document.addEventListener("click", this.handleOutsideClick);
+    window.addEventListener("storage", this.handleStorageChange);
+    window.addEventListener("dispatch-status-changed", this.handleDispatchStatusChange);
   },
 
   beforeUnmount() {
     if (this.uptimeInterval) clearInterval(this.uptimeInterval);
+    this.unsubscribeRealtime();
     document.removeEventListener("click", this.handleOutsideClick);
+    window.removeEventListener("storage", this.handleStorageChange);
+    window.removeEventListener("dispatch-status-changed", this.handleDispatchStatusChange);
   },
 
   methods: {
@@ -723,11 +793,12 @@ export default {
       try {
         const res = await incidentTypeAPI.getList();
         this.incidentTypes = res.data?.data || res.data || [];
-      } catch { this.incidentTypes = []; }
+      } catch {
+        this.incidentTypes = [];
+      }
     },
 
     async loadConfig() {
-      // Load saved local config (weights, rules, general settings)
       try {
         const saved = localStorage.getItem("realtimeDispatchConfig");
         if (saved) {
@@ -736,21 +807,19 @@ export default {
           this.customRules = parsed.customRules || [];
           this.generalConfig = { ...this.generalConfig, ...parsed.generalConfig };
           if (parsed.scoringWeights) {
-            parsed.scoringWeights.forEach(w => {
-              const found = this.scoringWeights.find(s => s.key === w.key);
+            parsed.scoringWeights.forEach((w) => {
+              const found = this.scoringWeights.find((s) => s.key === w.key);
               if (found) found.value = w.value;
             });
           }
         }
       } catch {}
 
-      // Fetch real dispatch status from BE
       try {
         const res = await autoDispatchAPI.getStatus();
         if (res.data?.thanh_cong) {
           this.dispatchEnabled = res.data.du_lieu?.dieu_phoi_tu_dong ?? false;
         } else {
-          // Fallback to saved if BE call fails
           const saved = localStorage.getItem("realtimeDispatchConfig");
           if (saved) {
             const parsed = JSON.parse(saved);
@@ -771,44 +840,100 @@ export default {
     async saveConfig() {
       this.saving = true;
       try {
-        localStorage.setItem("realtimeDispatchConfig", JSON.stringify({
-          dispatchMode: this.dispatchMode,
-          customRules: this.customRules,
-          generalConfig: this.generalConfig,
-          scoringWeights: this.scoringWeights.map(w => ({ key: w.key, value: w.value })),
-        }));
+        localStorage.setItem(
+          "realtimeDispatchConfig",
+          JSON.stringify({
+            dispatchMode: this.dispatchMode,
+            customRules: this.customRules,
+            generalConfig: this.generalConfig,
+            scoringWeights: this.scoringWeights.map((w) => ({ key: w.key, value: w.value })),
+          })
+        );
 
-        // Sync dispatch enabled/disabled to BE
         if (this.dispatchEnabled) {
           await autoDispatchAPI.enable();
         } else {
           await autoDispatchAPI.disable();
         }
 
-        // Sync config weights to BE if needed
         await autoDispatchAPI.updateConfig({
           so_doi_toi_da: this.generalConfig.maxTeamsPerIncident,
         });
 
-        await new Promise(r => setTimeout(r, 600));
+        await new Promise((r) => setTimeout(r, 600));
         this.$toaster?.success?.("Đã lưu cấu hình thành công!");
       } catch (err) {
         console.error("Save config error:", err);
         this.$toaster?.error?.("Lưu cấu hình thất bại!");
-      } finally { this.saving = false; }
+      } finally {
+        this.saving = false;
+      }
     },
 
     toggleDispatch() {
       this.dispatchEnabled = !this.dispatchEnabled;
-      if (this.dispatchEnabled) { this.startUptimeTimer(); }
-      else {
-        if (this.uptimeInterval) { clearInterval(this.uptimeInterval); this.uptimeInterval = null; }
+      if (this.dispatchEnabled) {
+        this.startUptimeTimer();
+        this.subscribeRealtime();
+      } else {
+        if (this.uptimeInterval) {
+          clearInterval(this.uptimeInterval);
+          this.uptimeInterval = null;
+        }
         this.uptimeSeconds = 0;
+        this.unsubscribeRealtime();
       }
-      autoDispatchAPI.toggle().catch(err => {
+
+      const saved = localStorage.getItem("realtimeDispatchConfig");
+      const config = saved ? JSON.parse(saved) : {};
+      config.dispatchEnabled = this.dispatchEnabled;
+      localStorage.setItem("realtimeDispatchConfig", JSON.stringify(config));
+
+      window.dispatchEvent(
+        new CustomEvent("dispatch-status-changed", {
+          detail: { enabled: this.dispatchEnabled },
+        })
+      );
+
+      autoDispatchAPI.toggle().catch((err) => {
         console.error("Toggle dispatch error:", err);
         this.$toaster?.error?.("Không thể toggle auto-dispatch!");
       });
+    },
+
+    handleDispatchStatusChange(e) {
+      if (e?.detail?.enabled !== undefined) {
+        this.dispatchEnabled = e.detail.enabled;
+        if (this.dispatchEnabled) {
+          this.startUptimeTimer();
+        } else {
+          if (this.uptimeInterval) {
+            clearInterval(this.uptimeInterval);
+            this.uptimeInterval = null;
+          }
+          this.uptimeSeconds = 0;
+        }
+      }
+    },
+
+    handleStorageChange(e) {
+      if (e.key === "realtimeDispatchConfig" && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed.dispatchEnabled !== undefined) {
+            this.dispatchEnabled = parsed.dispatchEnabled;
+            if (this.dispatchEnabled) {
+              this.startUptimeTimer();
+            } else {
+              if (this.uptimeInterval) {
+                clearInterval(this.uptimeInterval);
+                this.uptimeInterval = null;
+              }
+              this.uptimeSeconds = 0;
+            }
+          }
+        } catch {}
+      }
     },
 
     startUptimeTimer() {
@@ -846,15 +971,26 @@ export default {
     closeRuleModal() {
       this.showRuleModal = false;
       this.editingRule = null;
-      this.ruleForm = { typeSearch: "", detailSearch: "", typeDropdown: false, detailDropdown: false, selectedType: null, selectedDetail: null, priority: 3, color: "#16a34a" };
+      this.ruleForm = {
+        typeSearch: "",
+        detailSearch: "",
+        typeDropdown: false,
+        detailDropdown: false,
+        selectedType: null,
+        selectedDetail: null,
+        priority: 3,
+        color: "#16a34a",
+      };
     },
 
     editRule(rule) {
       this.editingRule = rule;
-      const type = this.incidentTypes.find(t => t.id === rule.typeId);
+      const type = this.incidentTypes.find((t) => t.id === rule.typeId);
       this.ruleForm.selectedType = type || null;
-      this.ruleForm.typeSearch = type ? (type.ten_loai_su_co || type.name || "") : "";
-      this.ruleForm.selectedDetail = rule.detailId ? { id: rule.detailId, ten_chi_tiet: rule.detailType, name: rule.detailType } : null;
+      this.ruleForm.typeSearch = type ? type.ten_loai_su_co || type.name || "" : "";
+      this.ruleForm.selectedDetail = rule.detailId
+        ? { id: rule.detailId, ten_chi_tiet: rule.detailType, name: rule.detailType }
+        : null;
       this.ruleForm.detailSearch = rule.detailType || "";
       this.ruleForm.priority = rule.priority;
       this.ruleForm.color = rule.color;
@@ -866,22 +1002,37 @@ export default {
       const rule = {
         id: this.editingRule ? this.editingRule.id : Date.now(),
         typeId: this.ruleForm.selectedType.id,
-        name: this.ruleForm.selectedType.ten_loai_su_co || this.ruleForm.selectedType.name || "Không rõ",
-        category: this.ruleForm.selectedType.ten_danh_muc || this.ruleForm.selectedType.category || "Loại sự cố",
+        name:
+          this.ruleForm.selectedType.ten_loai_su_co ||
+          this.ruleForm.selectedType.name ||
+          "Không rõ",
+        category:
+          this.ruleForm.selectedType.ten_danh_muc ||
+          this.ruleForm.selectedType.category ||
+          "Loại sự cố",
         detailId: this.ruleForm.selectedDetail ? this.ruleForm.selectedDetail.id : null,
-        detailType: this.ruleForm.selectedDetail ? (this.ruleForm.selectedDetail.ten_chi_tiet || this.ruleForm.selectedDetail.name || "") : "",
+        detailType: this.ruleForm.selectedDetail
+          ? this.ruleForm.selectedDetail.ten_chi_tiet ||
+            this.ruleForm.selectedDetail.name ||
+            ""
+          : "",
         priority: this.ruleForm.priority,
         color: this.ruleForm.color,
       };
       if (this.editingRule) {
-        const idx = this.customRules.findIndex(r => r.id === rule.id);
+        const idx = this.customRules.findIndex((r) => r.id === rule.id);
         if (idx !== -1) this.customRules.splice(idx, 1, rule);
-      } else { this.customRules.push(rule); }
+      } else {
+        this.customRules.push(rule);
+      }
       this.closeRuleModal();
       this.saveConfig();
     },
 
-    removeRule(id) { this.customRules = this.customRules.filter(r => r.id !== id); this.saveConfig(); },
+    removeRule(id) {
+      this.customRules = this.customRules.filter((r) => r.id !== id);
+      this.saveConfig();
+    },
 
     handleOutsideClick(e) {
       if (!e.target.closest(".search-select-wrap")) {
@@ -890,7 +1041,7 @@ export default {
       }
     },
 
-    async loadMonitoredStats() {
+    async loadMonitoredStats(showLoading = true) {
       try {
         const [escRes, reqRes] = await Promise.all([
           autoDispatchAPI.getEscalations().catch(() => ({ data: {} })),
@@ -900,16 +1051,16 @@ export default {
         const escalationEvents = Array.isArray(escRes.data?.du_lieu)
           ? escRes.data.du_lieu
           : Array.isArray(escRes.data)
-            ? escRes.data
-            : [];
+          ? escRes.data
+          : [];
 
         const allRequests = Array.isArray(reqRes.data?.data)
           ? reqRes.data.data
           : Array.isArray(reqRes.data)
-            ? reqRes.data
-            : [];
+          ? reqRes.data
+          : [];
 
-        const pendingStatuses = new Set(['CHO_XU_LY', 'MOI', 'WAITING']);
+        const pendingStatuses = new Set(["CHO_XU_LY", "MOI", "WAITING", "DA_PHAN_CONG"]);
         const now = new Date();
 
         let totalRequests = allRequests.length;
@@ -918,15 +1069,17 @@ export default {
         let autoDispatchedCount = 0;
         let retryDispatchCount = 0;
 
-        allRequests.forEach(req => {
-          const status = String(req.trang_thai || '').toUpperCase().trim();
+        allRequests.forEach((req) => {
+          const status = String(req.trang_thai || "").toUpperCase().trim();
           const isPending = pendingStatuses.has(status);
 
           if (isPending) {
             pendingRequestsCount += 1;
           }
 
-          const createdDate = new Date(req.thoi_gian_gui || req.created_at || req.updated_at || req.created_at_old);
+          const createdDate = new Date(
+            req.thoi_gian_gui || req.created_at || req.updated_at || req.created_at_old
+          );
           if (!isNaN(createdDate.getTime())) {
             const diffMins = (now - createdDate) / (1000 * 60);
             if (diffMins > 30 && isPending) {
@@ -942,16 +1095,28 @@ export default {
           }
 
           if (req.tu_dong_phan_cong || req.auto_dispatched || req.da_auto_dispatch) {
-            const autoDispatchedFlag = req.tu_dong_phan_cong || req.auto_dispatched || req.da_auto_dispatch;
-            if (autoDispatchedFlag === true || String(autoDispatchedFlag) === '1' || String(autoDispatchedFlag).toLowerCase() === 'true') {
+            const autoDispatchedFlag =
+              req.tu_dong_phan_cong || req.auto_dispatched || req.da_auto_dispatch;
+            if (
+              autoDispatchedFlag === true ||
+              String(autoDispatchedFlag) === "1" ||
+              String(autoDispatchedFlag).toLowerCase() === "true"
+            ) {
               autoDispatchedCount += 1;
             }
           }
         });
 
-        if (autoDispatchedCount === 0 && escalationEvents.length > 0 && totalRequests > 0) {
-          // Fallback khi backend chưa trả flag auto-dispatched
+        if (
+          autoDispatchedCount === 0 &&
+          escalationEvents.length > 0 &&
+          totalRequests > 0
+        ) {
           autoDispatchedCount = Math.max(0, totalRequests - escalationEvents.length);
+        }
+
+        if (autoDispatchedCount === 0 && this.dispatchEnabled && totalRequests > 0) {
+          autoDispatchedCount = totalRequests;
         }
 
         this.monitoredStats = {
@@ -964,7 +1129,7 @@ export default {
           retryDispatch: retryDispatchCount,
         };
       } catch (err) {
-        console.error('Load monitored stats error:', err);
+        console.error("Load monitored stats error:", err);
       }
     },
 
@@ -977,8 +1142,8 @@ export default {
       return Math.floor(diff / 86400) + " ngày trước";
     },
 
-    async loadActivities() {
-      this.loading = true;
+    async loadActivities(showLoading = true) {
+      if (showLoading) this.loading = true;
       try {
         const [escRes, assignRes] = await Promise.all([
           autoDispatchAPI.getEscalations().catch(() => ({ data: {} })),
@@ -987,32 +1152,34 @@ export default {
 
         const combined = [];
 
-        // --- Phân công đã tạo (dispatch thành công) ---
         const rawAssignments = Array.isArray(assignRes.data?.data)
           ? assignRes.data.data
           : Array.isArray(assignRes.data)
-            ? assignRes.data
-            : [];
+          ? assignRes.data
+          : [];
 
         rawAssignments.forEach((item, idx) => {
-          const teamName = item.doi_cuu_ho?.ten_doi
-            || item.ten_doi
-            || (item.doi_cuu_ho_id ? `Đội #${item.doi_cuu_ho_id}` : null)
-            || "Chưa xác định";
-          const reqId = item.yeu_cau_cuu_ho?.id_yeu_cau
-            || item.id_yeu_cau
-            || item.yeu_cau_id
-            || item.id;
-          const loaiSuCo = item.yeu_cau_cuu_ho?.loai_su_co
-            || item.loai_su_co
-            || "N/A";
-          const mucDo = item.yeu_cau_cuu_ho?.muc_do_khan_cap
-            || item.muc_do_khan_cap
-            || "N/A";
-          const diaChi = item.yeu_cau_cuu_ho?.vi_tri_dia_chi
-            || item.vi_tri_dia_chi
-            || "N/A";
-          const isAuto = item.tu_dong_phan_cong || item.auto_dispatched || item.da_auto_dispatch;
+          const teamName =
+            item.doi_cuu_ho?.ten_doi ||
+            item.ten_doi ||
+            (item.doi_cuu_ho_id ? `Đội #${item.doi_cuu_ho_id}` : null) ||
+            "Chưa xác định";
+          const reqId =
+            item.yeu_cau_cuu_ho?.id_yeu_cau ||
+            item.id_yeu_cau ||
+            item.yeu_cau_id ||
+            item.id;
+          const loaiSuCo = item.yeu_cau_cuu_ho?.loai_su_co || item.loai_su_co || "N/A";
+          const mucDo =
+            item.yeu_cau_cuu_ho?.muc_do_khan_cap || item.muc_do_khan_cap || "N/A";
+          const diaChi =
+            item.yeu_cau_cuu_ho?.vi_tri_dia_chi || item.vi_tri_dia_chi || "N/A";
+          const isAuto = !!(
+            item.tu_dong_phan_cong ||
+            item.auto_dispatched ||
+            item.da_auto_dispatch ||
+            this.dispatchEnabled
+          );
           const trangThai = String(item.trang_thai_nhiem_vu || item.trang_thai || "").toUpperCase();
           const isSuccess = ["DANG_XU_LY", "HOAN_THANH", "DA_NHAN"].includes(trangThai);
 
@@ -1021,30 +1188,23 @@ export default {
             type: isAuto ? "auto" : "success",
             icon: isSuccess ? "check" : "bolt",
             typeLabel: isAuto ? "Auto" : "Thủ công",
-            title: isAuto
-              ? `Auto-dispatch → ${teamName}`
-              : `Điều phối thủ công → ${teamName}`,
+            title: `${isAuto ? "Auto-dispatch" : "Phân công"} → ${teamName}`,
             description: `Yêu cầu #${reqId} (${loaiSuCo}) tại ${diaChi} — Trạng thái: ${trangThai || "CHỜ"}`,
             timeAgo: this.formatTimeAgo(item.created_at || item.thoi_gian_phan_cong),
             dotBg: isAuto ? "rgba(22, 163, 74, 0.12)" : "rgba(37, 99, 235, 0.12)",
             dotColor: isAuto ? "#16a34a" : "#2563eb",
-            badgeBg: isAuto ? "rgba(22, 163, 74, 0.1)" : "rgba(37, 99, 235, 0.08)",
+            badgeBg: isAuto ? "rgba(22, 163, 74, 0.1)" : "rgba(37, 99, 235, 0.1)",
             badgeColor: isAuto ? "#16a34a" : "#2563eb",
-            details: [
-              { text: teamName },
-              { text: loaiSuCo },
-              { text: mucDo },
-            ],
+            details: [{ text: teamName }, { text: loaiSuCo }, { text: mucDo }],
             _sortTime: new Date(item.created_at || item.thoi_gian_phan_cong || 0).getTime(),
           });
         });
 
-        // --- Leo thang / Cảnh báo ---
         const escalations = Array.isArray(escRes.data?.du_lieu)
           ? escRes.data.du_lieu
           : Array.isArray(escRes.data)
-            ? escRes.data
-            : [];
+          ? escRes.data
+          : [];
 
         escalations.forEach((item, idx) => {
           const isLongWait = item.thoi_gian_cho_phut > 60;
@@ -1056,7 +1216,7 @@ export default {
             title: isLongWait ? "Leo thang tự động" : "Cần can thiệp",
             description: isLongWait
               ? `Yêu cầu #${item.id_yeu_cau} chờ hơn ${item.thoi_gian_cho_phut} phút — chuyển lên điều phối viên`
-              : `Yêu cầu #${item.id_yeu_cau} (${item.loai_su_co || 'N/A'}) tại ${item.vi_tri_dia_chi || 'N/A'} chưa được xử lý`,
+              : `Yêu cầu #${item.id_yeu_cau} (${item.loai_su_co || "N/A"}) tại ${item.vi_tri_dia_chi || "N/A"} chưa được xử lý`,
             timeAgo: item.thoi_gian_cho || "Vừa xong",
             dotBg: isLongWait ? "rgba(217, 119, 6, 0.12)" : "rgba(220, 38, 38, 0.1)",
             dotColor: isLongWait ? "#d97706" : "#dc2626",
@@ -1071,15 +1231,39 @@ export default {
           });
         });
 
-        // Sắp xếp mới nhất lên đầu
         combined.sort((a, b) => (b._sortTime || 0) - (a._sortTime || 0));
         this.activities = combined;
       } catch (err) {
         console.error("Load activities error:", err);
       } finally {
-        this.loading = false;
+        if (showLoading) this.loading = false;
       }
-    }
+    },
+
+    subscribeRealtime() {
+      if (!window.Echo) return;
+      this.unsubscribeRealtime();
+
+      this.realtimeChannel = window.Echo.channel("rescue-requests");
+      this.realtimeChannel.listen("RescueRequestUpdated", (event) => {
+        if (!this.dispatchEnabled) return;
+        this.handleRealtimeUpdate(event);
+      });
+    },
+
+    unsubscribeRealtime() {
+      if (this.realtimeChannel) {
+        window.Echo?.leave("rescue-requests");
+        this.realtimeChannel = null;
+      }
+    },
+
+    handleRealtimeUpdate(event) {
+      const data = event?.data || event;
+      if (!data) return;
+      this.loadMonitoredStats(false);
+      this.loadActivities(false);
+    },
   },
 };
 </script>

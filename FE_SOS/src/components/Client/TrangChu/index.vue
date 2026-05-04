@@ -9,8 +9,8 @@
                 </svg>
             </div>
             <div class="sos-header__text">
-                <h1 class="sos-header__title">Yeu Cau Cuu Ho</h1>
-                <p class="sos-header__subtitle">Thong tin chinh xac giup luc luong phan ung tiep can nhanh nhat.</p>
+                <h1 class="sos-header__title">Yêu Cầu Cứu Hộ</h1>
+                <p class="sos-header__subtitle">Thông tin chính xác giúp lực lượng phản ứng tiếp cận nhanh nhất.</p>
             </div>
         </div>
 
@@ -22,7 +22,7 @@
                 <section class="sos-section" aria-labelledby="section-type">
                     <div class="sos-section__header">
                         <span class="sos-section__step">1</span>
-                        <h2 class="sos-section__title" id="section-type">Loai Su Co</h2>
+                        <h2 class="sos-section__title" id="section-type"> Vấn Đề</h2>
                     </div>
 
                     <!-- Loading state -->
@@ -60,12 +60,12 @@
                     <section v-if="selectedType" class="sos-section" aria-labelledby="section-detail">
                         <div class="sos-section__header">
                             <span class="sos-section__step">2</span>
-                            <h2 class="sos-section__title" id="section-detail">Chi Tiet Van De</h2>
+                            <h2 class="sos-section__title" id="section-detail">Bạn cần giúp gì?</h2>
                         </div>
 
                         <div v-if="loadingDetails" class="sos-loading-row">
                             <i class="fa-solid fa-spinner fa-spin"></i>
-                            <span>Dang tai chi tiet...</span>
+                            <span>Đang tải chi tiết...</span>
                         </div>
 
                         <div v-else class="sos-chip-group" role="group" aria-label="Chon chi tiet su co">
@@ -82,7 +82,7 @@
                         </div>
 
                         <p v-if="!loadingDetails && incidentDetails.length === 0" class="sos-empty-hint">
-                            Khong co chi tiet cho loai su co nay.
+                            Không có chi tiết cho loại vấn đề này.
                         </p>
                     </section>
                 </transition>
@@ -91,7 +91,7 @@
                 <section class="sos-section sos-location-section" aria-labelledby="section-location">
                     <div class="sos-section__header">
                         <span class="sos-section__step">3</span>
-                        <h2 class="sos-section__title" id="section-location">Vi Tri Cuu Ho</h2>
+                        <h2 class="sos-section__title" id="section-location">Vị Trí Cứu Hộ</h2>
                         <button
                             type="button"
                             class="sos-gps-btn"
@@ -148,7 +148,7 @@
                                     </div>
                                     <div class="sos-suggestion-text">
                                         <span class="sos-suggestion-main">{{ suggestion.display_name }}</span>
-                                        <span class="sos-suggestion-sub">Xac nhan bang Tim kiem</span>
+                                        <span class="sos-suggestion-sub">Xác nhận bằng Tìm kiếm</span>
                                     </div>
                                 </li>
                             </ul>
@@ -161,9 +161,9 @@
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                         </div>
                         <div class="sos-address-card__content">
-                            <label class="sos-address-card__label">Dia chi hien tai</label>
+                            <label class="sos-address-card__label">Địa chỉ hiện tại</label>
                             <p class="sos-address-card__value" v-if="address">{{ address }}</p>
-                            <p class="sos-address-card__placeholder" v-else>Chua xac dinh vi tri...</p>
+                            <p class="sos-address-card__placeholder" v-else>Chưa xác định vị trí...</p>
                         </div>
                     </div>
 
@@ -171,14 +171,14 @@
                     <div v-if="coordsText" class="sos-coords-bar">
                         <span class="sos-coords-source">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-                            Nguon: {{ coordsSource }}
+                            Nguồn: {{ coordsSource }}
                         </span>
                         <span class="sos-coords-value">{{ coordsText.replace('GPS: ', '') }}</span>
                     </div>
 
                     <p class="sos-hint-text">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                        Hoac click truc tiep len ban do ben phai
+                        Hoặc click trực tiếp lên bản đồ bên phải
                     </p>
                 </section>
 
@@ -186,7 +186,7 @@
                 <section class="sos-section" aria-labelledby="section-desc">
                     <div class="sos-section__header">
                         <span class="sos-section__step">4</span>
-                        <h2 class="sos-section__title" id="section-desc">Mo Ta Tinh Huong</h2>
+                        <h2 class="sos-section__title" id="section-desc">Mô tả tình huống</h2>
                     </div>
                     <textarea
                         v-model="description"
@@ -201,7 +201,7 @@
                 <section class="sos-section" aria-labelledby="section-image">
                     <div class="sos-section__header">
                         <span class="sos-section__step">5</span>
-                        <h2 class="sos-section__title" id="section-image">Hinh Anh Hien Truong</h2>
+                        <h2 class="sos-section__title" id="section-image">Ảnh Hiện Trường</h2>
                     </div>
                     <label class="sos-upload-zone">
                         <input
@@ -215,8 +215,8 @@
                             <div class="sos-upload-zone__icon">
                                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                             </div>
-                            <p class="sos-upload-zone__text">Tai len anh/video</p>
-                            <p class="sos-upload-zone__hint">Click hoac keo tha file vao day</p>
+                            <p class="sos-upload-zone__text">Tải lên ảnh/video</p>
+                            <p class="sos-upload-zone__hint">Click hoặc kéo thả file vào đây</p>
                         </div>
                     </label>
                     <p v-if="selectedImageName" class="sos-file-name">
@@ -233,7 +233,7 @@
                             <span>Ban chua dang nhap</span>
                         </div>
                         <div class="sos-field">
-                            <label class="sos-field__label" for="guest-phone">So dien thoai lien lac (bat buoc)</label>
+                            <label class="sos-field__label" for="guest-phone">Số điện thoại liên lạc (bắt buộc)</label>
                             <input
                                 id="guest-phone"
                                 v-model="guestPhone"
@@ -247,7 +247,7 @@
                         </div>
                         <p class="sos-hint-text">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                            Sau khi dang ky tai khoan, cac yeu cau se duoc theo doi ngay.
+                            Sau khi đăng ký tài khoản, các yêu cầu sẽ được theo dõi ngay.
                         </p>
                     </section>
                 </transition>
@@ -488,15 +488,15 @@ export default {
                 this.selectedDetailIds = [];
 
                 if (this.incidentTypes.length === 0) {
-                    this.incidentTypeError = "Backend chua tra ve du lieu loai su co.";
+                    this.incidentTypeError = "Backend chưa trả về dữ liệu loại vấn đề.";
                 }
             } catch (error) {
-                console.error("Khong tai duoc loai su co:", error);
+                console.error("Không tải được loại vấn đề:", error);
                 this.incidentTypes = [];
                 this.incidentDetails = [];
                 this.selectedType = null;
                 this.selectedDetailIds = [];
-                this.incidentTypeError = "Khong tai duoc loai su co tu backend.";
+                this.incidentTypeError = "Không tải được loại vấn đề từ backend.";
             } finally {
                 this.loadingIncidentTypes = false;
             }
@@ -514,7 +514,7 @@ export default {
                 this.incidentDetails = this.chuanHoaChiTietSuCo(response?.data);
                 this.selectedDetailIds = [];
             } catch (error) {
-                console.error("Khong tai duoc chi tiet loai su co:", error);
+                console.error("Không tải được chi tiết loại vấn đề:", error);
                 this.incidentDetails = [];
                 this.selectedDetailIds = [];
             } finally {
@@ -560,7 +560,7 @@ export default {
                     this.coordsSource = "GPS";
                 }
             } catch (e) {
-                this.coordsText = "Khong lay duoc vi tri (cap quyen trinh duyet hoac dung HTTPS).";
+                this.coordsText = "Không lấy được vị trí (cấp quyền trình duyệt hoặc dùng HTTPS).";
             } finally {
                 this.locating = false;
             }
@@ -582,7 +582,7 @@ export default {
                     this.address = data.display_name;
                 }
             } catch (e) {
-                console.error("Khong lay duoc dia chi tu toa do:", e);
+                console.error("Không lấy được địa chỉ từ tọa độ:", e);
             }
         },
         async timDiaChi() {
@@ -655,11 +655,11 @@ export default {
             const phone = this.guestPhone.trim();
             const phoneRegex = /^0\d{9,10}$/;
             if (!phone) {
-                this.guestPhoneError = "So dien thoai la bat buoc.";
+                this.guestPhoneError = "Bạn chưa nhập số điện thoại.";
                 return false;
             }
             if (!phoneRegex.test(phone)) {
-                this.guestPhoneError = "So dien thoai khong hop le (phai bat dau tu 0, 10-11 so).";
+                this.guestPhoneError = "Số điện thoại không hợp lệ.";
                 return false;
             }
             this.guestPhoneError = "";
@@ -675,24 +675,29 @@ export default {
         async guiYeuCau() {
             const loggedIn = this.isUserLoggedIn;
             if (!this.selectedType) {
-                this.hienToast("warning", "Vui long chon it nhat mot loai su co.");
+                this.hienToast("warning", "Vui lòng chọn loại vấn đề.");
+                return;
+            }
+
+            if (!this.selectedDetailIds || this.selectedDetailIds.length === 0) {
+                this.hienToast("warning", "Vui lòng cho chúng tôi biết bạn cần giúp gì.");
                 return;
             }
 
             if (!this.selectedCoords?.lat || !this.selectedCoords?.lng) {
-                this.hienToast("warning", "Vui long chon vi tri tren ban do hoac tim kiem dia chi.");
+                this.hienToast("warning", "Vui lòng chọn vị trí trên bản đồ hoặc tìm kiếm địa chỉ.");
                 return;
             }
 
             if (loggedIn) {
                 const userId = this.layIdNguoiDungHienTai();
                 if (!userId) {
-                    this.hienToast("error", "Khong xac dinh duoc tai khoan hien tai. Vui long dang nhap lai.");
+                    this.hienToast("error", "Không xác định được tài khoản hiện tại. Vui lòng đăng nhập lại.");
                     return;
                 }
             } else {
                 if (!this.validateGuestPhone()) {
-                    this.hienToast("warning", "Vui long nhap so dien thoai de gui yeu cau cuu ho.");
+                    this.hienToast("warning", "Vui lòng nhập số điện thoại để gửi yêu cầu cứu hộ.");
                     return;
                 }
             }
@@ -753,14 +758,21 @@ export default {
                     this.guestPhoneError = "";
                 }
             } catch (error) {
-                const message =
-                    error?.response?.data?.message ||
-                    error?.response?.data?.errors?.id_loai_su_co?.[0] ||
-                    error?.response?.data?.errors?.vi_tri_lat?.[0] ||
-                    error?.response?.data?.errors?.vi_tri_lng?.[0] ||
-                    error?.response?.data?.errors?.hinh_anh?.[0] ||
-                    "Khong the gui yeu cau cuu ho. Vui long kiem tra lai thong tin va thu lai.";
-                console.error("Gui yeu cau cuu ho that bai:", error);
+                const hinhAnhLoi = error?.response?.data?.errors?.hinh_anh?.[0] || "";
+                let message;
+                if (hinhAnhLoi && (hinhAnhLoi.toLowerCase().includes("xác thực") || hinhAnhLoi.toLowerCase().includes("authentication") || hinhAnhLoi.toLowerCase().includes("xac thuc"))) {
+                    message = "Bạn chưa gửi ảnh.";
+                } else if (hinhAnhLoi) {
+                    message = hinhAnhLoi;
+                } else {
+                    message =
+                        error?.response?.data?.message ||
+                        error?.response?.data?.errors?.id_loai_su_co?.[0] ||
+                        error?.response?.data?.errors?.vi_tri_lat?.[0] ||
+                        error?.response?.data?.errors?.vi_tri_lng?.[0] ||
+                        "Không thể gửi yêu cầu cứu hộ. Vui lòng kiểm tra lại thông tin và thử lại.";
+                }
+                console.error("Gửi yêu cầu cứu hộ thất bại:", error);
                 this.hienToast("error", message);
             } finally {
                 this.submitting = false;

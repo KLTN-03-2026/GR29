@@ -259,8 +259,11 @@ export default {
       try {
         const response = await rescueRequestAPI.getList();
         const all = parseRequests(response?.data || response);
-        // Only show waiting requests in the queue
-        this.requests = all.filter(r => r.status === 'CHO_XU_LY' || r.status === 'WAITING' || r.status === 'MOI');
+        // Chỉ hiển thị yêu cầu chưa được điều phối
+        this.requests = all.filter(r => {
+          const s = r.status;
+          return s === 'CHO_XU_LY' || s === 'WAITING' || s === 'MOI';
+        });
       } catch (error) {
         console.error("Không tải được yêu cầu:", error);
         this.error = "Mất kết nối máy chủ. Thử lại sau.";
