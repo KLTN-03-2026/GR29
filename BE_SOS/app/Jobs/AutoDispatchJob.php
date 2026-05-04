@@ -52,6 +52,9 @@ class AutoDispatchJob implements ShouldQueue
     {
         $this->idYeuCau = $idYeuCau;
         $this->soLanRetry = $soLanRetry;
+        // Chi chay sau khi transaction hien tai da commit,
+        // tranh race condition voi store() dang tao HangDoiXuLy
+        $this->afterCommit = true;
     }
 
     /**

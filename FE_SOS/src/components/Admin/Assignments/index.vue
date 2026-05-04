@@ -19,8 +19,8 @@
             <div class="stat-card shadow-sm border-0">
               <div class="stat-icon bg-warning-subtle text-warning"><i class="fa-solid fa-clock"></i></div>
               <div class="stat-info">
-                <span class="stat-label">Đang chờ</span>
-                <h4 class="stat-value">{{ pendingRequests.length }}</h4>
+                <span class="stat-label">Chờ phân công</span>
+                <h4 class="stat-value">{{ waitingForDispatchCount }}</h4>
               </div>
             </div>
             <div class="stat-card shadow-sm border-0">
@@ -625,6 +625,11 @@ export default {
   computed: {
     filteredRequests() {
       let reqs = this.pendingRequests;
+      // Chỉ hiển thị yêu cầu ở trạng thái CHO_XU_LY (chờ phân công)
+      reqs = reqs.filter(r => {
+        const status = normalizeStatus(r.trangThai);
+        return status === 'CHO_XU_LY';
+      });
       if (this.selectedSeverityFilter !== 'all') {
         reqs = reqs.filter(r => {
           const sev = String(r.mucDoKhanCap || '').toUpperCase();
@@ -660,6 +665,9 @@ export default {
     },
     busyTeamsCount() {
       return this.busyTeams.length;
+    },
+    waitingForDispatchCount() {
+      return this.pendingRequests.filter(r => normalizeStatus(r.trangThai) === 'CHO_XU_LY').length;
     },
     sortedAvailableTeams() {
       // Only show teams that match the incident type (cung_loai_su_co === true).
@@ -697,13 +705,15 @@ export default {
       return this.availableTeams.filter(t => t.cung_quan).length;
     },
   },
-  async created() {
+  async   created() {
     this.loadDispatchStatus();
-    await this.initData();
+    this.setupRealtimeSync();
     this.subscribeToRescueUpdates();
     this.startPolling();
+    this.initData();
   },
   beforeUnmount() {
+    this.cleanupRealtimeSync();
     this.unsubscribeFromRescueUpdates();
     this.stopPolling();
   },
@@ -738,6 +748,33 @@ export default {
     },
   },
   methods: {
+    setupRealtimeSync() {
+      window.addEventListener("storage", this.handleStorageChange);
+      window.addEventListener("dispatch-status-changed", this.handleDispatchStatusChange);
+    },
+    cleanupRealtimeSync() {
+      window.removeEventListener("storage", this.handleStorageChange);
+      window.removeEventListener("dispatch-status-changed", this.handleDispatchStatusChange);
+    },
+    handleDispatchStatusChange(e) {
+      if (e?.detail?.enabled !== undefined) {
+        this.dispatchEnabled = e.detail.enabled;
+        const saved = localStorage.getItem("realtimeDispatchConfig");
+        const config = saved ? JSON.parse(saved) : {};
+        config.dispatchEnabled = this.dispatchEnabled;
+        localStorage.setItem("realtimeDispatchConfig", JSON.stringify(config));
+      }
+    },
+    handleStorageChange(e) {
+      if (e.key === "realtimeDispatchConfig" && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed.dispatchEnabled !== undefined) {
+            this.dispatchEnabled = parsed.dispatchEnabled;
+          }
+        } catch {}
+      }
+    },
     subscribeToRescueUpdates() {
       if (!window.Echo) {
         console.warn('[AdminAssignments] Echo not available');
@@ -1181,6 +1218,8 @@ export default {
         this.pendingRequests = this.pendingRequests.filter(r => r.id !== reqId);
         this.selectedReq = null;
         this.selectedTeams = [];
+
+        this.$router.push('/admin/theo-doi-cuu-ho');
       } catch (error) {
         console.error('Lỗi chuyển phân công:', error);
         this.$toast?.error?.('Không thể phát lệnh! Vui lòng kiểm tra lại đường truyền.', {
