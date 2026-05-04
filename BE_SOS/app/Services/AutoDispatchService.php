@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\AutoDispatchJob;
 use App\Models\DoiCuuHo;
 use App\Models\PhanCongCuuHo;
 use App\Models\YeuCauCuuHo;
@@ -111,13 +112,23 @@ class AutoDispatchService
                 ];
             }
 
+            // Tinh diem chi phu thuoc yeu cau (khong phu thuoc doi) - chi tinh 1 lan
+            $diemNguyHiem = $this->tinhDiemNguyHiemInternal($yeuCau);
+            $diemThoiGian = $this->tinhDiemThoiGianInternal($yeuCau);
+
+            Log::debug('[AutoDispatch] Diem phu thuoc yeu cau', [
+                'id_yeu_cau' => $idYeuCau,
+                'diem_nguy_hiem' => $diemNguyHiem,
+                'diem_thoi_gian' => $diemThoiGian,
+            ]);
+
             $doiTotNhat = null;
             $diemTotNhat = PHP_INT_MIN;
 
             foreach ($danhSachDoi as $doi) {
-                $diemNguyHiem = $this->tinhDiemNguyHiemInternal($yeuCau);
                 $diemKhoangCach = $this->tinhDiemKhoangCachInternal($doi);
                 $diemTai = $this->tinhDiemTaiInternal($doi);
+                $diemLoaiSuCo = $this->tinhDiemLoaiSuCoInternal($yeuCau, $doi);
 
                 Log::debug('[AutoDispatch] Tinh diem doi', [
                     'doi_id' => $doi->id_doi_cuu_ho,
@@ -125,6 +136,11 @@ class AutoDispatchService
                     'diem_nguy_hiem' => $diemNguyHiem,
                     'diem_khoang_cach' => $diemKhoangCach,
                     'diem_tai' => $diemTai,
+                    'diem_loai_su_co' => $diemLoaiSuCo,
+                    'diem_thoi_gian' => $diemThoiGian,
+                    'khoang_cach_km' => $doi->distance ?? null,
+                    'loai_su_co_cua_doi' => $doi->loaiSuCos->map(fn($l) => $l->id_loai_su_co ?? $l->id)->toArray(),
+                    'id_loai_su_co_yeu_cau' => $yeuCau->id_loai_su_co,
                 ]);
 
                 if ($diemTai === -100) {
@@ -135,7 +151,7 @@ class AutoDispatchService
                     continue;
                 }
 
-                $diemTong = $this->tinhDiemTong($yeuCau, $doi);
+                $diemTong = $diemNguyHiem + $diemKhoangCach + $diemTai + $diemThoiGian + $diemLoaiSuCo;
 
                 if ($diemTong > $diemTotNhat) {
                     $diemTotNhat = $diemTong;
@@ -265,6 +281,33 @@ class AutoDispatchService
     }
 
     /**
+     * Tinh diem khop loai su co giua yeu cau va doi cuu ho.
+     * Tra ve 0 neu khong khop, 4 neu khop.
+     * Muc 4 diem dam bao doi khop loai luon thang doi gan hon nhung khong khop loai
+     * (vi khoang cach toi da chi 3 diem).
+     */
+    private function tinhDiemLoaiSuCoInternal(YeuCauCuuHo $yeuCau, DoiCuuHo $doi): int
+    {
+        $idLoaiSuCoYeuCau = $yeuCau->id_loai_su_co;
+        if (!$idLoaiSuCoYeuCau) {
+            return 0;
+        }
+
+        $loaiSuCos = $doi->loaiSuCos ?? collect();
+        $loaiSuCoIds = $loaiSuCos
+            ->map(fn($lsc) => $lsc->id_loai_su_co ?? $lsc->id ?? null)
+            ->filter()
+            ->map(fn($id) => (int) $id)
+            ->toArray();
+
+        if (empty($loaiSuCoIds)) {
+            return 0;
+        }
+
+        return in_array((int) $idLoaiSuCoYeuCau, $loaiSuCoIds, true) ? 4 : 0;
+    }
+
+    /**
      * Tinh diem tai (capacity) cua doi.
      */
     private function tinhDiemTaiInternal(DoiCuuHo $doi): int
@@ -305,7 +348,8 @@ class AutoDispatchService
         return $this->tinhDiemNguyHiemInternal($yeuCau)
             + $this->tinhDiemKhoangCachInternal($doi)
             + $this->tinhDiemTaiInternal($doi)
-            + $this->tinhDiemThoiGianInternal($yeuCau);
+            + $this->tinhDiemThoiGianInternal($yeuCau)
+            + $this->tinhDiemLoaiSuCoInternal($yeuCau, $doi);
     }
 
     /**
@@ -338,6 +382,25 @@ class AutoDispatchService
 
                 $yeuCau->update(['trang_thai' => 'DA_PHAN_CONG']);
                 $doi->update(['trang_thai' => 'BAN_CHI_DINH']);
+
+                // Cap nhat HangDoiXuLy: chuyen WAITING -> PROCESSING khi da phan cong
+                if ($yeuCau->hangDoiXuLy) {
+                    $yeuCau->hangDoiXuLy->update([
+                        'trang_thai' => 'PROCESSING',
+                        'thoi_gian_phan_cong' => now(),
+                    ]);
+                }
+
+                // Broadcast su kien de FE cap nhat real-time
+                try {
+                    $yeuCau->load(['phanCongs.doiCuuHo', 'phanCongs.thanhVienTiepNhan', 'phanCongs.ketQua', 'loaiSuCo']);
+                    event(new \App\Events\RescueRequestUpdated($yeuCau, 'auto_dispatched'));
+                } catch (\Throwable $ex) {
+                    Log::warning('[AutoDispatch] Broadcast that bai', [
+                        'id_yeu_cau' => $yeuCau->id_yeu_cau,
+                        'error' => $ex->getMessage(),
+                    ]);
+                }
 
                 Log::info('[AutoDispatch] Gan doi thanh cong', [
                     'id_yeu_cau' => $yeuCau->id_yeu_cau,
@@ -410,10 +473,25 @@ class AutoDispatchService
 
     /**
      * Bat dieu phoi tu dong.
+     * Dong thoi dispatch job cho tat ca yeu cau dang cho xu ly (chua phan cong).
      */
     public static function batDieuPhoi(): void
     {
         Cache::put('auto_dispatch_enabled', true, now()->addYears(10));
+
+        $trangThaiYeuCau = ['CHO_XU_LY', 'MOI', 'WAITING', 'CHO_PHAN_CONG', 'DA_PHAN_CONG'];
+        $danhSachYeuCau = YeuCauCuuHo::whereIn('trang_thai', $trangThaiYeuCau)
+            ->whereDoesntHave('phanCongs')
+            ->whereNotNull('vi_tri_lat')
+            ->whereNotNull('vi_tri_lng')
+            ->get();
+
+        foreach ($danhSachYeuCau as $yeuCau) {
+            Log::info('[AutoDispatch] Dispatch yeu cau co san khi bat auto dispatch', [
+                'id_yeu_cau' => $yeuCau->id_yeu_cau,
+            ]);
+            AutoDispatchJob::dispatch($yeuCau->id_yeu_cau)->onQueue('auto-dispatch');
+        }
     }
 
     /**
@@ -486,5 +564,13 @@ class AutoDispatchService
     public function tinhDiemThoiGian(YeuCauCuuHo $yeuCau): float
     {
         return $this->tinhDiemThoiGianInternal($yeuCau);
+    }
+
+    /**
+     * Tinh diem loai su co (public accessor).
+     */
+    public function tinhDiemLoaiSuCo(YeuCauCuuHo $yeuCau, DoiCuuHo $doi): int
+    {
+        return $this->tinhDiemLoaiSuCoInternal($yeuCau, $doi);
     }
 }
