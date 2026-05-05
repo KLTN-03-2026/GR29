@@ -9,7 +9,7 @@
                 </svg>
             </div>
             <div class="sos-header__text">
-                <h1 class="sos-header__title">Yêu Cầu Cứu Hộ</h1>
+                <h1 class="sos-header__title">Yêu Cầu Cứu Hộ </h1>
                 <p class="sos-header__subtitle">Thông tin chính xác giúp lực lượng phản ứng tiếp cận nhanh nhất.</p>
             </div>
         </div>
@@ -101,7 +101,7 @@
                         >
                             <svg v-if="!locating" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
                             <i v-else class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
-                            <span>{{ locating ? 'Dang xac dinh...' : 'GPS' }}</span>
+                            <span>{{ locating ? 'Dang xác định...' : 'GPS' }}</span>
                         </button>
                     </div>
 
@@ -113,10 +113,10 @@
                                 v-model="addressSearch"
                                 type="text"
                                 class="sos-search-input"
-                                placeholder="Nhap dia chi, ten duong, khu vuc..."
+                                placeholder="Nhập địa chỉ, tên đường, khu vực..."
                                 autocomplete="off"
                                 @input="timDiaChi"
-                                aria-label="Tim kiem dia chi"
+                                aria-label="Tìm kiếm địa chỉ"
                             />
                             <button
                                 v-if="addressSearch"
@@ -192,8 +192,8 @@
                         v-model="description"
                         class="sos-textarea"
                         rows="3"
-                        placeholder="So nguoi bi nan, tinh trang hien tai, thong tin them..."
-                        aria-label="Mo ta tinh huong"
+                        placeholder="Số người bị nạn, tình trạng hiện tại, thông tin thêm..."
+                        aria-label="Mô tả tình huống"
                     ></textarea>
                 </section>
 
@@ -262,7 +262,7 @@
                 >
                     <span v-if="!submitting" class="sos-submit-btn__content">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.08 6.08l1.87-1.87a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.5 16a2 2 0 0 1 .5.92z"/></svg>
-                        Gui Cuu Ho Ngay
+                        Gửi Cứu Hộ Ngay
                     </span>
                     <span v-else class="sos-submit-btn__content">
                         <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
@@ -282,10 +282,10 @@
                     />
 
                     <!-- Units overlay -->
-                    <div class="sos-units-card" aria-label="Luc luong lan can">
+                    <div class="sos-units-card" aria-label="Lực lượng cứu hộ">
                         <h3 class="sos-units-card__title">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                            Luc Luong Lan Can
+                            Lực Lượng Cứu Hộ
                         </h3>
                         <ul class="sos-units-list">
                             <li v-for="u in units" :key="u.name" class="sos-units-item">
@@ -418,8 +418,8 @@ export default {
             deviceId: "",
             guestSessionId: null,
             units: [
-                { name: "Canh sat", d: "1.2 km - 5p", i: "fa-shield-halved", c: "bg-primary", t: "text-primary" },
-                { name: "BV Da khoa", d: "0.8 km - 3p", i: "fa-hospital", c: "bg-danger", t: "text-danger" }
+                { name: "Cảnh sát", d: "1.2 km - 5p", i: "fa-shield-halved", c: "bg-primary", t: "text-primary" },
+                { name: "BV Đa khoa", d: "0.8 km - 3p", i: "fa-hospital", c: "bg-danger", t: "text-danger" }
             ]
         };
     },
