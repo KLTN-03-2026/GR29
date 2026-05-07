@@ -1,5 +1,6 @@
 <template>
-    <nav class="navbar navbar-expand-lg navbar-dark shadow-sm py-2 px-4 now-navbar">
+    <div>
+        <nav class="navbar navbar-expand-lg navbar-dark shadow-sm py-2 px-4 now-navbar">
         <div class="container-fluid">
             <router-link class="navbar-brand d-flex align-items-center fw-bold now-brand" to="/">
                 <span class="now-brand__mark me-2">
@@ -49,23 +50,34 @@
                 </ul>
                 <div class="d-flex align-items-center">
                     <template v-if="!isLoggedIn">
-                        <div class="d-none d-md-flex align-items-center me-3 border-end border-light border-opacity-25 pe-3">
-                            <span class="badge rounded-pill bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2 me-3" style="font-size: 0.7rem;">
-                                <i class="fa-solid fa-circle me-2 now-dot"></i> <p class="text-dark">HỆ THỐNG: ĐANG HOẠT ĐỘNG</p>
+                        <div
+                            class="d-none d-md-flex align-items-center me-3 border-end border-light border-opacity-25 pe-3">
+                            <span
+                                class="badge rounded-pill bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2 me-3"
+                                style="font-size: 0.7rem;">
+                                <i class="fa-solid fa-circle me-2 now-dot"></i>
+                                <p class="text-dark">HỆ THỐNG: ĐANG HOẠT ĐỘNG</p>
                             </span>
                         </div>
                         <div class="d-flex">
-                            <router-link to="/client/login" class="btn btn-outline-light btn-sm me-2 rounded-pill px-3 fw-semibold">Đăng nhập</router-link>
-                            <router-link to="/client/register" class="btn btn-warning btn-sm rounded-pill px-3 text-dark fw-semibold">Đăng ký</router-link>
+                            <router-link to="/client/login"
+                                class="btn btn-outline-light btn-sm me-2 rounded-pill px-3 fw-semibold">Đăng
+                                nhập</router-link>
+                            <router-link to="/client/register"
+                                class="btn btn-warning btn-sm rounded-pill px-3 text-dark fw-semibold">Đăng
+                                ký</router-link>
                         </div>
                     </template>
                     <template v-else>
                         <div class="dropdown" ref="dropdownRef">
-                            <button class="btn now-avatar-btn dropdown-toggle d-flex align-items-center" type="button" @click="toggleDropdown">
-                                <span class="text-white me-2 d-none d-md-inline-block fw-semibold small">{{ displayName }}</span>
+                            <button class="btn now-avatar-btn dropdown-toggle d-flex align-items-center" type="button"
+                                @click="toggleDropdown">
+                                <span class="text-white me-2 d-none d-md-inline-block fw-semibold small">{{ displayName
+                                    }}</span>
                                 <img class="now-avatar" :src="avatarSrc" alt="User avatar" />
                             </button>
-                            <ul class="dropdown-menu dropdown-menu-end now-user-menu shadow" :class="{ 'show': isDropdownOpen }">
+                            <ul class="dropdown-menu dropdown-menu-end now-user-menu shadow"
+                                :class="{ 'show': isDropdownOpen }">
                                 <li class="px-3 py-2">
                                     <div class="fw-semibold text-dark small">{{ displayName }}</div>
                                     <div class="text-muted small">Tài khoản khách</div>
@@ -79,7 +91,8 @@
                                     </router-link>
                                 </li>
                                 <li>
-                                    <router-link class="dropdown-item" to="/client/change-password" @click="closeDropdown">
+                                    <router-link class="dropdown-item" to="/client/change-password"
+                                        @click="closeDropdown">
                                         <i class="fa-solid fa-key me-2"></i>Đổi mật khẩu
                                     </router-link>
                                 </li>
@@ -97,7 +110,8 @@
                                     <hr class="dropdown-divider my-1" />
                                 </li>
                                 <li>
-                                    <button class="dropdown-item text-danger" type="button" @click="logout">
+                                    <button class="dropdown-item text-danger" type="button" data-bs-toggle="modal"
+                                        data-bs-target="#logoutModal" @click="closeDropdown">
                                         <i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất
                                     </button>
                                 </li>
@@ -108,6 +122,40 @@
             </div>
         </div>
     </nav>
+
+    <!-- Modal xác nhận đăng xuất -->
+    <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered ">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-light border-0">
+                    <h5 class="modal-title w-100 text-center fw-bold text-dark" id="logoutModalLabel">
+                        <i class="fa-solid fa-circle-question text-warning me-2"></i>
+                        Xác nhận đăng xuất
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <div class="mb-3">
+                        <i class="fa-solid fa-right-from-bracket fa-3x text-danger mb-3"></i>
+                    </div>
+                    <h6 class="fw-semibold text-dark mb-2">Bạn muốn đăng xuất?</h6>
+                    <p class="text-muted mb-0 small">Bạn sẽ cần đăng nhập lại để tiếp tục sử dụng dịch vụ.</p>
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <div class="d-flex w-100 gap-2 px-3">
+                        <!-- Thêm w-100 để nút dài ra, xóa btn-lg để cân bằng -->
+                        <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">
+                            <i class="fa-solid fa-xmark me-1"></i> Hủy
+                        </button>
+                        <button type="button" class="btn btn-danger w-100" @click="logout">
+                            <i class="fa-solid fa-right-from-bracket me-1"></i> Đăng xuất
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
 </template>
 
 <script setup>
@@ -165,6 +213,14 @@ onUnmounted(() => {
 
 function logout() {
     closeDropdown();
+    // Đóng modal nếu đang mở
+    const modal = document.getElementById('logoutModal');
+    if (modal) {
+        const bsModal = bootstrap.Modal.getInstance(modal);
+        if (bsModal) {
+            bsModal.hide();
+        }
+    }
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("client");
@@ -282,6 +338,57 @@ function logout() {
     top: 100%;
     right: 0;
     margin-top: 0.5rem;
-    z-index: 1060; /* Ensure dropdown displays above everything */
+    z-index: 1060;
+    /* Ensure dropdown displays above everything */
+}
+
+/* Modal styles */
+#logoutModal .modal-content {
+    border-radius: 16px;
+    border: none;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+#logoutModal .modal-header {
+    border-radius: 16px 16px 0 0;
+    padding: 1.5rem 1.5rem 1rem;
+}
+
+#logoutModal .modal-body {
+    padding: 1.5rem;
+}
+
+#logoutModal .modal-footer {
+    border-radius: 0 0 16px 16px;
+    padding: 1rem 1.5rem 1.5rem;
+}
+
+#logoutModal .btn {
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+#logoutModal .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+#logoutModal .fa-3x {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
 }
 </style>

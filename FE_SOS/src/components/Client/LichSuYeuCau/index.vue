@@ -918,9 +918,18 @@ export default {
       if (this.ratingSelected === 0 || this.ratingSubmitting) return;
       this.ratingSubmitting = true;
       try {
+        const currentUserId = getCurrentUserId();
+        if (!currentUserId) {
+          if (this.$toast?.error) {
+            this.$toast.error("Vui lòng đăng nhập để đánh giá.", { position: "top-right", duration: 3500 });
+          }
+          this.ratingSubmitting = false;
+          return;
+        }
         await rescueRequestAPI.submitRating(this.ratingItem.id, {
+          id_nguoi_dung: currentUserId,
           diem_danh_gia: this.ratingSelected,
-          noi_dung: this.ratingComment,
+          noi_dung_danh_gia: this.ratingComment,
           tags: this.ratingSelectedTags.join(", "),
         });
 

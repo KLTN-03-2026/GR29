@@ -215,11 +215,7 @@ const routes = [
         component: () => import("../components/Admin/DoiCuuHo/index.vue"),
         meta: { layout: "admin", roles: ["admin", "manager_operator"] },
     },
-    {
-        path: "/admin/ai-scoring",
-        component: () => import("../components/Admin/AIScoring/index.vue"),
-        meta: { layout: "admin", roles: ["admin", "manager_operator"] },
-    },
+    
     {
         path: "/admin/accounts/admin",
         component: () => import("../components/Admin/Accounts/Admin/index.vue"),

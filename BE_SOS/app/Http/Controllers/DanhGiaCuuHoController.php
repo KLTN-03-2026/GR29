@@ -104,9 +104,12 @@ class DanhGiaCuuHoController extends Controller
             'id_nguoi_dung' => 'required|numeric',
             'diem_danh_gia' => 'required|numeric|between:1,5',
             'noi_dung_danh_gia' => 'nullable|string',
+            'tags' => 'nullable|string', // Accept tags field but don't require it
         ]);
 
         $validated['id_yeu_cau'] = $id_yeu_cau;
+        // Remove tags from validated since the model doesn't have this field
+        unset($validated['tags']);
         $item = DanhGiaCuuHo::create($validated);
 
         return response()->json([
