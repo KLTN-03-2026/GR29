@@ -274,7 +274,7 @@
         </div>
         <h3 class="state-title">Chưa có yêu cầu hoàn thành</h3>
         <p class="state-description">Bạn chưa có yêu cầu cứu hộ nào được hoàn thành</p>
-        <button class="btn-primary-action" @click="$router.push('/gui-yeu-cau')">
+        <button class="btn-primary-action" @click="$router.push('/')">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
