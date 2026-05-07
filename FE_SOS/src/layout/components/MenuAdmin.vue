@@ -53,9 +53,7 @@
         <i class="fa-solid fa-bolt me-2"></i>Auto Dispatch
       </router-link>
       
-      <router-link v-if="canViewConfig" class="nav-item-link" to="/admin/ai-scoring">
-        <i class="fa-solid fa-brain me-2"></i>Trọng số AI scoring
-      </router-link>
+      
 
 
       <div v-if="canViewAccounts" class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mt-3 mb-2">Quản Lý</div>

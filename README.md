@@ -24,7 +24,6 @@ Hệ thống **SOS Rescue Dispatch** giúp điều phối và quản lý hoạt 
 - Xem & quản lý hàng đợi ưu tiên
 - Phân công đội cứu hộ
 - Theo dõi bản đồ nhiệt khu vực nguy hiểm
-- Cấu hình trọng số AI scoring
 - Báo cáo thống kê
 
 ### Đội Cứu Hộ
