@@ -14,21 +14,26 @@ class TaiNguyenCuuHoSeeder extends Seeder
     public function run(): void
     {
         $dois = DoiCuuHo::all();
-        $resources = ['Xe cứu hộ', 'Nhu yếu phẩm', 'Vật tư y tế', 'Dụng cụ thi công'];
-        $resourceTypes = ['Vehicle', 'Supply', 'Medical', 'Equipment'];
+        $resources = [
+            'xe_cuu_ho' => 'Xe cứu hộ',
+            'nhu_yeu_pham' => 'Nhu yếu phẩm',
+            'vat_tu_y_te' => 'Vật tư y tế',
+            'dung_cu_thi_cong' => 'Dụng cụ thi công',
+        ];
         $count = 0;
 
         foreach ($dois as $doi) {
-            // 3-4 resources per team
-            for ($i = 0; $i < rand(3, 4); $i++) {
+            $i = 0;
+            foreach ($resources as $slug => $ten) {
                 TaiNguyenCuuHo::create([
                     'id_doi_cuu_ho' => $doi->id_doi_cuu_ho,
-                    'ten_tai_nguyen' => $resources[$i] ?? 'Tài nguyên khác',
-                    'loai_tai_nguyen' => $resourceTypes[$i] ?? 'Other',
+                    'ten_tai_nguyen' => $ten,
+                    'slug_tai_nguyen' => $slug,
                     'so_luong' => rand(1, 5),
                     'trang_thai' => 1
                 ]);
                 $count++;
+                $i++;
             }
         }
 

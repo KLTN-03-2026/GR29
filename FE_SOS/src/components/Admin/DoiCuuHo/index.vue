@@ -305,7 +305,7 @@ export default {
       loadingAllocation: false,
       allocationForm: {
         id_doi_cuu_ho: '',
-        loai_tai_nguyen: '',
+        slug_tai_nguyen: '',
         so_luong_cap: null,
         ghi_chu: '',
       },
@@ -335,7 +335,7 @@ export default {
       submittingResource: false,
       resourceForm: {
         id_doi_cuu_ho: '',
-        loai_tai_nguyen: 'Vehicle',
+        slug_tai_nguyen: 'Vehicle',
         ten_tai_nguyen: '',
         so_luong: 0,
         trang_thai: 1,
@@ -345,7 +345,7 @@ export default {
       showWarehouseModal: false,
       submittingWarehouse: false,
       warehouseForm: {
-        loai_tai_nguyen: '',
+        slug_tai_nguyen: '',
         ten_hien_thi: '',
         tong_so_luong_hien_tai: 0,
         so_luong_moi: null,
@@ -385,7 +385,7 @@ export default {
         const q = this.searchResources.toLowerCase();
         list = list.filter(r =>
           (r.ten_tai_nguyen || '').toLowerCase().includes(q) ||
-          (r.loai_tai_nguyen || '').toLowerCase().includes(q) ||
+          (r.slug_tai_nguyen || '').toLowerCase().includes(q) ||
           (this.getTeamName(r.id_doi_cuu_ho) || '').toLowerCase().includes(q)
         );
       }
@@ -393,13 +393,13 @@ export default {
     },
     canSubmitAllocation() {
       return this.allocationForm.id_doi_cuu_ho &&
-        this.allocationForm.loai_tai_nguyen &&
+        this.allocationForm.slug_tai_nguyen &&
         this.allocationForm.so_luong_cap > 0;
     },
     canSubmitResource() {
       return this.editingResource
-        ? (this.resourceForm.loai_tai_nguyen && this.resourceForm.so_luong >= 0)
-        : (this.resourceForm.id_doi_cuu_ho && this.resourceForm.loai_tai_nguyen && this.resourceForm.so_luong >= 0);
+        ? (this.resourceForm.slug_tai_nguyen && this.resourceForm.so_luong >= 0)
+        : (this.resourceForm.id_doi_cuu_ho && this.resourceForm.slug_tai_nguyen && this.resourceForm.so_luong >= 0);
     },
   },
   watch: {
@@ -611,7 +611,7 @@ export default {
       this.editingResource = null;
       this.resourceForm = {
         id_doi_cuu_ho: this.filterResourceTeam || '',
-        loai_tai_nguyen: 'Vehicle',
+        slug_tai_nguyen: 'Vehicle',
         ten_tai_nguyen: '',
         so_luong: 0,
         trang_thai: 1,
@@ -623,7 +623,7 @@ export default {
       this.resourceForm = {
         id: res.id_tai_nguyen,
         id_doi_cuu_ho: res.id_doi_cuu_ho,
-        loai_tai_nguyen: res.loai_tai_nguyen || 'Vehicle',
+        slug_tai_nguyen: res.slug_tai_nguyen || 'Vehicle',
         ten_tai_nguyen: res.ten_tai_nguyen || '',
         so_luong: parseInt(res.so_luong) || 0,
         trang_thai: res.trang_thai ? true : false,
@@ -663,7 +663,7 @@ export default {
     // ============ WAREHOUSE MODAL ============
     openUpdateWarehouseModal(item) {
       this.warehouseForm = {
-        loai_tai_nguyen: item.loai_tai_nguyen,
+        slug_tai_nguyen: item.slug_tai_nguyen,
         ten_hien_thi: item.ten_hien_thi,
         tong_so_luong_hien_tai: item.tong_so_luong,
         so_luong_moi: null,
@@ -681,7 +681,7 @@ export default {
       this.submittingWarehouse = true;
       try {
         await adminResourcesAPI.capNhatKho({
-          loai_tai_nguyen: this.warehouseForm.loai_tai_nguyen,
+          slug_tai_nguyen: this.warehouseForm.slug_tai_nguyen,
           so_luong: this.warehouseForm.so_luong_moi,
         });
         this.showToast('Cập nhật kho thành công!', 'success');
@@ -704,12 +704,12 @@ export default {
       try {
         await adminResourcesAPI.capPhat({
           id_doi_cuu_ho: this.allocationForm.id_doi_cuu_ho,
-          loai_tai_nguyen: this.allocationForm.loai_tai_nguyen,
+          slug_tai_nguyen: this.allocationForm.slug_tai_nguyen,
           so_luong_cap: this.allocationForm.so_luong_cap,
           ghi_chu: this.allocationForm.ghi_chu,
         });
         this.showToast('Cấp phát tài nguyên thành công!', 'success');
-        this.allocationForm = { id_doi_cuu_ho: '', loai_tai_nguyen: '', so_luong_cap: null, ghi_chu: '' };
+        this.allocationForm = { id_doi_cuu_ho: '', slug_tai_nguyen: '', so_luong_cap: null, ghi_chu: '' };
         await this.loadAllocationHistory();
         await this.loadResources();
         await this.loadWarehouse();

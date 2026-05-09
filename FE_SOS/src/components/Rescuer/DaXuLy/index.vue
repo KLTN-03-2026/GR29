@@ -178,10 +178,10 @@
                   v-for="res in getResourcesUsed(item)"
                   :key="res.id_tai_nguyen"
                   class="resource-chip d-flex align-items-center gap-1 px-2 py-1 rounded-pill small fw-semibold"
-                  :class="getResourceChipClass(res.loai_tai_nguyen)"
+                  :class="getResourceChipClass(res.slug_tai_nguyen)"
                 >
-                  <i :class="getResourceIcon(res.loai_tai_nguyen)"></i>
-                  {{ res.ten_tai_nguyen || res.loai_tai_nguyen }}
+                  <i :class="getResourceIcon(res.slug_tai_nguyen)"></i>
+                  {{ res.ten_tai_nguyen || res.slug_tai_nguyen }}
                   <span class="badge bg-dark text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 18px; height: 18px; font-size: 10px;">
                     {{ res.so_luong_dang_su_dung }}
                   </span>
@@ -332,16 +332,16 @@
                       v-for="res in detailItem.tai_nguyen_dang_su_dung"
                       :key="res.id_tai_nguyen"
                       class="detail-resource-item mb-2 p-2 rounded-3 border"
-                      :class="getResourceRowClass(res.loai_tai_nguyen)"
+                      :class="getResourceRowClass(res.slug_tai_nguyen)"
                     >
                       <div class="d-flex align-items-center justify-content-between">
                         <div class="d-flex align-items-center gap-2">
-                          <div class="resource-icon-sm d-flex align-items-center justify-content-center rounded-2" :class="getResourceIconBgClass(res.loai_tai_nguyen)">
-                            <i :class="getResourceIcon(res.loai_tai_nguyen)" class="text-white"></i>
+                          <div class="resource-icon-sm d-flex align-items-center justify-content-center rounded-2" :class="getResourceIconBgClass(res.slug_tai_nguyen)">
+                            <i :class="getResourceIcon(res.slug_tai_nguyen)" class="text-white"></i>
                           </div>
                           <div>
-                            <div class="fw-bold text-dark small">{{ res.ten_tai_nguyen || res.loai_tai_nguyen }}</div>
-                            <div class="text-muted" style="font-size: 10px; letter-spacing: 0.5px;">{{ res.loai_tai_nguyen }}</div>
+                            <div class="fw-bold text-dark small">{{ res.ten_tai_nguyen || res.slug_tai_nguyen }}</div>
+                            <div class="text-muted" style="font-size: 10px; letter-spacing: 0.5px;">{{ res.slug_tai_nguyen }}</div>
                           </div>
                         </div>
                         <div class="text-end">

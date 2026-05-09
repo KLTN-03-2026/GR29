@@ -438,7 +438,7 @@ class DoiCuuHoController extends Controller
 
             $validated = $request->validate([
                 'ten_tai_nguyen' => 'required|string|max:255',
-                'loai_tai_nguyen' => 'required|string|max:100',
+                'slug_tai_nguyen' => 'required|string|max:100',
                 'so_luong' => 'required|integer|min:1',
                 'trang_thai' => 'nullable|integer|in:0,1'
             ]);
@@ -483,7 +483,7 @@ class DoiCuuHoController extends Controller
 
             $validated = $request->validate([
                 'ten_tai_nguyen' => 'sometimes|string|max:255',
-                'loai_tai_nguyen' => 'sometimes|string|max:100',
+                'slug_tai_nguyen' => 'sometimes|string|max:100',
                 'so_luong' => 'sometimes|integer|min:1',
                 'trang_thai' => 'nullable|integer|in:0,1'
             ]);
@@ -1060,7 +1060,7 @@ class DoiCuuHoController extends Controller
             $validated = $request->validate([
                 'id_doi_cuu_ho' => 'required|integer|exists:doi_cuu_ho,id_doi_cuu_ho',
                 'ten_tai_nguyen' => 'required|string|max:255',
-                'loai_tai_nguyen' => 'required|string|max:100',
+                'slug_tai_nguyen' => 'required|string|max:100',
                 'so_luong' => 'required|integer|min:0',
                 'trang_thai' => 'nullable|integer|in:0,1',
             ]);
@@ -1097,7 +1097,7 @@ class DoiCuuHoController extends Controller
 
             $validated = $request->validate([
                 'ten_tai_nguyen' => 'sometimes|string|max:255',
-                'loai_tai_nguyen' => 'sometimes|string|max:100',
+                'slug_tai_nguyen' => 'sometimes|string|max:100',
                 'so_luong' => 'sometimes|integer|min:0',
                 'trang_thai' => 'nullable|integer|in:0,1',
             ]);
@@ -1163,17 +1163,21 @@ class DoiCuuHoController extends Controller
     public function getKhoTaiNguyen(Request $request)
     {
         try {
-            $loaiTaiNguyen = ['Vehicle', 'Supply', 'Medical', 'Equipment'];
-            $tenHienThi = ['Vehicle' => 'Xe cứu hộ', 'Supply' => 'Nhu yếu phẩm', 'Medical' => 'Vật tư y tế', 'Equipment' => 'Dụng cụ thiết bị'];
+            $loaiTaiNguyen = ['xe_cuu_ho', 'nhu_yeu_pham', 'vat_tu_y_te', 'dung_cu_thi_cong'];
+            $tenHienThi = [
+                'xe_cuu_ho' => 'Xe cứu hộ',
+                'nhu_yeu_pham' => 'Nhu yếu phẩm',
+                'vat_tu_y_te' => 'Vật tư y tế',
+                'dung_cu_thi_cong' => 'Dụng cụ thi công',
+            ];
 
             $result = [];
             foreach ($loaiTaiNguyen as $loai) {
-                $tong = TaiNguyenCuuHo::where('loai_tai_nguyen', $loai)->sum('so_luong');
+                $kho = \App\Models\KhoTaiNguyen::where('slug_tai_nguyen', $loai)->first();
                 $result[] = [
-                    'loai_tai_nguyen' => $loai,
+                    'slug_tai_nguyen' => $loai,
                     'ten_hien_thi' => $tenHienThi[$loai] ?? $loai,
-                    'tong_so_luong' => (int) $tong,
-                    'so_luong_da_cap' => 0,
+                    'tong_so_luong' => $kho ? (int) $kho->so_luong : 0,
                 ];
             }
 
@@ -1193,38 +1197,40 @@ class DoiCuuHoController extends Controller
     /**
      * Cap nhat kho tai nguyen (global warehouse update)
      */
-    public function capNhatKhoTaiNguyen(Request $request)
+    public function nhapKho(Request $request)
     {
         try {
             $validated = $request->validate([
-                'loai_tai_nguyen' => 'required|string|max:100',
-                'so_luong' => 'required|integer|min:0',
+                'slug_tai_nguyen' => 'required|string|max:100',
+                'so_luong' => 'required|integer|min:1',
+                'ghi_chu' => 'nullable|string|max:500',
             ]);
 
-            $dois = DoiCuuHo::all();
-            $loai = $validated['loai_tai_nguyen'];
+            $loai = $validated['slug_tai_nguyen'];
+            $soLuongNhap = (int) $validated['so_luong'];
 
-            foreach ($dois as $doi) {
-                $taiNguyen = TaiNguyenCuuHo::where('id_doi_cuu_ho', $doi->id_doi_cuu_ho)
-                    ->where('loai_tai_nguyen', $loai)
-                    ->first();
+            $tenLoai = [
+                'xe_cuu_ho' => 'Xe cứu hộ',
+                'nhu_yeu_pham' => 'Nhu yếu phẩm',
+                'vat_tu_y_te' => 'Vật tư y tế',
+                'dung_cu_thi_cong' => 'Dụng cụ thi công',
+            ];
 
-                if ($taiNguyen) {
-                    $taiNguyen->update(['so_luong' => $validated['so_luong']]);
-                } else {
-                    TaiNguyenCuuHo::create([
-                        'id_doi_cuu_ho' => $doi->id_doi_cuu_ho,
-                        'ten_tai_nguyen' => $loai,
-                        'loai_tai_nguyen' => $loai,
-                        'so_luong' => $validated['so_luong'],
-                        'trang_thai' => 1,
-                    ]);
-                }
+            $kho = \App\Models\KhoTaiNguyen::where('slug_tai_nguyen', $loai)->first();
+
+            if ($kho) {
+                $kho->update(['so_luong' => $kho->so_luong + $soLuongNhap]);
+            } else {
+                \App\Models\KhoTaiNguyen::create([
+                    'slug_tai_nguyen' => $loai,
+                    'ten_tai_nguyen' => $tenLoai[$loai] ?? $loai,
+                    'so_luong' => $soLuongNhap,
+                ]);
             }
 
             return Response::json([
                 'success' => true,
-                'message' => 'Cập nhật kho tài nguyên thành công'
+                'message' => 'Nhập kho thành công'
             ], 200);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return Response::json([
@@ -1275,16 +1281,16 @@ class DoiCuuHoController extends Controller
         try {
             $validated = $request->validate([
                 'id_doi_cuu_ho' => 'required|integer|exists:doi_cuu_ho,id_doi_cuu_ho',
-                'loai_tai_nguyen' => 'required|string|max:100',
+                'slug_tai_nguyen' => 'required|string|max:100',
                 'so_luong_cap' => 'required|integer|min:1',
                 'ghi_chu' => 'nullable|string|max:500',
             ]);
 
             $doi = DoiCuuHo::findOrFail($validated['id_doi_cuu_ho']);
-            $loai = $validated['loai_tai_nguyen'];
+            $loai = $validated['slug_tai_nguyen'];
 
             $taiNguyen = TaiNguyenCuuHo::where('id_doi_cuu_ho', $doi->id_doi_cuu_ho)
-                ->where('loai_tai_nguyen', $loai)
+                    ->where('slug_tai_nguyen', $loai)
                 ->first();
 
             if ($taiNguyen) {
@@ -1292,11 +1298,16 @@ class DoiCuuHoController extends Controller
                     'so_luong' => $taiNguyen->so_luong + $validated['so_luong_cap']
                 ]);
             } else {
-                $tenHienThi = ['Vehicle' => 'Xe cứu hộ', 'Supply' => 'Nhu yếu phẩm', 'Medical' => 'Vật tư y tế', 'Equipment' => 'Dụng cụ thiết bị'];
+                $tenHienThi = [
+                    'xe_cuu_ho' => 'Xe cứu hộ',
+                    'nhu_yeu_pham' => 'Nhu yếu phẩm',
+                    'vat_tu_y_te' => 'Vật tư y tế',
+                    'dung_cu_thi_cong' => 'Dụng cụ thi công',
+                ];
                 TaiNguyenCuuHo::create([
                     'id_doi_cuu_ho' => $doi->id_doi_cuu_ho,
                     'ten_tai_nguyen' => $tenHienThi[$loai] ?? $loai,
-                    'loai_tai_nguyen' => $loai,
+                        'slug_tai_nguyen' => $loai,
                     'so_luong' => $validated['so_luong_cap'],
                     'trang_thai' => 1,
                 ]);

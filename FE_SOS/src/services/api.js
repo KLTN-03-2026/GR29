@@ -366,6 +366,8 @@ export const adminResourcesAPI = {
   // Kho
   getKho: () => api.get('/admin/tai-nguyen/kho'),
   capNhatKho: (data) => api.post('/admin/tai-nguyen/kho/cap-nhat', data),
+  getLichSuKho: (params = {}) => api.get('/admin/tai-nguyen/kho/lich-su', { params }),
+  nhapKho: (data) => api.post('/admin/tai-nguyen/kho/nhap', data),
 
   // Cap phat
   capPhat: (data) => api.post('/admin/tai-nguyen/cap-phat', data),
