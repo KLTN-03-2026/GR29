@@ -59,6 +59,7 @@ class PhanCongCuuHoController extends Controller
             'doiCuuHo',
             'ketQua',
             'thanhVienTiepNhan',
+            'taiNguyenDangSuDung.doiCuuHo',
         ])->paginate($perPage);
         $items->setCollection($this->transformCollection($items->getCollection()));
         return response()->json($items);
@@ -85,6 +86,7 @@ class PhanCongCuuHoController extends Controller
             'doiCuuHo',
             'ketQua',
             'thanhVienTiepNhan',
+            'taiNguyenDangSuDung.doiCuuHo',
             'yeuCau.phanCongs.doiCuuHo',
             'yeuCau.phanCongs.thanhVienTiepNhan',
         ]);
@@ -107,6 +109,7 @@ class PhanCongCuuHoController extends Controller
             'doiCuuHo',
             'ketQua',
             'thanhVienTiepNhan',
+            'taiNguyenDangSuDung.doiCuuHo',
         ])->findOrFail($id);
         $this->appendNestedRelations($item);
         return response()->json($item);
@@ -233,6 +236,7 @@ class PhanCongCuuHoController extends Controller
             'doiCuuHo',
             'ketQua',
             'thanhVienTiepNhan',
+            'taiNguyenDangSuDung.doiCuuHo',
             'yeuCau.phanCongs.doiCuuHo',
             'yeuCau.phanCongs.thanhVienTiepNhan',
         ]);
@@ -281,6 +285,7 @@ class PhanCongCuuHoController extends Controller
             'doiCuuHo',
             'ketQua',
             'thanhVienTiepNhan',
+            'taiNguyenDangSuDung.doiCuuHo',
         ])
             ->where('id_doi_cuu_ho', $teamId)
             ->whereIn('trang_thai_nhiem_vu', ['DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'])
@@ -328,6 +333,7 @@ class PhanCongCuuHoController extends Controller
             'doiCuuHo',
             'ketQua',
             'thanhVienTiepNhan',
+            'taiNguyenDangSuDung.doiCuuHo',
         ])
             ->where('id_doi_cuu_ho', $id_doi_cuu_ho)
             ->paginate($perPage);

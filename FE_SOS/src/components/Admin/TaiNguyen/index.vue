@@ -530,10 +530,10 @@ export default {
     },
     filteredTeams() {
       if (!this.searchTeams) return this.teams;
-      const q = this.searchTeams.toLowerCase();
+      const q = this.normalizeSearch(this.searchTeams);
       return this.teams.filter(t =>
-        (t.ten_doi || '').toLowerCase().includes(q) ||
-        (t.khu_vuc_quan_ly || '').toLowerCase().includes(q)
+        this.normalizeSearch(t.ten_doi || '').includes(q) ||
+        this.normalizeSearch(t.khu_vuc_quan_ly || '').includes(q)
       );
     },
     filteredResources() {
@@ -542,11 +542,11 @@ export default {
         list = list.filter(r => r.id_doi_cuu_ho == this.filterResourceTeam);
       }
       if (this.searchResources) {
-        const q = this.searchResources.toLowerCase();
+        const q = this.normalizeSearch(this.searchResources);
         list = list.filter(r =>
-          (r.ten_tai_nguyen || '').toLowerCase().includes(q) ||
-          (r.loai_tai_nguyen || '').toLowerCase().includes(q) ||
-          (this.getTeamName(r.id_doi_cuu_ho) || '').toLowerCase().includes(q)
+          this.normalizeSearch(r.ten_tai_nguyen || '').includes(q) ||
+          this.normalizeSearch(r.loai_tai_nguyen || '').includes(q) ||
+          this.normalizeSearch(this.getTeamName(r.id_doi_cuu_ho) || '').includes(q)
         );
       }
       return list;
@@ -582,7 +582,14 @@ export default {
     }
   },
   methods: {
-    // ============ API ============
+    removeDiacritics(str) {
+      return str.normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[đĐ]/g, m => m === 'đ' ? 'd' : 'D');
+    },
+    normalizeSearch(text) {
+      return this.removeDiacritics(String(text || '').toLowerCase());
+    },    // ============ API ============
     async loadTeams() {
       this.loadingTeams = true;
       try {

@@ -269,22 +269,22 @@ class AutoDispatchService
 
     /**
      * Tinh diem khoang cach dua tren km tu Google Distance Matrix.
+     * Tang diem de uu tien khoang cach hon.
      */
     private function tinhDiemKhoangCachInternal(DoiCuuHo $doi): int
     {
         $km = $doi->distance ?? 0;
 
-        if ($km <= 1) return 3;
-        if ($km <= 3) return 2;
-        if ($km <= 5) return 1;
-        return 0;
+        if ($km <= 1) return 10;   // Rất gần
+        if ($km <= 3) return 7;    // Gần
+        if ($km <= 5) return 4;    // Trung bình
+        return 1;                   // Xa nhưng vẫn có điểm
     }
 
     /**
      * Tinh diem khop loai su co giua yeu cau va doi cuu ho.
-     * Tra ve 0 neu khong khop, 4 neu khop.
-     * Muc 4 diem dam bao doi khop loai luon thang doi gan hon nhung khong khop loai
-     * (vi khoang cach toi da chi 3 diem).
+     * Tra ve 0 neu khong khop, 6 neu khop.
+     * Uu tien doi cung loai su co nhung van de khoang cach quan trong.
      */
     private function tinhDiemLoaiSuCoInternal(YeuCauCuuHo $yeuCau, DoiCuuHo $doi): int
     {
@@ -304,7 +304,7 @@ class AutoDispatchService
             return 0;
         }
 
-        return in_array((int) $idLoaiSuCoYeuCau, $loaiSuCoIds, true) ? 4 : 0;
+        return in_array((int) $idLoaiSuCoYeuCau, $loaiSuCoIds, true) ? 6 : 0;
     }
 
     /**
