@@ -41,4 +41,12 @@ class PhanCongCuuHo extends Model
     {
         return $this->belongsTo(ThanhVienDoi::class, 'id_thanh_vien_tiep_nhan', 'id_thanh_vien_doi');
     }
+
+    /**
+     * Tai nguyen dang su dung cho phan cong nay
+     */
+    public function taiNguyenDangSuDung()
+    {
+        return $this->hasMany(TaiNguyenCuuHo::class, 'dang_su_dung_cho_nhiem_vu', 'id_phan_cong');
+    }
 }

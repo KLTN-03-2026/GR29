@@ -241,6 +241,10 @@ Route::middleware(['auth:thanh-vien-doi', 'check.rescuer'])->group(function () {
     // TEAMLEAD(1): see only members of the same team
     // MEMBER(2): see only members of the same team (route guard blocks access on FE)
     Route::get('rescuer/members', [ThanhVienDoiController::class, 'getMembersFiltered']);
+
+    // Tài nguyên cứu hộ - Checkout / Return
+    Route::post('tai-nguyen/{id}/checkout', [DoiCuuHoController::class, 'checkout']);
+    Route::post('tai-nguyen/{id}/return', [DoiCuuHoController::class, 'returnResource']);
 });
 
 // =========================================

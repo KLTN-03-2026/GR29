@@ -101,7 +101,7 @@ Khi `YeuCauCuuHoController::store()` được gọi:
 ### Công thức tổng
 
 ```
-Điểm_Tổng = Điểm_NguyHiểm + Điểm_KhoảngCách + Điểm_Tải + Điểm_ThờiGian
+Điểm_Tổng = Điểm_NguyHiểm + Điểm_KhoảngCách + Điểm_Tải + Điểm_ThờiGian + Điểm_LoạiSựCố
 ```
 
 ### 1. Điểm Nguy Hiểm (Danger Score)
@@ -143,27 +143,44 @@ private function tinhDiemNguyHiemInternal(YeuCauCuuHo $yeuCau): float
 ### 2. Điểm Khoảng Cách (Distance Weight)
 
 Dựa trên khoảng cách km từ Google Distance Matrix API (hoặc Haversine fallback).
+**Được tăng điểm để ưu tiên khoảng cách hơn.**
 
 ```php
 private function tinhDiemKhoangCachInternal(DoiCuuHo $doi): int
 {
     $km = $doi->distance ?? 0;
 
-    if ($km <= 1) return 3;   // Rất gần
-    if ($km <= 3) return 2;   // Gần
-    if ($km <= 5) return 1;   // Trung bình
-    return 0;                   // Xa
+    if ($km <= 1) return 10;   // Rất gần
+    if ($km <= 3) return 7;    // Gần
+    if ($km <= 5) return 4;    // Trung bình
+    return 1;                   // Xa nhưng vẫn có điểm
 }
 ```
 
 | Khoảng cách | Điểm |
 |---|---|
-| <= 1 km | 3 |
-| <= 3 km | 2 |
-| <= 5 km | 1 |
-| > 5 km | 0 |
+| <= 1 km | 10 |
+| <= 3 km | 7 |
+| <= 5 km | 4 |
+| > 5 km | 1 |
 
-### 3. Điểm Tải (Load Weight)
+### 3. Điểm Loại Sự Cố (Incident Type Match)
+
+Ưu tiên đội chuyên xử lý đúng loại sự cố.
+
+```php
+private function tinhDiemLoaiSuCoInternal(YeuCauCuuHo $yeuCau, DoiCuuHo $doi): int
+{
+    return in_array((int) $yeuCau->id_loai_su_co, $doi->loaiSuCoIds, true) ? 6 : 0;
+}
+```
+
+| Khớp loại sự cố | Điểm |
+|---|---|
+| Có | 6 |
+| Không | 0 |
+
+### 4. Điểm Tải (Load Weight)
 
 Tính dựa trên capacity của đội: `sucChua = soThanhVien * 4`
 

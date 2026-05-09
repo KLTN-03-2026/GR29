@@ -1349,4 +1349,114 @@ class DoiCuuHoController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Checkout / Lấy tài nguyên cho nhiệm vụ
+     */
+    public function checkout(Request $request, $id)
+    {
+        try {
+            $validated = $request->validate([
+                'id_phan_cong' => 'required|integer',
+                'so_luong' => 'nullable|integer|min:1',
+            ]);
+
+            $taiNguyen = TaiNguyenCuuHo::findOrFail($id);
+            $soLuong = $validated['so_luong'] ?? 1;
+
+            if ($taiNguyen->so_luong < $soLuong) {
+                return Response::json([
+                    'success' => false,
+                    'message' => 'Số lượng tài nguyên không đủ. Hiện có: ' . $taiNguyen->so_luong
+                ], 400);
+            }
+
+            $taiNguyen->dang_su_dung_cho_nhiem_vu = $validated['id_phan_cong'];
+            $taiNguyen->so_luong_dang_su_dung = ($taiNguyen->so_luong_dang_su_dung ?? 0) + $soLuong;
+            $taiNguyen->so_luong = $taiNguyen->so_luong - $soLuong;
+            $taiNguyen->save();
+
+            return Response::json([
+                'success' => true,
+                'message' => 'Đã lấy tài nguyên thành công',
+                'data' => $taiNguyen
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Dữ liệu không hợp lệ: ' . collect($e->errors())->flatten()->first()
+            ], 422);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Return / Trả lại tài nguyên từ nhiệm vụ
+     * Hỗ trợ trả một phần hoặc toàn bộ số lượng đang sử dụng
+     */
+    public function returnResource(Request $request, $id)
+    {
+        try {
+            $validated = $request->validate([
+                'id_phan_cong' => 'required|integer',
+                'so_luong'     => 'nullable|integer|min:1',
+            ]);
+
+            $taiNguyen = TaiNguyenCuuHo::findOrFail($id);
+            $soLuongDaLay = $taiNguyen->so_luong_dang_su_dung ?? 0;
+
+            if ($soLuongDaLay <= 0) {
+                return Response::json([
+                    'success' => false,
+                    'message' => 'Tài nguyên này chưa được lấy cho nhiệm vụ nào'
+                ], 400);
+            }
+
+            // Số lượng muốn trả lại, mặc định trả toàn bộ
+            $soLuongTra = $validated['so_luong'] ?? $soLuongDaLay;
+
+            // Không cho trả vượt số đang dùng
+            if ($soLuongTra > $soLuongDaLay) {
+                return Response::json([
+                    'success' => false,
+                    'message' => 'Số lượng trả vượt quá số lượng đang sử dụng. Hiện đang dùng: ' . $soLuongDaLay
+                ], 400);
+            }
+
+            $taiNguyen->so_luong = $taiNguyen->so_luong + $soLuongTra;
+            $taiNguyen->so_luong_dang_su_dung = $soLuongDaLay - $soLuongTra;
+
+            // Nếu trả hết thì xóa gán nhiệm vụ
+            if ($taiNguyen->so_luong_dang_su_dung <= 0) {
+                $taiNguyen->so_luong_dang_su_dung = 0;
+                $taiNguyen->dang_su_dung_cho_nhiem_vu = null;
+            }
+
+            $taiNguyen->save();
+
+            $message = $soLuongTra === $soLuongDaLay
+                ? 'Đã trả toàn bộ tài nguyên'
+                : "Đã trả $soLuongTra / $soLuongDaLay tài nguyên";
+
+            return Response::json([
+                'success' => true,
+                'message' => $message,
+                'data'    => $taiNguyen
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Dữ liệu không hợp lệ: ' . collect($e->errors())->flatten()->first()
+            ], 422);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
