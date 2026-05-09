@@ -190,6 +190,7 @@ Route::middleware(['auth:admin', 'check.admin'])->group(function () {
 
     // Kho tài nguyên tổng & Cấp phát
     Route::get('admin/tai-nguyen/kho', [DoiCuuHoController::class, 'getKhoTaiNguyen']);
+    Route::post('admin/tai-nguyen/kho/nhap', [DoiCuuHoController::class, 'nhapKho']);
     Route::post('admin/tai-nguyen/kho/cap-nhat', [DoiCuuHoController::class, 'capNhatKhoTaiNguyen']);
     Route::get('admin/tai-nguyen/lich-su-cap', [DoiCuuHoController::class, 'getLichSuCapPhat']);
     Route::post('admin/tai-nguyen/cap-phat', [DoiCuuHoController::class, 'capPhatTaiNguyen']);

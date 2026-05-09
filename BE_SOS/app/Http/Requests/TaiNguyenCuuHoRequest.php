@@ -24,7 +24,7 @@ class TaiNguyenCuuHoRequest extends FormRequest
         return [
             'id_doi_cuu_ho' => 'required|exists:doi_cuu_ho,id_doi_cuu_ho',
             'ten_tai_nguyen' => 'required|string|max:255',
-            'loai_tai_nguyen' => 'required|string|max:100',
+            'slug_tai_nguyen' => 'required|string|max:100',
             'so_luong' => 'required|integer|min:1',
             'trang_thai' => 'required|integer',
         ];
@@ -37,8 +37,8 @@ class TaiNguyenCuuHoRequest extends FormRequest
             'id_doi_cuu_ho.exists' => 'Đội cứu hộ không tồn tại',
             'ten_tai_nguyen.required' => 'Tên tài nguyên không được để trống',
             'ten_tai_nguyen.max' => 'Tên tài nguyên không được quá 255 ký tự',
-            'loai_tai_nguyen.required' => 'Loại tài nguyên không được để trống',
-            'loai_tai_nguyen.max' => 'Loại tài nguyên không được quá 100 ký tự',
+            'slug_tai_nguyen.required' => 'Slug tài nguyên không được để trống',
+            'slug_tai_nguyen.max' => 'Slug tài nguyên không được quá 100 ký tự',
             'so_luong.required' => 'Số lượng không được để trống',
             'so_luong.integer' => 'Số lượng phải là số nguyên',
             'so_luong.min' => 'Số lượng phải tối thiểu 1',

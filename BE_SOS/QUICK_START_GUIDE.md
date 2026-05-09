@@ -162,7 +162,7 @@ Content-Type: application/json
 
 {
   "ten_tai_nguyen": "Xe cứu hộ",
-  "loai_tai_nguyen": "Vehicle",
+  "slug_tai_nguyen": "Vehicle",
   "so_luong": 2
 }
 ```

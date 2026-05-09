@@ -520,7 +520,7 @@
           "request": {
             "method": "POST",
             "header": [{"key": "Content-Type", "value": "application/json"}],
-            "body": {"mode": "raw", "raw": "{\n  \"ten_tai_nguyen\": \"Xe cứu hộ\",\n  \"loai_tai_nguyen\": \"XE\",\n  \"so_luong\": 2,\n  \"trang_thai\": 1\n}"},
+            "body": {"mode": "raw", "raw": "{\n  \"ten_tai_nguyen\": \"Xe cứu hộ\",\n  \"slug_tai_nguyen\": \"XE\",\n  \"so_luong\": 2,\n  \"trang_thai\": 1\n}"},
             "url": {"raw": "http://localhost:8000/api/post-doi-cuu-ho/1/tai-nguyen", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["api", "post-doi-cuu-ho", "1", "tai-nguyen"]}
           }
         },

@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id('id_tai_nguyen');
             $table->unsignedBigInteger('id_doi_cuu_ho');
             $table->string('ten_tai_nguyen', 255);
-            $table->string('loai_tai_nguyen', 100)->nullable();
+            $table->string('slug_tai_nguyen', 100)->nullable();
             $table->integer('so_luong')->default(0);
             $table->tinyInteger('trang_thai')->default(1);
             $table->timestamps();

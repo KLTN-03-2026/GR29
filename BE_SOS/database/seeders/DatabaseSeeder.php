@@ -31,6 +31,7 @@ class DatabaseSeeder extends Seeder
             NangLucDoiSeeder::class,
             ThanhVienDoiSeeder::class,
             TaiNguyenCuuHoSeeder::class,
+            KhoTaiNguyenSeeder::class,
             ViTriDoiCuuHoSeeder::class,
 
             // Help requests (depends on NguoiDung, LoaiSuCo)

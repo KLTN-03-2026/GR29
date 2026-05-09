@@ -354,14 +354,14 @@ Content-Type: application/json
     {
       "id_tai_nguyen": 1,
       "ten_tai_nguyen": "Xe cứu hộ",
-      "loai_tai_nguyen": "Vehicle",
+      "slug_tai_nguyen": "Vehicle",
       "so_luong": 2,
       "trang_thai": 1
     },
     {
       "id_tai_nguyen": 2,
       "ten_tai_nguyen": "Thiết bị chữa cháy",
-      "loai_tai_nguyen": "Equipment",
+      "slug_tai_nguyen": "Equipment",
       "so_luong": 5
     }
   ],
