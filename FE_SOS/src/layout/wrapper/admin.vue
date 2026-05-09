@@ -16,6 +16,7 @@
 import "../../assets/js/bootstrap.bundle.min.js";
 import "../../assets/css/bootstrap.min.css";
 import "../../assets/css/bootstrap-extended.css";
+import "../../assets/css/badge-utils.css";
 import "../../assets/css/app.css";
 import "../../assets/css/icons.css";
 import "../../assets/plugins/apexcharts-bundle/js/apexcharts.js";

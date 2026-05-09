@@ -65,10 +65,6 @@
                 <span class="search-icon"><i class="fa-solid fa-search"></i></span>
                 <input v-model="searchResources" type="text" class="form-control" placeholder="Tìm tài nguyên...">
               </div>
-              <button class="btn btn-primary fw-bolder d-flex align-items-center gap-2 px-3" @click="openAddResourceModal">
-                <i class="fa-solid fa-plus"></i>
-                <span class="d-none d-sm-inline">Thêm tài nguyên</span>
-              </button>
             </div>
           </div>
         </div>
@@ -129,36 +125,140 @@
       </div>
     </div>
 
-    <!-- ========== TAB 3: KHO ========== -->
+    <!-- ========== TAB 2: KHO ========== -->
     <div v-if="activeTab === 'warehouse'">
+      <!-- Toolbar: Search + Add -->
+      <div class="card panel-card border-0 shadow-sm mb-4">
+        <div class="card-body py-3 px-4">
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div class="d-flex align-items-center gap-2">
+              <div class="warehouse-summary-pill" :class="totalWarehouseQty > 0 ? 'active' : 'empty'">
+                <i class="fa-solid fa-warehouse me-1"></i>
+                <span class="fw-bolder">{{ totalWarehouseQty }}</span>
+                <span class="text-muted small">tổng tài nguyên trong kho</span>
+              </div>
+            </div>
+            <div class="d-flex gap-2 align-items-center flex-wrap w-100 w-md-auto">
+              <div class="search-box flex-grow-1" style="min-width: 200px; max-width: 320px;">
+                <span class="search-icon"><i class="fa-solid fa-search"></i></span>
+                <input v-model="searchWarehouse" type="text" class="form-control" placeholder="Tìm tài nguyên trong kho...">
+              </div>
+              <button class="btn btn-primary fw-bolder d-flex align-items-center gap-2 px-3" @click="openAddResourceModal">
+                <i class="fa-solid fa-plus"></i>
+                <span class="d-none d-sm-inline">Thêm tài nguyên mới</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Kho cards row -->
       <div class="row g-4 mb-4">
-        <div v-for="item in warehouseItems" :key="item.loai_tai_nguyen"
+        <div v-for="item in warehouseItems" :key="item.slug_tai_nguyen"
           class="col-xl-3 col-lg-6">
           <div class="warehouse-card card h-100 border-0 shadow-sm">
             <div class="card-body p-4">
               <div class="d-flex align-items-start justify-content-between mb-3">
                 <div class="warehouse-icon rounded-3 d-flex align-items-center justify-content-center"
-                  :class="getWarehouseIconClass(item.loai_tai_nguyen)">
-                  <i :class="getWarehouseIcon(item.loai_tai_nguyen)"></i>
+                  :class="getWarehouseIconClass(item.slug_tai_nguyen)">
+                  <i :class="getWarehouseIcon(item.slug_tai_nguyen)"></i>
                 </div>
                 <button class="btn btn-sm btn-outline-primary rounded-pill fw-medium" @click="openUpdateWarehouseModal(item)">
-                  <i class="fa-solid fa-pen me-1"></i>Cập nhật
+                  <i class="fa-solid fa-pen me-1"></i>Nhập thêm
                 </button>
               </div>
               <h6 class="fw-bolder text-dark mb-1">{{ item.ten_hien_thi }}</h6>
-              <p class="text-muted small mb-3">{{ getWarehouseDesc(item.loai_tai_nguyen) }}</p>
+              <p class="text-muted small mb-3">{{ getWarehouseDesc(item.slug_tai_nguyen) }}</p>
               <div class="d-flex align-items-end gap-2">
                 <span class="warehouse-qty display-6 fw-bolder text-dark lh-1">{{ item.tong_so_luong }}</span>
-                <span class="text-muted small mb-1">{{ getWarehouseUnit(item.loai_tai_nguyen) }}</span>
+                <span class="text-muted small mb-1">{{ getWarehouseUnit(item.slug_tai_nguyen) }}</span>
               </div>
               <div class="progress mt-3" style="height: 6px;">
-                <div class="progress-bar" :class="getWarehouseProgressClass(item.loai_tai_nguyen)"
+                <div class="progress-bar" :class="getWarehouseProgressClass(item.slug_tai_nguyen)"
                   role="progressbar"
-                  :style="{ width: Math.min((item.tong_so_luong / getWarehouseMax(item.loai_tai_nguyen)) * 100, 100) + '%' }">
+                  :style="{ width: Math.min((item.tong_so_luong / getWarehouseMax(item.slug_tai_nguyen)) * 100, 100) + '%' }">
                 </div>
               </div>
-              <p class="text-muted small mt-1 mb-0">{{ item.tong_so_luong }} / {{ getWarehouseMax(item.loai_tai_nguyen) }} {{ getWarehouseUnit(item.loai_tai_nguyen) }}</p>
+              <p class="text-muted small mt-1 mb-0">{{ item.tong_so_luong }} / {{ getWarehouseMax(item.slug_tai_nguyen) }} {{ getWarehouseUnit(item.slug_tai_nguyen) }}</p>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lich su nhap kho -->
+      <div class="card panel-card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom-0 pt-4 pb-3 px-4">
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <h5 class="fw-bolder text-dark mb-0">
+              <i class="fa-solid fa-clock-rotate-left text-secondary me-2"></i>Lịch sử nhập / xuất kho
+            </h5>
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+              <select v-model="filterWarehouseType" class="form-select custom-input" style="min-width: 140px;">
+                <option value="">Tất cả loại</option>
+                <option value="Vehicle">Xe cứu hộ</option>
+                <option value="Supply">Nhu yếu phẩm</option>
+                <option value="Medical">Vật tư y tế</option>
+                <option value="Equipment">Dụng cụ thiết bị</option>
+              </select>
+              <select v-model="filterWarehouseAction" class="form-select custom-input" style="min-width: 140px;">
+                <option value="">Tất cả</option>
+                <option value="nhap">Nhập</option>
+                <option value="xuat">Xuất</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div v-if="loadingWarehouseHistory" class="text-center py-5">
+            <div class="spinner"></div>
+            <p class="text-muted mt-2 fw-medium">Đang tải lịch sử...</p>
+          </div>
+          <div v-else-if="filteredWarehouseHistory.length === 0" class="text-center py-5">
+            <div class="empty-icon-wrap mx-auto mb-3"><i class="fa-solid fa-clock-rotate-left fs-1"></i></div>
+            <h6 class="fw-bold text-dark">Chưa có lịch sử nhập/xuất nào</h6>
+            <p class="text-muted small">Lịch sử sẽ được hiển thị khi có thao tác với kho</p>
+          </div>
+          <div v-else class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th class="fw-bolder text-muted text-uppercase small ps-4">#</th>
+                  <th class="fw-bolder text-muted text-uppercase small">Thời gian</th>
+                  <th class="fw-bolder text-muted text-uppercase small">Loại tài nguyên</th>
+                  <th class="fw-bolder text-muted text-uppercase small">Số lượng</th>
+                  <th class="fw-bolder text-muted text-uppercase small">Ghi chú</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(item, index) in filteredWarehouseHistory" :key="item.id ?? index" class="table-row-hover">
+                  <td class="ps-4 text-muted small fw-bold">{{ index + 1 }}</td>
+                  <td>
+                    <div class="fw-medium text-dark">{{ formatDate(item.created_at || item.thoi_gian) }}</div>
+                    <div class="small text-muted">{{ formatTime(item.created_at || item.thoi_gian) }}</div>
+                  </td>
+                  <td>
+                    <span class="badge rounded-pill fw-medium" :class="getResourceTypeBadge(item.slug_tai_nguyen)">
+                      <i :class="getResourceTypeIcon(item.slug_tai_nguyen)" class="me-1" :style="{ color: getResourceTypeColor(item.slug_tai_nguyen) }"></i>
+                      {{ getResourceTypeLabel(item.slug_tai_nguyen) }}
+                    </span>
+                  </td>
+                  <td>
+                    <span v-if="item.loai === 'nhap'" class="badge bg-success-subtle text-success-emphasis fw-bold px-2">
+                      <i class="fa-solid fa-arrow-up me-1" style="color: #198754;"></i>+{{ item.so_luong }}
+                    </span>
+                    <span v-else-if="item.loai === 'xuat'" class="badge bg-danger-subtle text-danger-emphasis fw-bold px-2">
+                      <i class="fa-solid fa-arrow-down me-1" style="color: #dc3545;"></i>-{{ item.so_luong }}
+                    </span>
+                    <span v-else class="badge bg-dark-subtle text-dark-emphasis fw-bold px-2">
+                      {{ item.so_luong }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="text-muted small">{{ item.ghi_chu || '—' }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -186,7 +286,7 @@
               </div>
               <div class="mb-3">
                 <label class="form-label text-muted small fw-bolder text-uppercase">Loại tài nguyên</label>
-                <select v-model="allocationForm.loai_tai_nguyen" class="form-select custom-input">
+                <select v-model="allocationForm.slug_tai_nguyen" class="form-select custom-input">
                   <option value="">-- Chọn loại --</option>
                   <option value="Vehicle">Xe cứu hộ</option>
                   <option value="Supply">Nhu yếu phẩm</option>
@@ -246,9 +346,9 @@
                         <div class="small text-muted">{{ item.doiCuuHo?.khu_vuc_quan_ly || '' }}</div>
                       </td>
                       <td>
-                        <span class="badge fw-medium" :class="getResourceTypeBadge(item.loai_tai_nguyen)">
-                          <i :class="getResourceTypeIcon(item.loai_tai_nguyen)" class="me-1"></i>
-                          {{ getResourceTypeLabel(item.loai_tai_nguyen) }}
+                        <span class="badge fw-medium" :class="getResourceTypeBadge(item.slug_tai_nguyen)">
+                          <i :class="getResourceTypeIcon(item.slug_tai_nguyen)" class="me-1" :style="{ color: getResourceTypeColor(item.slug_tai_nguyen) }"></i>
+                          {{ getResourceTypeLabel(item.slug_tai_nguyen) }}
                         </span>
                       </td>
                       <td>
@@ -297,7 +397,7 @@
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="form-label text-muted small fw-bolder text-uppercase">Loại tài nguyên <span class="text-danger">*</span></label>
-                <select v-model="resourceForm.loai_tai_nguyen" class="form-select custom-input">
+                <select v-model="resourceForm.slug_tai_nguyen" class="form-select custom-input">
                   <option value="Vehicle">Xe cứu hộ</option>
                   <option value="Supply">Nhu yếu phẩm</option>
                   <option value="Medical">Vật tư y tế</option>
@@ -311,7 +411,7 @@
               <div class="col-12">
                 <label class="form-label text-muted small fw-bolder text-uppercase">Tên tài nguyên</label>
                 <input v-model="resourceForm.ten_tai_nguyen" type="text" class="form-control custom-input"
-                  :placeholder="getDefaultResourceName(resourceForm.loai_tai_nguyen)">
+                  :placeholder="getDefaultResourceName(resourceForm.slug_tai_nguyen)">
               </div>
               <div class="col-12">
                 <label class="form-label text-muted small fw-bolder text-uppercase">Trạng thái</label>
@@ -338,39 +438,54 @@
       </div>
     </div>
 
-    <!-- ========== MODAL: UPDATE WAREHOUSE ========== -->
+    <!-- ========== MODAL: NHAP KHO ========== -->
     <div v-if="showWarehouseModal" class="modal-overlay" @click.self="closeWarehouseModal">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-xl">
           <div class="modal-header border-bottom-0 bg-white py-3 px-4">
             <h5 class="modal-title fw-bolder text-dark">
               <i class="fa-solid fa-warehouse text-warning me-2"></i>
-              Cập nhật kho: {{ warehouseForm.ten_hien_thi }}
+              Nhập kho: {{ warehouseForm.ten_hien_thi }}
             </h5>
             <button type="button" class="btn-close" @click="closeWarehouseModal"></button>
           </div>
           <div class="modal-body p-4 bg-white">
+            <div class="alert alert-purple-light d-flex align-items-center gap-2 mb-3">
+              <i class="fa-solid fa-circle-info text-purple"></i>
+              <span class="small text-purple-dark">Số lượng nhập thêm sẽ được cộng vào kho tổng. Không ảnh hưởng đến tài nguyên của các đội cứu hộ.</span>
+            </div>
             <div class="mb-3">
               <label class="form-label text-muted small fw-bolder text-uppercase">Số lượng hiện tại</label>
               <div class="form-control custom-input bg-light fw-bolder fs-4 text-center">
-                {{ warehouseForm.tong_so_luong_hien_tai }} {{ getWarehouseUnit(warehouseForm.loai_tai_nguyen) }}
+                {{ warehouseForm.tong_so_luong_hien_tai }} {{ getWarehouseUnit(warehouseForm.slug_tai_nguyen) }}
               </div>
             </div>
             <div class="mb-3">
-              <label class="form-label text-muted small fw-bolder text-uppercase">Số lượng mới</label>
-              <input v-model.number="warehouseForm.so_luong_moi" type="number" min="0" class="form-control custom-input"
-                placeholder="Nhập số lượng mới...">
-              <p class="text-muted small mt-2 mb-0">
-                <i class="fa-solid fa-circle-info me-1"></i>
-                Số lượng này sẽ được cập nhật cho TẤT CẢ các đội cứu hộ.
-              </p>
+              <label class="form-label text-muted small fw-bolder text-uppercase">Số lượng nhập thêm <span class="text-danger">*</span></label>
+              <input v-model.number="warehouseForm.so_luong_nhap" type="number" min="1" class="form-control custom-input"
+                placeholder="Nhập số lượng cần thêm...">
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-muted small fw-bolder text-uppercase">Ghi chú</label>
+              <textarea v-model="warehouseForm.ghi_chu" class="form-control custom-input" rows="2"
+                placeholder="Ghi chú (tùy chọn)..."></textarea>
+            </div>
+            <div v-if="warehouseForm.so_luong_nhap > 0" class="result-preview">
+              <span class="fw-medium text-muted small">Sau khi nhập:</span>
+              <span class="fw-bolder text-dark ms-2">
+                {{ warehouseForm.tong_so_luong_hien_tai + warehouseForm.so_luong_nhap }}
+                {{ getWarehouseUnit(warehouseForm.slug_tai_nguyen) }}
+              </span>
+              <span class="badge bg-success-subtle text-success-emphasis ms-2 fw-medium">
+                <i class="fa-solid fa-arrow-up me-1"></i>+{{ warehouseForm.so_luong_nhap }}
+              </span>
             </div>
           </div>
           <div class="modal-footer border-top-0 bg-light py-3 px-4">
             <button type="button" class="btn btn-light fw-medium px-4" @click="closeWarehouseModal">Hủy</button>
-            <button type="button" class="btn btn-warning fw-bolder px-4" :disabled="!warehouseForm.so_luong_moi && warehouseForm.so_luong_moi !== 0 || submittingWarehouse" @click="submitWarehouse">
-              <span v-if="submittingWarehouse"><i class="fa-solid fa-spinner fa-spin me-2"></i>Đang cập nhật...</span>
-              <span v-else><i class="fa-solid fa-floppy-disk me-2"></i>Cập nhật kho</span>
+            <button type="button" class="btn btn-primary fw-bolder px-4" :disabled="!warehouseForm.so_luong_nhap || warehouseForm.so_luong_nhap < 1 || submittingWarehouse" @click="submitWarehouse">
+              <span v-if="submittingWarehouse"><i class="fa-solid fa-spinner fa-spin me-2"></i>Đang nhập kho...</span>
+              <span v-else><i class="fa-solid fa-warehouse me-2"></i>Nhập kho</span>
             </button>
           </div>
         </div>
@@ -459,13 +574,18 @@ export default {
       // Warehouse
       warehouseItems: [],
       loadingWarehouse: false,
+      warehouseHistory: [],
+      loadingWarehouseHistory: false,
+      searchWarehouse: '',
+      filterWarehouseType: '',
+      filterWarehouseAction: '',
 
       // Allocation
       allocationHistory: [],
       loadingAllocation: false,
       allocationForm: {
         id_doi_cuu_ho: '',
-        loai_tai_nguyen: '',
+        slug_tai_nguyen: '',
         so_luong_cap: null,
         ghi_chu: '',
       },
@@ -495,7 +615,7 @@ export default {
       submittingResource: false,
       resourceForm: {
         id_doi_cuu_ho: '',
-        loai_tai_nguyen: 'Vehicle',
+        slug_tai_nguyen: 'Vehicle',
         ten_tai_nguyen: '',
         so_luong: 0,
         trang_thai: 1,
@@ -505,10 +625,11 @@ export default {
       showWarehouseModal: false,
       submittingWarehouse: false,
       warehouseForm: {
-        loai_tai_nguyen: '',
+        slug_tai_nguyen: '',
         ten_hien_thi: '',
         tong_so_luong_hien_tai: 0,
-        so_luong_moi: null,
+        so_luong_nhap: null,
+        ghi_chu: '',
       },
 
       // Delete modal
@@ -528,6 +649,27 @@ export default {
     availableTeams() {
       return this.teams.filter(t => t.trang_thai === 'SAN_SANG').length;
     },
+    totalWarehouseQty() {
+      return this.warehouseItems.reduce((sum, item) => sum + (parseInt(item.tong_so_luong) || 0), 0);
+    },
+    filteredWarehouseHistory() {
+      let list = this.warehouseHistory;
+      if (this.filterWarehouseType) {
+        list = list.filter(h => h.slug_tai_nguyen === this.filterWarehouseType);
+      }
+      if (this.filterWarehouseAction) {
+        list = list.filter(h => h.loai === this.filterWarehouseAction);
+      }
+      if (this.searchWarehouse) {
+        const q = this.normalizeSearch(this.searchWarehouse);
+        list = list.filter(h =>
+          this.normalizeSearch(this.getResourceTypeLabel(h.slug_tai_nguyen) || '').includes(q) ||
+          this.normalizeSearch(h.ghi_chu || '').includes(q) ||
+          this.normalizeSearch(h.slug_tai_nguyen || '').includes(q)
+        );
+      }
+      return list;
+    },
     filteredTeams() {
       if (!this.searchTeams) return this.teams;
       const q = this.normalizeSearch(this.searchTeams);
@@ -545,7 +687,7 @@ export default {
         const q = this.normalizeSearch(this.searchResources);
         list = list.filter(r =>
           this.normalizeSearch(r.ten_tai_nguyen || '').includes(q) ||
-          this.normalizeSearch(r.loai_tai_nguyen || '').includes(q) ||
+          this.normalizeSearch(r.slug_tai_nguyen || '').includes(q) ||
           this.normalizeSearch(this.getTeamName(r.id_doi_cuu_ho) || '').includes(q)
         );
       }
@@ -553,20 +695,20 @@ export default {
     },
     canSubmitAllocation() {
       return this.allocationForm.id_doi_cuu_ho &&
-        this.allocationForm.loai_tai_nguyen &&
+        this.allocationForm.slug_tai_nguyen &&
         this.allocationForm.so_luong_cap > 0;
     },
     canSubmitResource() {
       return this.editingResource
-        ? (this.resourceForm.loai_tai_nguyen && this.resourceForm.so_luong >= 0)
-        : (this.resourceForm.id_doi_cuu_ho && this.resourceForm.loai_tai_nguyen && this.resourceForm.so_luong >= 0);
+        ? (this.resourceForm.slug_tai_nguyen && this.resourceForm.so_luong >= 0)
+        : (this.resourceForm.id_doi_cuu_ho && this.resourceForm.slug_tai_nguyen && this.resourceForm.so_luong >= 0);
     },
   },
   watch: {
     activeTab(tab) {
       if (tab === 'teams') this.loadTeams();
       else if (tab === 'resources') this.loadResources();
-      else if (tab === 'warehouse') this.loadWarehouse();
+      else if (tab === 'warehouse') { this.loadWarehouse(); this.loadWarehouseHistory(); }
       else if (tab === 'allocation') this.loadAllocationHistory();
     },
     'teamForm.vi_tri_lat'(val) { this.updateTeamMarker(); },
@@ -636,6 +778,18 @@ export default {
         this.showToast('Không thể tải dữ liệu kho', 'error');
       } finally {
         this.loadingWarehouse = false;
+      }
+    },
+    async loadWarehouseHistory() {
+      this.loadingWarehouseHistory = true;
+      try {
+        const res = await adminResourcesAPI.getLichSuKho({ per_page: 100 });
+        const data = res.data?.data?.data ?? res.data?.data ?? res.data ?? [];
+        this.warehouseHistory = Array.isArray(data) ? data : [];
+      } catch (e) {
+        console.error('loadWarehouseHistory', e);
+      } finally {
+        this.loadingWarehouseHistory = false;
       }
     },
     async loadAllocationHistory() {
@@ -778,7 +932,7 @@ export default {
       this.editingResource = null;
       this.resourceForm = {
         id_doi_cuu_ho: this.filterResourceTeam || '',
-        loai_tai_nguyen: 'Vehicle',
+        slug_tai_nguyen: 'Vehicle',
         ten_tai_nguyen: '',
         so_luong: 0,
         trang_thai: 1,
@@ -790,7 +944,7 @@ export default {
       this.resourceForm = {
         id: res.id_tai_nguyen,
         id_doi_cuu_ho: res.id_doi_cuu_ho,
-        loai_tai_nguyen: res.loai_tai_nguyen || 'Vehicle',
+        slug_tai_nguyen: res.slug_tai_nguyen || 'Vehicle',
         ten_tai_nguyen: res.ten_tai_nguyen || '',
         so_luong: parseInt(res.so_luong) || 0,
         trang_thai: res.trang_thai ? true : false,
@@ -830,10 +984,11 @@ export default {
     // ============ WAREHOUSE MODAL ============
     openUpdateWarehouseModal(item) {
       this.warehouseForm = {
-        loai_tai_nguyen: item.loai_tai_nguyen,
+        slug_tai_nguyen: item.slug_tai_nguyen,
         ten_hien_thi: item.ten_hien_thi,
         tong_so_luong_hien_tai: item.tong_so_luong,
-        so_luong_moi: null,
+        so_luong_nhap: null,
+        ghi_chu: '',
       };
       this.showWarehouseModal = true;
     },
@@ -841,20 +996,21 @@ export default {
       this.showWarehouseModal = false;
     },
     async submitWarehouse() {
-      if (this.warehouseForm.so_luong_moi === null || this.warehouseForm.so_luong_moi < 0) {
+      if (!this.warehouseForm.so_luong_nhap || this.warehouseForm.so_luong_nhap < 1) {
         this.showToast('Vui lòng nhập số lượng hợp lệ', 'error');
         return;
       }
       this.submittingWarehouse = true;
       try {
-        await adminResourcesAPI.capNhatKho({
-          loai_tai_nguyen: this.warehouseForm.loai_tai_nguyen,
-          so_luong: this.warehouseForm.so_luong_moi,
+        await adminResourcesAPI.nhapKho({
+          slug_tai_nguyen: this.warehouseForm.slug_tai_nguyen,
+          so_luong: this.warehouseForm.so_luong_nhap,
+          ghi_chu: this.warehouseForm.ghi_chu || '',
         });
-        this.showToast('Cập nhật kho thành công!', 'success');
+        this.showToast('Nhập kho thành công!', 'success');
         this.closeWarehouseModal();
         await this.loadWarehouse();
-        await this.loadResources();
+        await this.loadWarehouseHistory();
       } catch (e) {
         console.error('submitWarehouse', e);
         const msg = e.response?.data?.message || 'Có lỗi xảy ra';
@@ -871,12 +1027,12 @@ export default {
       try {
         await adminResourcesAPI.capPhat({
           id_doi_cuu_ho: this.allocationForm.id_doi_cuu_ho,
-          loai_tai_nguyen: this.allocationForm.loai_tai_nguyen,
+          slug_tai_nguyen: this.allocationForm.slug_tai_nguyen,
           so_luong_cap: this.allocationForm.so_luong_cap,
           ghi_chu: this.allocationForm.ghi_chu,
         });
         this.showToast('Cấp phát tài nguyên thành công!', 'success');
-        this.allocationForm = { id_doi_cuu_ho: '', loai_tai_nguyen: '', so_luong_cap: null, ghi_chu: '' };
+        this.allocationForm = { id_doi_cuu_ho: '', slug_tai_nguyen: '', so_luong_cap: null, ghi_chu: '' };
         await this.loadAllocationHistory();
         await this.loadResources();
         await this.loadWarehouse();
@@ -954,6 +1110,15 @@ export default {
       };
       return map[type] || 'fa-solid fa-box';
     },
+    getResourceTypeColor(type) {
+      const map = {
+        'Vehicle': '#0d6efd',
+        'Supply': '#198754',
+        'Medical': '#dc3545',
+        'Equipment': '#fd7e14',
+      };
+      return map[type] || '#6c757d';
+    },
     getResourceTypeLabel(type) {
       return TEN_HIEN_THI[type] || type || '—';
     },
@@ -1003,6 +1168,20 @@ export default {
         'Equipment': 'bg-warning',
       };
       return map[type] || 'bg-secondary';
+    },
+    formatDate(dateStr) {
+      if (!dateStr) return '—';
+      try {
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      } catch { return dateStr; }
+    },
+    formatTime(dateStr) {
+      if (!dateStr) return '';
+      try {
+        const d = new Date(dateStr);
+        return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+      } catch { return ''; }
     },
     showToast(message, type = 'success') {
       const id = ++this.toastCounter;
@@ -1126,6 +1305,53 @@ export default {
 }
 .warehouse-qty { font-size: 2.5rem; }
 
+/* ===== WAREHOUSE SUMMARY PILL ===== */
+.warehouse-summary-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 50px;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+.warehouse-summary-pill.active {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+.warehouse-summary-pill.empty {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  color: #6b7280;
+}
+.warehouse-summary-pill i { font-size: 0.9rem; }
+.warehouse-summary-pill span.fw-bolder { font-size: 1.1rem; }
+
+/* ===== PURPLE ALERT ===== */
+.alert-purple-light {
+  background-color: #f5f3ff;
+  border: 1px solid #e9d5ff;
+  border-radius: 10px;
+  color: #5b21b6;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+}
+.text-purple { color: #7c3aed !important; }
+.text-purple-dark { color: #5b21b6 !important; }
+
+/* ===== RESULT PREVIEW ===== */
+.result-preview {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
 /* ===== EMPTY STATE ===== */
 .empty-icon-wrap {
   width: 64px; height: 64px;
@@ -1219,20 +1445,6 @@ export default {
 .panel-card { border-radius: 16px; overflow: hidden; }
 
 /* ===== BADGE VARIANTS ===== */
-.bg-primary-subtle { background-color: #e7f1ff !important; color: #0d6efd !important; }
-.bg-success-subtle { background-color: #d1e7dd !important; color: #198754 !important; }
-.bg-danger-subtle { background-color: #f8d7da !important; color: #dc3545 !important; }
-.bg-warning-subtle { background-color: #fff3cd !important; color: #fd7e14 !important; }
-.bg-secondary-subtle { background-color: #e9ecef !important; color: #6c757d !important; }
-.bg-info-subtle { background-color: #cff4fc !important; color: #0dcaf0 !important; }
-.bg-dark-subtle { background-color: #d3d3d4 !important; color: #495057 !important; }
-.text-primary-emphasis { color: #0d6efd !important; }
-.text-success-emphasis { color: #198754 !important; }
-.text-danger-emphasis { color: #dc3545 !important; }
-.text-warning-emphasis { color: #fd7e14 !important; }
-.text-secondary-emphasis { color: #6c757d !important; }
-.text-info-emphasis { color: #0dcaf0 !important; }
-.text-dark-emphasis { color: #495057 !important; }
-.border-light-subtle { border-color: #f1f5f9 !important; }
-.border-primary-subtle { border-color: #e7f1ff !important; }
+/* Subtle colors are defined globally in badge-utils.css */
+/* Only component-specific overrides here */
 </style>

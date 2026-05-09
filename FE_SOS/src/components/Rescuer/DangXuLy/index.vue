@@ -272,12 +272,12 @@
                                 <div class="checked-out-label">Da lay cho nhiem vu nay</div>
                                 <div class="checked-out-list">
                                     <div v-for="item in taiNguyenDaLay" :key="item.id" class="checked-out-item">
-                                        <div class="checked-out-icon" :style="{ background: layMauTaiNguyen(item.loai_tai_nguyen) }">
-                                            <i :class="layIconTaiNguyen(item.loai_tai_nguyen)"></i>
+                                        <div class="checked-out-icon" :style="{ background: layMauTaiNguyen(item.slug_tai_nguyen) }">
+                                            <i :class="layIconTaiNguyen(item.slug_tai_nguyen)"></i>
                                         </div>
                                         <div class="checked-out-info">
                                             <span class="checked-out-name">{{ item.ten_tai_nguyen }}</span>
-                                            <span class="checked-out-meta">SL: {{ item.so_luong_dang_su_dung || 1 }} · {{ item.loai_tai_nguyen }}</span>
+                                            <span class="checked-out-meta">SL: {{ item.so_luong_dang_su_dung || 1 }} · {{ item.slug_tai_nguyen }}</span>
                                         </div>
                                         <button class="return-btn" @click="traTaiNguyen(item)" title="Tra thiet bi">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -635,12 +635,12 @@
                                             <polyline points="20 6 9 17 4 12"/>
                                         </svg>
                                     </div>
-                                    <div class="resource-item-icon" :style="{ background: layMauTaiNguyen(item.loai_tai_nguyen) }">
-                                        <i :class="layIconTaiNguyen(item.loai_tai_nguyen)"></i>
+                                    <div class="resource-item-icon" :style="{ background: layMauTaiNguyen(item.slug_tai_nguyen) }">
+                                        <i :class="layIconTaiNguyen(item.slug_tai_nguyen)"></i>
                                     </div>
                                     <div class="resource-item-info">
                                         <span class="resource-item-name">{{ item.ten_tai_nguyen }}</span>
-                                        <span class="resource-item-meta">{{ item.loai_tai_nguyen }} · Con {{ item.so_luong }}</span>
+                                        <span class="resource-item-meta">{{ item.slug_tai_nguyen }} · Con {{ item.so_luong }}</span>
                                     </div>
                                     <div class="resource-item-qty" v-if="taiNguyenDaChon.has(item.id_tai_nguyen)">
                                         <button class="qty-btn" @click.stop="giamSoLuong(item.id_tai_nguyen)">
@@ -670,12 +670,12 @@
                             </div>
                             <div v-else class="checked-out-grid">
                                 <div v-for="item in taiNguyenDaLay" :key="item.id" class="checked-out-grid-item">
-                                    <div class="checked-out-grid-icon" :style="{ background: layMauTaiNguyen(item.loai_tai_nguyen) }">
-                                        <i :class="layIconTaiNguyen(item.loai_tai_nguyen)"></i>
+                                    <div class="checked-out-grid-icon" :style="{ background: layMauTaiNguyen(item.slug_tai_nguyen) }">
+                                        <i :class="layIconTaiNguyen(item.slug_tai_nguyen)"></i>
                                     </div>
                                     <div class="checked-out-grid-info">
                                         <span class="checked-out-grid-name">{{ item.ten_tai_nguyen }}</span>
-                                        <span class="checked-out-grid-meta">SL: {{ item.so_luong_dang_su_dung || 1 }} · {{ item.loai_tai_nguyen }}</span>
+                                        <span class="checked-out-grid-meta">SL: {{ item.so_luong_dang_su_dung || 1 }} · {{ item.slug_tai_nguyen }}</span>
                                     </div>
                                     <button class="return-grid-btn" @click="traTaiNguyen(item)">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -733,12 +733,12 @@
                     <div class="modal-body">
                         <div class="return-item-info mb-3">
                             <div class="d-flex align-items-center gap-3">
-                                <div class="return-item-icon" :style="{ background: layMauTaiNguyen(traModalItem?.loai_tai_nguyen) }">
-                                    <i :class="layIconTaiNguyen(traModalItem?.loai_tai_nguyen)"></i>
+                                <div class="return-item-icon" :style="{ background: layMauTaiNguyen(traModalItem?.slug_tai_nguyen) }">
+                                    <i :class="layIconTaiNguyen(traModalItem?.slug_tai_nguyen)"></i>
                                 </div>
                                 <div>
                                     <div class="fw-semibold text-dark">{{ traModalItem?.ten_tai_nguyen }}</div>
-                                    <div class="text-muted small">{{ traModalItem?.loai_tai_nguyen }}</div>
+                                    <div class="text-muted small">{{ traModalItem?.slug_tai_nguyen }}</div>
                                 </div>
                             </div>
                         </div>

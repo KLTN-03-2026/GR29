@@ -82,12 +82,12 @@
             <div class="card-body p-4">
               <div class="d-flex justify-content-between align-items-start mb-3">
                 <div class="d-flex align-items-center">
-                  <div class="resource-icon me-3 d-flex align-items-center justify-content-center rounded-3 text-white" :class="getTypeClass(item.loai_tai_nguyen)" style="width: 48px; height: 48px;">
-                    <i :class="getTypeIcon(item.loai_tai_nguyen)"></i>
+                  <div class="resource-icon me-3 d-flex align-items-center justify-content-center rounded-3 text-white" :class="getTypeClass(item.slug_tai_nguyen)" style="width: 48px; height: 48px;">
+                    <i :class="getTypeIcon(item.slug_tai_nguyen)"></i>
                   </div>
                   <div>
                     <h6 class="fw-bold text-dark mb-1">{{ item.ten_tai_nguyen }}</h6>
-                    <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2 py-1 small">{{ item.loai_tai_nguyen }}</span>
+                    <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2 py-1 small">{{ item.slug_tai_nguyen }}</span>
                   </div>
                 </div>
                 <span class="badge rounded-pill px-3 py-2 fw-bold" :class="getStatusClass(item.trang_thai)">
@@ -130,7 +130,7 @@
             </div>
             <div class="mb-3">
               <label class="form-label fw-semibold">Loại thiết bị</label>
-              <select class="form-select rounded-3" v-model="form.loai_tai_nguyen">
+              <select class="form-select rounded-3" v-model="form.slug_tai_nguyen">
                 <option value="">Chọn loại</option>
                 <option value="Xe cứu thương">Xe cứu thương</option>
                 <option value="Bình chữa cháy">Bình chữa cháy</option>
@@ -182,7 +182,7 @@ export default {
       form: {
         id: null,
         ten_tai_nguyen: "",
-        loai_tai_nguyen: "",
+        slug_tai_nguyen: "",
         so_luong: 1,
         trang_thai: 1,
       },
@@ -227,7 +227,7 @@ export default {
       }
     },
     async addResource() {
-      if (!this.form.ten_tai_nguyen || !this.form.loai_tai_nguyen) {
+      if (!this.form.ten_tai_nguyen || !this.form.slug_tai_nguyen) {
         toaster.warning("Vui lòng nhập đầy đủ thông tin");
         return;
       }
@@ -248,7 +248,7 @@ export default {
       this.showEditModal = true;
     },
     async updateResource() {
-      if (!this.form.ten_tai_nguyen || !this.form.loai_tai_nguyen) {
+      if (!this.form.ten_tai_nguyen || !this.form.slug_tai_nguyen) {
         toaster.warning("Vui lòng nhập đầy đủ thông tin");
         return;
       }
@@ -277,7 +277,7 @@ export default {
     closeModals() {
       this.showAddModal = false;
       this.showEditModal = false;
-      this.form = { id: null, ten_tai_nguyen: "", loai_tai_nguyen: "", so_luong: 1, trang_thai: 1 };
+      this.form = { id: null, ten_tai_nguyen: "", slug_tai_nguyen: "", so_luong: 1, trang_thai: 1 };
     },
     getTypeIcon(type) {
       const icons = {
