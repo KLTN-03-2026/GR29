@@ -166,6 +166,29 @@
               </div>
             </div> -->
 
+            <!-- Resource Usage (inline card view) -->
+            <div v-if="getResourcesUsed(item).length > 0" class="resource-summary mb-3 p-3 bg-gradient bg-opacity-10 rounded-3 border border-light">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-toolbox text-warning"></i>
+                <span class="fw-bold text-dark small" style="letter-spacing: 0.5px;">TÀI NGUYÊN ĐÃ DÙNG</span>
+                <span class="badge bg-warning text-dark rounded-pill px-2 py-1" style="font-size: 11px;">{{ getResourcesUsed(item).length }} loại</span>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <div
+                  v-for="res in getResourcesUsed(item)"
+                  :key="res.id_tai_nguyen"
+                  class="resource-chip d-flex align-items-center gap-1 px-2 py-1 rounded-pill small fw-semibold"
+                  :class="getResourceChipClass(res.loai_tai_nguyen)"
+                >
+                  <i :class="getResourceIcon(res.loai_tai_nguyen)"></i>
+                  {{ res.ten_tai_nguyen || res.loai_tai_nguyen }}
+                  <span class="badge bg-dark text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 18px; height: 18px; font-size: 10px;">
+                    {{ res.so_luong_dang_su_dung }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             <!-- Actions -->
             <div class="rating-row d-flex align-items-center justify-content-between bg-light rounded-3 p-3 border border-light">
               <div class="d-flex align-items-center">
@@ -297,6 +320,46 @@
                 <div v-else class="no-report-placeholder">
                   <i class="fa-solid fa-clipboard text-secondary opacity-25 fs-3 mb-2"></i>
                   <p class="text-secondary small mb-0">Chưa có báo cáo</p>
+                </div>
+
+                <!-- Resource Usage Summary -->
+                <div v-if="detailItem.tai_nguyen_dang_su_dung && detailItem.tai_nguyen_dang_su_dung.length > 0" class="mt-3">
+                  <div class="report-title mb-3">
+                    <i class="fa-solid fa-toolbox me-2"></i>TÀI NGUYÊN ĐÃ SỬ DỤNG
+                  </div>
+                  <div class="detail-resource-list">
+                    <div
+                      v-for="res in detailItem.tai_nguyen_dang_su_dung"
+                      :key="res.id_tai_nguyen"
+                      class="detail-resource-item mb-2 p-2 rounded-3 border"
+                      :class="getResourceRowClass(res.loai_tai_nguyen)"
+                    >
+                      <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-2">
+                          <div class="resource-icon-sm d-flex align-items-center justify-content-center rounded-2" :class="getResourceIconBgClass(res.loai_tai_nguyen)">
+                            <i :class="getResourceIcon(res.loai_tai_nguyen)" class="text-white"></i>
+                          </div>
+                          <div>
+                            <div class="fw-bold text-dark small">{{ res.ten_tai_nguyen || res.loai_tai_nguyen }}</div>
+                            <div class="text-muted" style="font-size: 10px; letter-spacing: 0.5px;">{{ res.loai_tai_nguyen }}</div>
+                          </div>
+                        </div>
+                        <div class="text-end">
+                          <div class="fw-bold text-dark">{{ res.so_luong_dang_su_dung }}</div>
+                          <div class="text-muted small">đã dùng</div>
+                        </div>
+                      </div>
+                      <div v-if="res.doi_cuu_ho" class="mt-1 text-muted small">
+                        <i class="fa-solid fa-users me-1"></i>{{ res.doi_cuu_ho.ten_doi || res.doi_cuu_ho.ten_co }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="mt-3">
+                  <div class="no-report-placeholder py-2">
+                    <i class="fa-solid fa-toolbox text-secondary opacity-25 fs-6 mb-1"></i>
+                    <p class="text-secondary small mb-0">Không có tài nguyên</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -500,6 +563,48 @@ export default {
       }
       return '';
     },
+    getResourcesUsed(item) {
+      if (item && item.tai_nguyen_dang_su_dung && Array.isArray(item.tai_nguyen_dang_su_dung)) {
+        return item.tai_nguyen_dang_su_dung;
+      }
+      return [];
+    },
+    getResourceChipClass(type) {
+      const map = {
+        'Vehicle': 'bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25',
+        'Medical': 'bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25',
+        'Supply': 'bg-success bg-opacity-10 text-success border border-success border-opacity-25',
+        'Equipment': 'bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25',
+      };
+      return map[type] || 'bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25';
+    },
+    getResourceIcon(type) {
+      const map = {
+        'Vehicle': 'fa-solid fa-truck-medical',
+        'Medical': 'fa-solid fa-heart-pulse',
+        'Supply': 'fa-solid fa-box-open',
+        'Equipment': 'fa-solid fa-screwdriver-wrench',
+      };
+      return map[type] || 'fa-solid fa-toolbox';
+    },
+    getResourceIconBgClass(type) {
+      const map = {
+        'Vehicle': 'bg-primary',
+        'Medical': 'bg-danger',
+        'Supply': 'bg-success',
+        'Equipment': 'bg-warning',
+      };
+      return map[type] || 'bg-secondary';
+    },
+    getResourceRowClass(type) {
+      const map = {
+        'Vehicle': 'border-primary border-opacity-25',
+        'Medical': 'border-danger border-opacity-25',
+        'Supply': 'border-success border-opacity-25',
+        'Equipment': 'border-warning border-opacity-25',
+      };
+      return map[type] || 'border-secondary border-opacity-25';
+    },
   },
 };
 </script>
@@ -626,6 +731,37 @@ export default {
   border: 1px dashed #dee2e6;
   border-radius: 8px;
   text-align: center;
+}
+
+/* Resource summary in card */
+.resource-summary {
+  background: linear-gradient(135deg, #fff8e1 0%, #fffde7 100%);
+}
+
+.resource-chip {
+  font-size: 12px;
+}
+
+/* Detail resource list */
+.detail-resource-item {
+  background: #f8f9fa;
+  transition: transform 0.15s ease;
+}
+
+.detail-resource-item:hover {
+  transform: translateX(2px);
+}
+
+.resource-icon-sm {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.detail-resource-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 @media (max-width: 576px) {

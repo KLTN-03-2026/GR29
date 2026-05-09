@@ -210,6 +210,94 @@
                             </div>
                         </div>
 
+                        <!-- Resource Section -->
+                        <div class="info-card resource-card">
+                            <div class="card-header-row">
+                                <div class="section-label">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                    </svg>
+                                    Lấy tài nguyên
+                                </div>
+                                <button class="refresh-resources-btn" @click="layDanhSachTaiNguyen" title="Lam moi">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <polyline points="23 4 23 10 17 10"/>
+                                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <!-- Dang tai tai nguyen -->
+                            <div v-if="dangTaiTaiNguyen" class="resource-loading">
+                                <div class="resource-spinner"></div>
+                                <span>Dang tai tai nguyen...</span>
+                            </div>
+
+                            <!-- Resource Stats -->
+                            <div v-else class="resource-stats-row">
+                                <div class="resource-stat-chip available" @click="moModalTaiNguyen('sanSang')">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <polyline points="20 6 9 17 4 12"/>
+                                    </svg>
+                                    <span>{{ taiNguyenSanSang.length }} san sang</span>
+                                </div>
+                                <div class="resource-stat-chip in-use" @click="moModalTaiNguyen('dangdung')">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
+                                    </svg>
+                                    <span>{{ taiNguyenDaLay.length }} dang dung</span>
+                                </div>
+                            </div>
+
+                            <!-- Nut Lay tai nguyen -->
+                            <button class="resource-action-btn" @click="moModalTaiNguyen('sanSang')" v-if="taiNguyenSanSang.length > 0">
+                                <div class="resource-action-icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                                        <line x1="12" y1="22.08" x2="12" y2="12"/>
+                                    </svg>
+                                </div>
+                                <div class="resource-action-text">
+                                    <span class="resource-action-title">Lay thiet bi</span>
+                                    <span class="resource-action-sub">{{ taiNguyenSanSang.length }} thiet bi san sang</span>
+                                </div>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="arrow-icon">
+                                    <path d="M9 18l6-6-6-6"/>
+                                </svg>
+                            </button>
+
+                            <!-- Danh sach tai nguyen da lay -->
+                            <div v-if="taiNguyenDaLay.length > 0" class="checked-out-section">
+                                <div class="checked-out-label">Da lay cho nhiem vu nay</div>
+                                <div class="checked-out-list">
+                                    <div v-for="item in taiNguyenDaLay" :key="item.id" class="checked-out-item">
+                                        <div class="checked-out-icon" :style="{ background: layMauTaiNguyen(item.loai_tai_nguyen) }">
+                                            <i :class="layIconTaiNguyen(item.loai_tai_nguyen)"></i>
+                                        </div>
+                                        <div class="checked-out-info">
+                                            <span class="checked-out-name">{{ item.ten_tai_nguyen }}</span>
+                                            <span class="checked-out-meta">SL: {{ item.so_luong_dang_su_dung || 1 }} · {{ item.loai_tai_nguyen }}</span>
+                                        </div>
+                                        <button class="return-btn" @click="traTaiNguyen(item)" title="Tra thiet bi">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                                <polyline points="9 14 4 9 9 4"/>
+                                                <path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Empty Resource State -->
+                            <div v-if="!dangTaiTaiNguyen && taiNguyenSanSang.length === 0 && taiNguyenDaLay.length === 0" class="resource-empty">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                </svg>
+                                <span>Khong co thiet bi nao</span>
+                            </div>
+                        </div>
+
                         <!-- Action Buttons -->
                         <div class="action-group">
                             <button class="action-primary" @click="markArrived" v-if="missionStep < 3">
@@ -491,6 +579,206 @@
                 </div>
             </div>
         </div>
+        <!-- Modal Lay Tai Nguyen -->
+        <div class="modal fade" id="resourceModal" tabindex="-1" ref="modalTaiNguyenEl">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header-row">
+                        <div class="modal-icon modal-icon-resource">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                                <line x1="12" y1="22.08" x2="12" y2="12"/>
+                            </svg>
+                        </div>
+                        <h5 class="modal-title">{{ tabTaiNguyenChon === 'sanSang' ? 'Lay Thiet Bi' : 'Thiet Bi Da Lay' }}</h5>
+                        <button type="button" class="modal-close-btn" data-bs-dismiss="modal">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Tab Toggle -->
+                    <div class="resource-tab-toggle">
+                        <button class="resource-tab-btn" :class="{ 'tab-active': tabTaiNguyenChon === 'sanSang' }" @click="tabTaiNguyenChon = 'sanSang'">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            San sang ({{ taiNguyenSanSang.length }})
+                        </button>
+                        <button class="resource-tab-btn" :class="{ 'tab-active': tabTaiNguyenChon === 'dangdung' }" @click="tabTaiNguyenChon = 'dangdung'">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
+                            </svg>
+                            Dang dung ({{ taiNguyenDaLay.length }})
+                        </button>
+                    </div>
+
+                    <div class="modal-body">
+                        <!-- Tab San sang -->
+                        <div v-if="tabTaiNguyenChon === 'sanSang'">
+                            <div v-if="taiNguyenSanSang.length === 0" class="resource-modal-empty">
+                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                </svg>
+                                <p>Khong co thiet bi san sang</p>
+                            </div>
+                            <div v-else class="resource-grid">
+                                <div v-for="item in taiNguyenSanSang" :key="item.id_tai_nguyen"
+                                     class="resource-item"
+                                     :class="{ 'resource-selected': taiNguyenDaChon.has(item.id_tai_nguyen) }"
+                                     @click="chonTaiNguyen(item)">
+                                    <div class="resource-item-check">
+                                        <svg v-if="taiNguyenDaChon.has(item.id_tai_nguyen)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                            <polyline points="20 6 9 17 4 12"/>
+                                        </svg>
+                                    </div>
+                                    <div class="resource-item-icon" :style="{ background: layMauTaiNguyen(item.loai_tai_nguyen) }">
+                                        <i :class="layIconTaiNguyen(item.loai_tai_nguyen)"></i>
+                                    </div>
+                                    <div class="resource-item-info">
+                                        <span class="resource-item-name">{{ item.ten_tai_nguyen }}</span>
+                                        <span class="resource-item-meta">{{ item.loai_tai_nguyen }} · Con {{ item.so_luong }}</span>
+                                    </div>
+                                    <div class="resource-item-qty" v-if="taiNguyenDaChon.has(item.id_tai_nguyen)">
+                                        <button class="qty-btn" @click.stop="giamSoLuong(item.id_tai_nguyen)">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <line x1="5" y1="12" x2="19" y2="12"/>
+                                            </svg>
+                                        </button>
+                                        <span class="qty-value">{{ taiNguyenDaChon.get(item.id_tai_nguyen) }}</span>
+                                        <button class="qty-btn" @click.stop="tangSoLuong(item.id_tai_nguyen, item.so_luong)">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                                <line x1="5" y1="12" x2="19" y2="12"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab Dang dung -->
+                        <div v-if="tabTaiNguyenChon === 'dangdung'">
+                            <div v-if="taiNguyenDaLay.length === 0" class="resource-modal-empty">
+                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+                                    <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
+                                </svg>
+                                <p>Chua lay thiet bi nao</p>
+                            </div>
+                            <div v-else class="checked-out-grid">
+                                <div v-for="item in taiNguyenDaLay" :key="item.id" class="checked-out-grid-item">
+                                    <div class="checked-out-grid-icon" :style="{ background: layMauTaiNguyen(item.loai_tai_nguyen) }">
+                                        <i :class="layIconTaiNguyen(item.loai_tai_nguyen)"></i>
+                                    </div>
+                                    <div class="checked-out-grid-info">
+                                        <span class="checked-out-grid-name">{{ item.ten_tai_nguyen }}</span>
+                                        <span class="checked-out-grid-meta">SL: {{ item.so_luong_dang_su_dung || 1 }} · {{ item.loai_tai_nguyen }}</span>
+                                    </div>
+                                    <button class="return-grid-btn" @click="traTaiNguyen(item)">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                            <polyline points="9 14 4 9 9 4"/>
+                                            <path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
+                                        </svg>
+                                        Tra
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer-row" v-if="tabTaiNguyenChon === 'sanSang'">
+                        <div class="selected-summary" v-if="taiNguyenDaChon.size > 0">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                            </svg>
+                            {{ taiNguyenDaChon.size }} thiet bi duoc chon
+                        </div>
+                        <button type="button" class="btn-cancel" data-bs-dismiss="modal">Dong</button>
+                        <button type="button" class="btn-submit btn-submit-resource" @click="layTaiNguyen" :disabled="taiNguyenDaChon.size === 0 || dangXuLyTaiNguyen">
+                            <span v-if="dangXuLyTaiNguyen" class="btn-spinner"></span>
+                            <template v-else>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                                Lay {{ taiNguyenDaChon.size > 0 ? taiNguyenDaChon.size + ' thiet bi' : '' }}
+                            </template>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Tra Tai Nguyen -->
+        <div class="modal fade" id="returnResourceModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content">
+                    <div class="modal-header-row">
+                        <div class="modal-icon modal-icon-return">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <polyline points="9 14 4 9 9 4"/>
+                                <path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
+                            </svg>
+                        </div>
+                        <h5 class="modal-title">Tra Thiet Bi</h5>
+                        <button type="button" class="modal-close-btn" data-bs-dismiss="modal">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="return-item-info mb-3">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="return-item-icon" :style="{ background: layMauTaiNguyen(traModalItem?.loai_tai_nguyen) }">
+                                    <i :class="layIconTaiNguyen(traModalItem?.loai_tai_nguyen)"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-semibold text-dark">{{ traModalItem?.ten_tai_nguyen }}</div>
+                                    <div class="text-muted small">{{ traModalItem?.loai_tai_nguyen }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="return-qty-section">
+                            <label class="form-label fw-semibold small text-muted">So luong tra lai</label>
+                            <div class="return-qty-control">
+                                <button class="qty-btn" @click="traSoLuong = Math.max(1, traSoLuong - 1)" :disabled="traSoLuong <= 1">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                        <line x1="5" y1="12" x2="19" y2="12"/>
+                                    </svg>
+                                </button>
+                                <span class="qty-value">{{ traSoLuong }}</span>
+                                <button class="qty-btn" @click="traSoLuong = Math.min(traModalItem?.so_luong_dang_su_dung || 1, traSoLuong + 1)" :disabled="traSoLuong >= (traModalItem?.so_luong_dang_su_dung || 1)">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                        <line x1="12" y1="5" x2="12" y2="19"/>
+                                        <line x1="5" y1="12" x2="19" y2="12"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="return-max-info text-muted small mt-1">
+                                Dang su dung: {{ traModalItem?.so_luong_dang_su_dung || 1 }} |
+                                <a href="#" class="text-primary small" @click.prevent="traSoLuong = traModalItem?.so_luong_dang_su_dung || 1">Tra tat ca</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer-row">
+                        <button type="button" class="btn-cancel" data-bs-dismiss="modal">Huy</button>
+                        <button type="button" class="btn-submit btn-submit-return" @click="xacNhanTraTaiNguyen" :disabled="dangTraTaiNguyen">
+                            <span v-if="dangTraTaiNguyen" class="btn-spinner"></span>
+                            <template v-else>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                                Tra {{ traSoLuong }} thiet bi
+                            </template>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -539,7 +827,28 @@ export default {
             locationChannel: null,
             viTriCu: null,
             lanCapNhatCuoi: 0,
+            // Quan ly tai nguyen
+            danhSachTaiNguyen: [],
+            dangTaiTaiNguyen: false,
+            modalTaiNguyenEl: null,
+            tabTaiNguyenChon: 'sanSang',
+            taiNguyenDaChon: new Map(),
+            taiNguyenDaLay: [],
+            dangXuLyTaiNguyen: false,
+            // Tra tai nguyen
+            showTraModal: false,
+            traModalItem: null,
+            traSoLuong: 1,
+            dangTraTaiNguyen: false,
         };
+    },
+    computed: {
+        taiNguyenSanSang() {
+            return this.danhSachTaiNguyen.filter(r => r.trang_thai === 1);
+        },
+        taiNguyenDangDung() {
+            return this.danhSachTaiNguyen.filter(r => r.trang_thai === 0);
+        },
     },
     async mounted() {
         this.loadTeamData();
@@ -551,10 +860,12 @@ export default {
             if (typeof bootstrap !== 'undefined') {
                 this.reportModalEl = document.getElementById('reportModal');
                 this.reinforceModalEl = document.getElementById('reinforceModal');
+                this.modalTaiNguyenEl = document.getElementById('resourceModal');
             }
         });
         this.subscribeToRescueUpdates();
         this.startLocationBroadcasting();
+        await this.layDanhSachTaiNguyen();
     },
     beforeUnmount() {
         this.unsubscribeFromRescueUpdates();
@@ -1211,6 +1522,142 @@ export default {
                 }
             }
             return '';
+        },
+        // ============ QUAN LY TAI NGUYEN ============
+        async layDanhSachTaiNguyen() {
+            if (!this.teamId) return;
+            this.dangTaiTaiNguyen = true;
+            try {
+                const res = await rescuerAPI.getTeamResources(this.teamId);
+                this.danhSachTaiNguyen = res.data?.data?.data || res.data?.data || res.data || [];
+            } catch (e) {
+                console.error('Loi tai tai nguyen:', e);
+            } finally {
+                this.dangTaiTaiNguyen = false;
+            }
+        },
+        moModalTaiNguyen(tab = 'sanSang') {
+            this.tabTaiNguyenChon = tab;
+            this.taiNguyenDaChon = new Map();
+            if (this.modalTaiNguyenEl && typeof bootstrap !== 'undefined') {
+                const modal = new bootstrap.Modal(this.modalTaiNguyenEl);
+                modal.show();
+            }
+        },
+        chonTaiNguyen(item) {
+            if (this.taiNguyenDaChon.has(item.id_tai_nguyen)) {
+                this.taiNguyenDaChon.delete(item.id_tai_nguyen);
+            } else {
+                this.taiNguyenDaChon.set(item.id_tai_nguyen, 1);
+            }
+            this.taiNguyenDaChon = new Map(this.taiNguyenDaChon);
+        },
+        tangSoLuong(resourceId, maxQty) {
+            const hienTai = this.taiNguyenDaChon.get(resourceId) || 0;
+            if (hienTai < maxQty) {
+                this.taiNguyenDaChon.set(resourceId, hienTai + 1);
+                this.taiNguyenDaChon = new Map(this.taiNguyenDaChon);
+            }
+        },
+        giamSoLuong(resourceId) {
+            const hienTai = this.taiNguyenDaChon.get(resourceId) || 1;
+            if (hienTai > 1) {
+                this.taiNguyenDaChon.set(resourceId, hienTai - 1);
+                this.taiNguyenDaChon = new Map(this.taiNguyenDaChon);
+            } else {
+                this.taiNguyenDaChon.delete(resourceId);
+                this.taiNguyenDaChon = new Map(this.taiNguyenDaChon);
+            }
+        },
+        async layTaiNguyen() {
+            if (this.taiNguyenDaChon.size === 0) return;
+            this.dangXuLyTaiNguyen = true;
+            try {
+                const mangChon = Array.from(this.taiNguyenDaChon.entries());
+                for (const [resourceId, qty] of mangChon) {
+                    await rescuerAPI.checkoutResource(resourceId, {
+                        id_phan_cong: this.currentMission.id_phan_cong,
+                        so_luong: qty,
+                    });
+                }
+                toaster.success(`Da lay ${mangChon.length} thiet bi thanh cong`);
+                if (this.modalTaiNguyenEl && typeof bootstrap !== 'undefined') {
+                    const modal = bootstrap.Modal.getInstance(this.modalTaiNguyenEl);
+                    if (modal) modal.hide();
+                }
+                this.taiNguyenDaChon = new Map();
+                await this.layDanhSachTaiNguyen();
+                await this.layTaiNguyenDaLay();
+            } catch (e) {
+                console.error('Loi lay tai nguyen:', e);
+                toaster.error("Khong the lay thiet bi. Vui long thu lai.");
+            } finally {
+                this.dangXuLyTaiNguyen = false;
+            }
+        },
+        async layTaiNguyenDaLay() {
+            this.taiNguyenDaLay = this.danhSachTaiNguyen.filter(r => {
+                return r.dang_su_dung_cho_nhiem_vu === this.currentMission?.id_phan_cong;
+            });
+        },
+        moTraModal(item) {
+            this.traModalItem = item;
+            this.traSoLuong = item.so_luong_dang_su_dung || 1;
+            this.showTraModal = true;
+            this.$nextTick(() => {
+                const el = document.getElementById('returnResourceModal');
+                if (el && typeof bootstrap !== 'undefined') {
+                    const modal = new bootstrap.Modal(el);
+                    modal.show();
+                }
+            });
+        },
+        async xacNhanTraTaiNguyen() {
+            if (!this.traModalItem || this.traSoLuong < 1) return;
+            this.dangTraTaiNguyen = true;
+            try {
+                await rescuerAPI.returnResource(this.traModalItem.id_tai_nguyen || this.traModalItem.id, {
+                    id_phan_cong: this.currentMission?.id_phan_cong,
+                    so_luong: this.traSoLuong,
+                });
+                toaster.success(`Da tra ${this.traSoLuong} thiet bi: ${this.traModalItem.ten_tai_nguyen}`);
+                const el = document.getElementById('returnResourceModal');
+                if (el && typeof bootstrap !== 'undefined') {
+                    const modal = bootstrap.Modal.getInstance(el);
+                    if (modal) modal.hide();
+                }
+                await this.layDanhSachTaiNguyen();
+                await this.layTaiNguyenDaLay();
+            } catch (e) {
+                console.error('Loi tra tai nguyen:', e);
+                toaster.error("Khong the tra thiet bi. Vui long thu lai.");
+            } finally {
+                this.dangTraTaiNguyen = false;
+            }
+        },
+        async traTaiNguyen(item) {
+            // Mo modal chon so luong tra
+            this.moTraModal(item);
+        },
+        layIconTaiNguyen(type) {
+            const icons = {
+                'Xe cuu thuong': 'fa-solid fa-truck-medical',
+                'Binh chua chay': 'fa-solid fa-fire-extinguisher',
+                'Dung cu y te': 'fa-solid fa-kit-medical',
+                'Thiet bi cuu ho': 'fa-solid fa-person-drowning',
+                'Phuong tien lien lac': 'fa-solid fa-radio',
+            };
+            return icons[type] || 'fa-solid fa-box';
+        },
+        layMauTaiNguyen(type) {
+            const colors = {
+                'Xe cuu thuong': '#dc2626',
+                'Binh chua chay': '#f97316',
+                'Dung cu y te': '#22c55e',
+                'Thiet bi cuu ho': '#3b82f6',
+                'Phuong tien lien lac': '#8b5cf6',
+            };
+            return colors[type] || '#64748b';
         },
     },
 };
@@ -2418,5 +2865,618 @@ export default {
     .mission-content {
         padding: 1rem;
     }
+}
+
+/* ─── Resource Section ──────────────────────────────────────────────── */
+.resource-card {
+    background: linear-gradient(135deg, #f8fafc 0%, #f0f9ff 100%);
+    border: 1.5px solid #bfdbfe;
+}
+
+.resource-loading {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 1rem 0;
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 500;
+}
+
+.resource-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #e2e8f0;
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+}
+
+.refresh-resources-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: white;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.refresh-resources-btn:hover {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    color: #2563eb;
+}
+
+.refresh-resources-btn:hover svg {
+    animation: refresh-spin 0.6s ease;
+}
+
+@keyframes refresh-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(-180deg); }
+}
+
+.resource-stats-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.resource-stat-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.resource-stat-chip.available {
+    background: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+}
+
+.resource-stat-chip.available:hover {
+    background: #dcfce7;
+    transform: translateY(-1px);
+}
+
+.resource-stat-chip.in-use {
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fde68a;
+}
+
+.resource-stat-chip.in-use:hover {
+    background: #fef9c3;
+    transform: translateY(-1px);
+}
+
+.resource-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    border-radius: 14px;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.25s;
+    width: 100%;
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: white;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+}
+
+.resource-action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+    color: white;
+}
+
+.resource-action-btn:active {
+    opacity: 0.9;
+    transform: translateY(0);
+}
+
+.resource-action-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.resource-action-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.resource-action-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: white;
+}
+
+.resource-action-sub {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.resource-action-btn .arrow-icon {
+    color: rgba(255, 255, 255, 0.6);
+    transition: transform 0.2s, color 0.2s;
+}
+
+.resource-action-btn:hover .arrow-icon {
+    transform: translateX(3px);
+    color: white;
+}
+
+.checked-out-section {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed #cbd5e1;
+}
+
+.checked-out-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.6rem;
+}
+
+.checked-out-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.checked-out-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 12px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s;
+}
+
+.checked-out-item:hover {
+    border-color: #93c5fd;
+    background: #f8fafc;
+}
+
+.checked-out-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.checked-out-icon i {
+    font-size: 0.85rem;
+}
+
+.checked-out-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.checked-out-name {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.checked-out-meta {
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: #94a3b8;
+}
+
+.return-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: white;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.return-btn:hover {
+    background: #fef2f2;
+    border-color: #fca5a5;
+    color: #dc2626;
+}
+
+.resource-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 1rem 0;
+    color: #cbd5e1;
+    font-size: 0.78rem;
+    font-weight: 500;
+}
+
+/* ─── Resource Modal ────────────────────────────────────────────────── */
+.modal-icon-resource {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: white;
+}
+
+.resource-tab-toggle {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0 1.5rem 0;
+}
+
+.resource-tab-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.6rem;
+    border-radius: 10px;
+    border: 1.5px solid #e2e8f0;
+    background: white;
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.resource-tab-btn:hover {
+    border-color: #93c5fd;
+    color: #2563eb;
+}
+
+.resource-tab-btn.tab-active {
+    background: #eff6ff;
+    border-color: #2563eb;
+    color: #1d4ed8;
+}
+
+.resource-modal-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 2.5rem 1rem;
+    color: #cbd5e1;
+    text-align: center;
+}
+
+.resource-modal-empty p {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #94a3b8;
+    margin: 0;
+}
+
+.resource-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.resource-grid::-webkit-scrollbar { width: 4px; }
+.resource-grid::-webkit-scrollbar-track { background: transparent; }
+.resource-grid::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+
+.resource-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 14px;
+    border: 1.5px solid #e2e8f0;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.resource-item:hover {
+    border-color: #93c5fd;
+    background: #f8fafc;
+}
+
+.resource-item.resource-selected {
+    border-color: #2563eb;
+    background: #eff6ff;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
+}
+
+.resource-item-check {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    border: 2px solid #e2e8f0;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+
+.resource-selected .resource-item-check {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: white;
+}
+
+.resource-item-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.resource-item-icon i {
+    font-size: 1rem;
+}
+
+.resource-item-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.resource-item-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.resource-item-meta {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: #94a3b8;
+}
+
+.resource-item-qty {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #f1f5f9;
+    border-radius: 8px;
+    padding: 0.2rem;
+    flex-shrink: 0;
+}
+
+.qty-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: none;
+    background: white;
+    color: #334155;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.qty-btn:hover {
+    background: #2563eb;
+    color: white;
+}
+
+.qty-value {
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: #1e293b;
+    min-width: 20px;
+    text-align: center;
+}
+
+.checked-out-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.checked-out-grid::-webkit-scrollbar { width: 4px; }
+.checked-out-grid::-webkit-scrollbar-track { background: transparent; }
+.checked-out-grid::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+
+.checked-out-grid-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 14px;
+    border: 1.5px solid #fef3c7;
+    background: #fffbeb;
+    transition: all 0.2s;
+}
+
+.checked-out-grid-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.checked-out-grid-icon i {
+    font-size: 1rem;
+}
+
+.checked-out-grid-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.checked-out-grid-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.checked-out-grid-meta {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: #b45309;
+}
+
+.return-grid-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    border: 1.5px solid #fde68a;
+    background: white;
+    color: #b45309;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.return-grid-btn:hover {
+    background: #fef3c7;
+    border-color: #f59e0b;
+    color: #92400e;
+}
+
+.selected-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #2563eb;
+    flex: 1;
+}
+
+.btn-submit-resource {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.btn-submit-resource:hover:not(:disabled) {
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+}
+
+.modal-icon-return {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.return-item-info {
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 12px;
+}
+
+.return-item-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.return-qty-section {
+    padding: 0 4px;
+}
+
+.return-qty-control {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 8px;
+}
+
+.return-max-info a {
+    text-decoration: none;
+}
+
+.return-max-info a:hover {
+    text-decoration: underline;
+}
+
+.btn-submit-return {
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+}
+
+.btn-submit-return:hover:not(:disabled) {
+    background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+    box-shadow: 0 6px 16px rgba(22, 163, 74, 0.4);
 }
 </style>

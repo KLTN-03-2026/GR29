@@ -237,11 +237,11 @@ export default {
       }
 
       if (this.searchQuery) {
-        const query = this.searchQuery.toLowerCase();
+        const query = this.normalizeSearch(this.searchQuery);
         result = result.filter(t => {
-          const name = (t.tenCo || t.ten_co || t.name || "").toLowerCase();
-          const assigned = (t.assignedTitle || t.assigned_title || t.assigned || "").toLowerCase();
-          const location = (t.khuVuc || t.khu_vuc || t.location || "").toLowerCase();
+          const name = this.normalizeSearch(t.tenCo || t.ten_co || t.name || "");
+          const assigned = this.normalizeSearch(t.assignedTitle || t.assigned_title || t.assigned || "");
+          const location = this.normalizeSearch(t.khuVuc || t.khu_vuc || t.location || "");
           return name.includes(query) || assigned.includes(query) || location.includes(query);
         });
       }
@@ -266,6 +266,14 @@ export default {
     }
   },
   methods: {
+    removeDiacritics(str) {
+      return str.normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[đĐ]/g, m => m === 'đ' ? 'd' : 'D');
+    },
+    normalizeSearch(text) {
+      return this.removeDiacritics(String(text || '').toLowerCase());
+    },
     async initData() {
       this.error = null;
       await Promise.all([this.loadTeams(), this.loadRequests()]);
@@ -435,9 +443,16 @@ export default {
 </script>
 
 <style scoped>
+.dashboard-container {
+  overflow: hidden;
+}
+.min-h-0 {
+  min-height: 0 !important;
+}
 .tracking-wrapper {
-  height: calc(100vh - 80px);
+  height: calc(100vh - 130px);
   min-height: 0;
+  overflow: hidden;
 }
 .map-container-box {
   position: relative;

@@ -39,6 +39,7 @@ api.interceptors.request.use((config) => {
     match('/get-ket-qua-cuu-ho') ||
     match('/get-danh-gia-cuu-ho') ||
     match('/post-danh-gia-cuu-ho') ||
+    match('/tai-nguyen') ||
     // Các PUT/GET /phan-cong-cuu-ho/{id}/trang-thai và tương tự (có id số trong URL)
     /^\/phan-cong-cuu-ho\/\d+/.test(url);
 
@@ -324,6 +325,14 @@ export const rescuerAPI = {
 
   // Thống kê heatmap
   getHeatmap: () => api.get('/thong-ke/heatmap'),
+
+  // Tài nguyên - Sử dụng / Trả lại
+  checkoutResource: (id, data) =>
+    api.post('/tai-nguyen/' + id + '/checkout', data),
+  returnResource: (id, data) =>
+    api.post('/tai-nguyen/' + id + '/return', data),
+  getTeamResourceHistory: (id) =>
+    api.get('/tai-nguyen/' + id + '/history'),
 };
 
 // Auto Dispatch
