@@ -55,8 +55,10 @@ class DanhGiaCuuHoController extends Controller
         $validated = $request->validate([
             'diem_danh_gia' => 'sometimes|numeric|between:1,5',
             'noi_dung_danh_gia' => 'nullable|string',
+            'tags' => 'nullable|string',
         ]);
         $item->update($validated);
+        $item->load(['yeuCau', 'nguoiDung']);
 
         return response()->json([
             'status' => true,
@@ -104,12 +106,34 @@ class DanhGiaCuuHoController extends Controller
             'id_nguoi_dung' => 'required|numeric',
             'diem_danh_gia' => 'required|numeric|between:1,5',
             'noi_dung_danh_gia' => 'nullable|string',
-            'tags' => 'nullable|string', // Accept tags field but don't require it
+            'tags' => 'nullable|string',
         ]);
 
+        $tags = $validated['tags'] ?? null;
         $validated['id_yeu_cau'] = $id_yeu_cau;
-        // Remove tags from validated since the model doesn't have this field
         unset($validated['tags']);
+        $validated['tags'] = $tags;
+
+        // One user can only have one rating per rescue request — update if exists
+        $existing = DanhGiaCuuHo::where('id_yeu_cau', $id_yeu_cau)
+            ->where('id_nguoi_dung', $validated['id_nguoi_dung'])
+            ->first();
+
+        if ($existing) {
+            $existing->update([
+                'diem_danh_gia' => $validated['diem_danh_gia'],
+                'noi_dung_danh_gia' => $validated['noi_dung_danh_gia'] ?? null,
+                'tags' => $tags,
+            ]);
+            $existing->load(['yeuCau', 'nguoiDung']);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Cập nhật đánh giá thành công',
+                'data' => $existing,
+            ], 200);
+        }
+
         $item = DanhGiaCuuHo::create($validated);
 
         return response()->json([

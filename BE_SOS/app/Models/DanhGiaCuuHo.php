@@ -8,7 +8,7 @@ class DanhGiaCuuHo extends Model
 {
     protected $table = 'danh_gia_cuu_ho';
     protected $primaryKey = 'id_danh_gia';
-    protected $fillable = ['id_yeu_cau', 'id_nguoi_dung', 'diem_danh_gia', 'noi_dung_danh_gia'];
+    protected $fillable = ['id_yeu_cau', 'id_nguoi_dung', 'diem_danh_gia', 'noi_dung_danh_gia', 'tags'];
 
     /**
      * Relationship with YeuCauCuuHo
