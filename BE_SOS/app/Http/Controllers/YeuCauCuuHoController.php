@@ -395,7 +395,9 @@ class YeuCauCuuHoController extends Controller
                 'loaiSuCo.chiTiets',
                 'hangDoiXuLy',
                 'phanLoaiAis',
-                'phanCongs',
+                'phanCongs.doiCuuHo',
+                'phanCongs.ketQua',
+                'phanCongs.thanhVienTiepNhan',
                 'danhGias'
             ])
                 ->orderBy($sortBy, $sortOrder)
@@ -603,6 +605,7 @@ class YeuCauCuuHoController extends Controller
                 'phanLoaiAis',
                 'phanCongs.doiCuuHo',
                 'phanCongs.ketQua',
+                'phanCongs.thanhVienTiepNhan',
                 'danhGias'
             ])->findOrFail($id);
 
@@ -1282,7 +1285,11 @@ class YeuCauCuuHoController extends Controller
             $query = YeuCauCuuHo::with([
                 'nguoiDung',
                 'loaiSuCo',
-                'hangDoiXuLy'
+                'hangDoiXuLy',
+                'phanCongs.doiCuuHo',
+                'phanCongs.ketQua',
+                'phanCongs.thanhVienTiepNhan',
+                'danhGias'
             ]);
 
             // Search by keyword in chi_tiet, mo_ta, vi_tri_dia_chi
