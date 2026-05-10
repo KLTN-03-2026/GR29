@@ -448,6 +448,9 @@ export default {
       routeLayer: null,
       routeSource: null,
       mapReady: false,
+      // Throttle route updates to avoid duplicate API calls
+      routeUpdateCooldown: false,
+      routeUpdateTimeout: null,
       showDetailModal: false,
       rescuerLoading: false,
       rescuerLocationChannel: null,
@@ -551,6 +554,17 @@ export default {
         }
       }
     },
+    currentProgressStep(step) {
+      if (step >= 3 && this.mapReady && this.rescuerMarkerData && this.activeRequest?.lat) {
+        this.drawRoute(
+          this.rescuerMarkerData.lat,
+          this.rescuerMarkerData.lng,
+          this.activeRequest.lat,
+          this.activeRequest.lng
+        );
+        this.calculateETA();
+      }
+    },
   },
   async created() {
     await this.loadData();
@@ -561,6 +575,7 @@ export default {
     this.unsubscribeFromReverb();
     this.stopFallbackPolling();
     this.cleanupMap();
+    clearTimeout(this.routeUpdateTimeout);
   },
   methods: {
     goBack() {
@@ -1203,9 +1218,27 @@ export default {
         this.rescuerMarkerData = { lat: Number(data.lat), lng: Number(data.lng) };
         if (this.mapReady) {
           this.updateRescuerMarker();
-          this.calculateETA();
+          this.throttledRouteUpdate();
         }
       }
+    },
+
+    throttledRouteUpdate() {
+      if (this.routeUpdateCooldown || !this.rescuerMarkerData || !this.activeRequest?.lat) return;
+      this.routeUpdateCooldown = true;
+      this.calculateETA();
+      if (this.currentProgressStep >= 3) {
+        this.drawRoute(
+          this.rescuerMarkerData.lat,
+          this.rescuerMarkerData.lng,
+          this.activeRequest.lat,
+          this.activeRequest.lng
+        );
+      }
+      clearTimeout(this.routeUpdateTimeout);
+      this.routeUpdateTimeout = setTimeout(() => {
+        this.routeUpdateCooldown = false;
+      }, 3000);
     },
 
     startFallbackPolling() {

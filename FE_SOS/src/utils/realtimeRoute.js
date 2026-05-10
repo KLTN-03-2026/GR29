@@ -2,13 +2,12 @@ import { loadGoogleMaps } from "./googleMaps.js";
 
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim() || '';
 
-// 5. DECODE POLYLINE
-export function giaiMaPolyline(encoded) {
+// Decode Google-encoded polyline
+function giaiMaPolylineGoogle(encoded) {
     if (!encoded) return [];
     const poly = [];
     let index = 0, len = encoded.length;
     let lat = 0, lng = 0;
-
     while (index < len) {
         let b, shift = 0, result = 0;
         do {
@@ -18,7 +17,6 @@ export function giaiMaPolyline(encoded) {
         } while (b >= 0x20);
         const dlat = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
         lat += dlat;
-
         shift = 0;
         result = 0;
         do {
@@ -28,60 +26,96 @@ export function giaiMaPolyline(encoded) {
         } while (b >= 0x20);
         const dlng = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
         lng += dlng;
-
         // MapLibre uses [lng, lat]
         poly.push([lng / 1e5, lat / 1e5]);
     }
     return poly;
 }
 
-// 4. GOOGLE ROUTING (DIRECTIONS API REST ONLY)
+// Decode polyline — kept for backward compat
+export function giaiMaPolyline(encoded) {
+    return giaiMaPolylineGoogle(encoded);
+}
+
+// OSRM FALLBACK — works without API key
+async function layDuongDiOSRM(tuViTri, denViTri) {
+    if (!tuViTri || !denViTri) return null;
+    try {
+        const response = await fetch(
+            `https://router.project-osrm.org/route/v1/driving/${Number(tuViTri.lng)},${Number(tuViTri.lat)};${Number(denViTri.lng)},${Number(denViTri.lat)}?overview=full&geometries=geojson`
+        );
+        const data = await response.json();
+        if (data.routes?.length > 0) {
+            // OSRM returns GeoJSON directly — no decoding needed
+            return { type: 'geojson', coordinates: data.routes[0].geometry.coordinates };
+        }
+        return null;
+    } catch (e) {
+        return null;
+    }
+}
+
+// 4. ROUTING (Google primary, OSRM fallback)
 export async function layDuongDi(tuViTri, denViTri) {
     if (!tuViTri || !denViTri) return null;
-    if (!GOOGLE_API_KEY) {
-        console.error('VITE_GOOGLE_MAPS_API_KEY chua duoc cau hinh');
-        return null;
-    }
 
-    // Try using Google Maps JS DirectionsService first.
-    try {
-        const google = await loadGoogleMaps();
-        if (google?.maps?.DirectionsService) {
-            const service = new google.maps.DirectionsService();
-            const request = {
-                origin: { lat: Number(tuViTri.lat), lng: Number(tuViTri.lng) },
-                destination: { lat: Number(denViTri.lat), lng: Number(denViTri.lng) },
-                travelMode: google.maps.TravelMode.DRIVING,
-            };
-            const result = await new Promise((resolve, reject) => {
-                service.route(request, (response, status) => {
-                    if (status === 'OK' && response?.routes?.length > 0) {
-                        resolve(response);
-                    } else {
-                        reject(new Error(status || 'DirectionsService failed'));
-                    }
+    // Try Google first if key is available
+    if (GOOGLE_API_KEY) {
+        // Try using Google Maps JS DirectionsService first.
+        try {
+            const google = await loadGoogleMaps();
+            if (google?.maps?.DirectionsService) {
+                const service = new google.maps.DirectionsService();
+                const request = {
+                    origin: { lat: Number(tuViTri.lat), lng: Number(tuViTri.lng) },
+                    destination: { lat: Number(denViTri.lat), lng: Number(denViTri.lng) },
+                    travelMode: google.maps.TravelMode.DRIVING,
+                };
+                const result = await new Promise((resolve, reject) => {
+                    service.route(request, (response, status) => {
+                        if (status === 'OK' && response?.routes?.length > 0) {
+                            resolve(response);
+                        } else {
+                            reject(new Error(status || 'DirectionsService failed'));
+                        }
+                    });
                 });
-            });
-            return result.routes[0]?.overview_polyline?.points || null;
+                const encoded = result.routes[0]?.overview_polyline?.points;
+                if (encoded) {
+                    return { type: 'google', polyline: encoded };
+                }
+            }
+        } catch (error) {
+            console.warn('[Route] Google Maps JS failed. Fallback to REST API.', error);
         }
-    } catch (error) {
-        console.warn('Google Maps JS DirectionsService failed. Fallback to REST API.', error);
+
+        // Try Google Directions REST API
+        try {
+            const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${tuViTri.lat},${tuViTri.lng}&destination=${denViTri.lat},${denViTri.lng}&mode=driving&key=${GOOGLE_API_KEY}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            if (data.routes && data.routes.length > 0) {
+                const encoded = data.routes[0].overview_polyline.points;
+                if (encoded) {
+                    return { type: 'google', polyline: encoded };
+                }
+            }
+        } catch (error) {
+            console.warn('[Route] Google Directions REST failed.', error);
+        }
+    } else {
+        console.warn('[Route] VITE_GOOGLE_MAPS_API_KEY not configured — using OSRM fallback');
     }
 
-    try {
-        const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${tuViTri.lat},${tuViTri.lng}&destination=${denViTri.lat},${denViTri.lng}&mode=driving&key=${GOOGLE_API_KEY}`;
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (data.routes && data.routes.length > 0) {
-            return data.routes[0].overview_polyline.points;
-        }
-        console.warn('Google Directions REST returned no routes:', data);
-        return null;
-    } catch (error) {
-        console.error('Lỗi khi lấy đường đi Google API:', error);
-        return null;
+    // OSRM fallback — no API key required
+    const osrmResult = await layDuongDiOSRM(tuViTri, denViTri);
+    if (osrmResult) {
+        console.log('[Route] Route drawn via OSRM fallback');
+        return osrmResult;
     }
+
+    console.error('[Route] All routing providers failed');
+    return null;
 }
 
 export function tinhKhoangCach(pos1, pos2) {
@@ -123,15 +157,23 @@ export function kiemTraCanCapNhatDuong(viTriMoi, viTriCu, lanCapNhatCuoi) {
 
 export async function veDuongDiTrenMap(map, tuViTri, denViTri, layerId = 'duong-di-route') {
     if (!map || !tuViTri || !denViTri) return null;
-    
-    const duongEncoded = await layDuongDi(tuViTri, denViTri);
-    if (!duongEncoded) {
-        console.warn('Không lấy được đường đi, không vẽ được tuyến đường trên map', { tuViTri, denViTri });
+
+    const result = await layDuongDi(tuViTri, denViTri);
+    if (!result) {
+        console.warn('[Route] veDuongDiTrenMap: khong lay duoc duong di');
         return null;
     }
-    
-    const dsToaDo = giaiMaPolyline(duongEncoded);
-    
+
+    // Support both Google polyline (needs decoding) and OSRM GeoJSON (direct use)
+    let dsToaDo;
+    if (result.type === 'google') {
+        dsToaDo = giaiMaPolylineGoogle(result.polyline);
+    } else {
+        dsToaDo = result.coordinates;
+    }
+
+    if (!dsToaDo || dsToaDo.length === 0) return null;
+
     const geojson = {
         type: 'Feature',
         properties: {},
