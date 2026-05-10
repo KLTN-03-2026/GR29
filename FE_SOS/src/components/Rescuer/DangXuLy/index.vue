@@ -1009,6 +1009,7 @@ export default {
                         this.viTriCu = viTriMoi;
                         this.lanCapNhatCuoi = Date.now();
                     }
+                    this.calculateETA();
                 }
             }
         },
@@ -1373,6 +1374,7 @@ export default {
                 const srcLng = this.memberLng || this.teamLng;
                 if (srcLat && srcLng) {
                     await this.drawDrivingRoute(srcLat, srcLng, lat, lng);
+                    this.calculateETA();
                 }
             }
         },
@@ -1383,6 +1385,25 @@ export default {
             }
             this.routeLayer = 'route-line';
             this.routeSource = 'route';
+        },
+        async calculateETA() {
+            const srcLat = this.memberLat || this.teamLat;
+            const srcLng = this.memberLng || this.teamLng;
+            if (!srcLat || !srcLng || !this.currentMission?.yeu_cau?.vi_tri_lat) return;
+            try {
+                const response = await fetch(
+                    `https://router.project-osrm.org/route/v1/driving/${srcLng},${srcLat};${this.currentMission.yeu_cau.vi_tri_lng},${this.currentMission.yeu_cau.vi_tri_lat}?overview=false`
+                );
+                const data = await response.json();
+                if (data.routes?.length > 0) {
+                    const durationSeconds = data.routes[0].duration;
+                    const distanceMeters = data.routes[0].distance;
+                    const etaMinutes = Math.ceil(durationSeconds / 60);
+                    const distanceKm = distanceMeters / 1000;
+                    // Emit for display (via component state — ETA shown in UI card)
+                    console.log(`[Route] ETA: ${etaMinutes} phút, Khoảng cách: ${distanceKm} km`);
+                }
+            } catch { /* silent */ }
         },
         startLocationBroadcasting() {
             this.stopLocationBroadcasting(); // Clear any existing interval

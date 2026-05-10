@@ -389,7 +389,7 @@
 <script>
 import { rescuerAPI } from "../../../services/api.js";
 import { loadOpenMap, createOpenMap, createOpenMapMarker, createOpenMapPopup, fitBoundsToMap } from "../../../utils/openMap.js";
-import { veDuongDiTrenMap } from "../../../utils/realtimeRoute.js";
+import { veDuongDiTrenMap, kiemTraCanCapNhatDuong } from "../../../utils/realtimeRoute.js";
 import { createToaster } from "@meforma/vue-toaster";
 
 const toaster = createToaster({ position: "top-right" });
@@ -422,6 +422,9 @@ export default {
             daThongBaoIds: new Set(),
             thongBaoTimeout: null,
             choPhepHienThongBao: true,
+            viTriCu: null,
+            lanCapNhatCuoi: 0,
+            locationChannel: null,
         };
     },
     computed: {
@@ -577,6 +580,15 @@ export default {
                 this.realtimeChannel.listen('RescueRequestUpdated', (event) => {
                     this.xuLyCapNhatCuuHo(event);
                 });
+
+                // Subscribe to location updates for this team
+                if (this.teamId) {
+                    this.locationChannel = window.Echo.channel(`rescuer-location.${this.teamId}`);
+                    this.locationChannel.listen('location.updated', (event) => {
+                        this.xuLyCapNhatViTri(event);
+                    });
+                }
+
                 this.realtimeConnected = true;
             };
             const conn = window.Echo.connector?.pusher?.connection;
@@ -602,6 +614,11 @@ export default {
                 window.Echo.leave('rescue-requests');
                 this.realtimeChannel = null;
                 this.realtimeConnected = false;
+            }
+            if (this.locationChannel) {
+                this.locationChannel.stopListening('location.updated');
+                if (this.teamId) window.Echo.leave(`rescuer-location.${this.teamId}`);
+                this.locationChannel = null;
             }
         },
         async xuLyCapNhatCuuHo(event) {
@@ -639,6 +656,43 @@ export default {
                 // Catch-all for other actions — update directly
                 this.capNhatTrangThaiTuWebSocket(event);
                 this.updateMapMarkers();
+            }
+        },
+
+        async xuLyCapNhatViTri(event) {
+            if (!this.map) return;
+            const eventTeamId = event.id_doi_cuu_ho ?? event.teamId;
+            if (String(eventTeamId) !== String(this.teamId)) return;
+
+            if (!event.lat || !event.lng) return;
+            const newLat = parseFloat(event.lat);
+            const newLng = parseFloat(event.lng);
+
+            this.memberLat = newLat;
+            this.memberLng = newLng;
+
+            // Update GPS marker on map
+            if (this.gpsMarker) {
+                this.gpsMarker.setLngLat([newLng, newLat]);
+            } else {
+                this.addGpsMarker(newLat, newLng);
+            }
+
+            // Update route to selected mission if one is selected and route should be redrawn
+            if (this.selectedMission?.yeu_cau?.vi_tri_lat && this.selectedMission?.yeu_cau?.vi_tri_lng) {
+                const viTriMoi = { lat: newLat, lng: newLng };
+                if (kiemTraCanCapNhatDuong(viTriMoi, this.viTriCu, this.lanCapNhatCuoi)) {
+                    const path = await veDuongDiTrenMap(
+                        this.map,
+                        viTriMoi,
+                        { lat: this.selectedMission.yeu_cau.vi_tri_lat, lng: this.selectedMission.yeu_cau.vi_tri_lng },
+                        'route'
+                    );
+                    if (path && path.length > 0) {
+                        this.viTriCu = viTriMoi;
+                        this.lanCapNhatCuoi = Date.now();
+                    }
+                }
             }
         },
 
@@ -899,6 +953,8 @@ export default {
         },
         async selectMission(item) {
             this.selectedMission = item;
+            this.viTriCu = null;
+            this.lanCapNhatCuoi = 0;
             if (item?.yeu_cau?.vi_tri_lat && item?.yeu_cau?.vi_tri_lng) {
                 const srcLat = this.memberLat || this.teamLat;
                 const srcLng = this.memberLng || this.teamLng;
