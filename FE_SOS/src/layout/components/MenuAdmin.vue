@@ -20,18 +20,21 @@
           <i class="fa-solid fa-gauge-high me-2"></i>Dashboard tổng quan
         </a>
       </router-link>
-      <router-link class="nav-item-link" to="/admin/queue">
+      <!-- <router-link class="nav-item-link" to="/admin/queue">
         <i class="fa-solid fa-list-check me-2"></i>Hàng đợi theo ưu tiên
       </router-link>
       <router-link class="nav-item-link" to="/admin/dang-xu-ly">
         <i class="fa-solid fa-spinner me-2"></i>Đang Xử Lý
-      </router-link>
-      <router-link class="nav-item-link" to="/admin/theo-doi-cuu-ho">
-        <i class="fa-solid fa-spinner me-2"></i>Theo dõi cứu hộ
-      </router-link>
+      </router-link> -->
+      
       <router-link class="nav-item-link" to="/admin/assignments">
         <i class="fa-solid fa-person-military-pointing me-2"></i>Phân công đội cứu hộ
       </router-link>
+
+      <router-link class="nav-item-link" to="/admin/theo-doi-cuu-ho">
+        <i class="fa-solid fa-spinner me-2"></i>Theo dõi cứu hộ
+      </router-link>
+      
       <router-link class="nav-item-link" to="/admin/da-hoan-thanh">
         <i class="fa-solid fa-circle-check me-2"></i>Đã Hoàn Thành
       </router-link>
