@@ -13,7 +13,7 @@
       <form class="auth-form">
 
   <div class="input-group">
-    <label for="fullname">HO VA TEN</label>
+    <label for="fullname">HỌ VÀ TÊN</label>
     <div class="input-wrapper">
       <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
