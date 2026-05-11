@@ -47,7 +47,17 @@
             </router-link>
           </li>
           <li>
+<<<<<<< HEAD
             <button class="dropdown-item dropdown-item-danger" type="button" @click="showLogoutModal">
+=======
+            <router-link to="/admin/change-password" class="dropdown-item small">
+              <i class="fa-solid fa-key me-2"></i>Đổi mật khẩu
+            </router-link>
+          </li>
+          <li>
+            <!-- Dùng @click programmatic vì nằm trong Bootstrap dropdown -->
+            <button class="dropdown-item text-danger small" type="button" @click="showLogoutModal">
+>>>>>>> 74db8ef975880c0480377c95277d7ae63ecbbde2
               <i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất
             </button>
           </li>
@@ -56,30 +66,53 @@
     </div>
   </header>
 
+<<<<<<< HEAD
   <!-- Modal xác nhận đăng xuất -->
   <div class="modal fade" id="adminLogoutModal" tabindex="-1" aria-labelledby="adminLogoutModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content border-0 shadow-lg logout-modal-content">
         <div class="modal-header border-0 logout-modal-header">
           <h5 class="modal-title w-100 text-center fw-bold" id="adminLogoutModalLabel">
+=======
+  <!-- Modal xác nhận đăng xuất – đúng cấu trúc Bootstrap chuẩn như Client -->
+  <div class="modal fade" id="adminLogoutModal" tabindex="-1" aria-labelledby="adminLogoutModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-light border-0">
+          <h5 class="modal-title w-100 text-center fw-bold text-dark" id="adminLogoutModalLabel">
+>>>>>>> 74db8ef975880c0480377c95277d7ae63ecbbde2
             <i class="fa-solid fa-circle-question text-warning me-2"></i>
             Xác nhận đăng xuất
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
         </div>
         <div class="modal-body text-center py-4">
+<<<<<<< HEAD
           <div class="logout-icon-wrap mb-3">
             <i class="fa-solid fa-right-from-bracket fa-2x text-danger"></i>
+=======
+          <div class="mb-3">
+            <i class="fa-solid fa-right-from-bracket fa-3x text-danger mb-3"></i>
+>>>>>>> 74db8ef975880c0480377c95277d7ae63ecbbde2
           </div>
           <h6 class="fw-semibold text-dark mb-2">Bạn muốn đăng xuất?</h6>
           <p class="text-muted mb-0 small">Bạn sẽ cần đăng nhập lại để tiếp tục quản trị hệ thống.</p>
         </div>
+<<<<<<< HEAD
         <div class="modal-footer border-0 logout-modal-footer">
           <div class="d-flex w-100 gap-2">
             <button type="button" class="btn btn-light w-100 fw-medium" data-bs-dismiss="modal">
               <i class="fa-solid fa-xmark me-1"></i> Hủy
             </button>
             <button type="button" class="btn btn-danger w-100 fw-medium" @click="logout">
+=======
+        <div class="modal-footer border-0 bg-light">
+          <div class="d-flex w-100 gap-2 px-3">
+            <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">
+              <i class="fa-solid fa-xmark me-1"></i> Hủy
+            </button>
+            <button type="button" class="btn btn-danger w-100" @click="logout">
+>>>>>>> 74db8ef975880c0480377c95277d7ae63ecbbde2
               <i class="fa-solid fa-right-from-bracket me-1"></i> Đăng xuất
             </button>
           </div>
@@ -113,6 +146,10 @@ export default {
       }
     },
     logout() {
+<<<<<<< HEAD
+=======
+      // Đóng modal trước khi đăng xuất
+>>>>>>> 74db8ef975880c0480377c95277d7ae63ecbbde2
       const modalEl = document.getElementById("adminLogoutModal");
       if (modalEl) {
         const bsModal = bootstrap.Modal.getInstance(modalEl);
@@ -345,5 +382,45 @@ export default {
 #adminLogoutModal .btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+/* Style cho modal logout giống Client */
+#adminLogoutModal .modal-content {
+  border-radius: 16px;
+}
+
+#adminLogoutModal .modal-header {
+  border-radius: 16px 16px 0 0;
+  padding: 1.5rem 1.5rem 1rem;
+}
+
+#adminLogoutModal .modal-body {
+  padding: 1.5rem;
+}
+
+#adminLogoutModal .modal-footer {
+  border-radius: 0 0 16px 16px;
+  padding: 1rem 1.5rem 1.5rem;
+}
+
+#adminLogoutModal .btn {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+#adminLogoutModal .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+#adminLogoutModal .fa-3x {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.05); }
+  100% { transform: scale(1); }
 }
 </style>
