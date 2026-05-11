@@ -5,7 +5,23 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div>
         <h4 class="mb-1 fw-bold text-dark"><i class="fa-solid fa-gauge-high text-primary me-2"></i>Dashboard Tổng Quan</h4>
-        <p class="text-muted mb-0 small">Giám sát toàn diện hoạt động cứu hộ</p>
+        <p class="text-muted mb-0 small">
+          Giám sát toàn diện hoạt động cứu hộ
+          <span
+            v-if="realtimeConnected"
+            class="ms-2 text-success"
+            title="Đang nhận cập nhật qua WebSocket (Reverb)"
+          >
+            <i class="fa-solid fa-bolt"></i> realtime
+          </span>
+          <span
+            v-else-if="realtimeAttempted"
+            class="ms-2 text-warning"
+            title="WebSocket chưa kết nối — dùng nút Làm mới để đồng bộ"
+          >
+            <i class="fa-solid fa-plug-circle-xmark"></i> offline
+          </span>
+        </p>
       </div>
       <button class="btn btn-outline-primary btn-sm d-flex align-items-center gap-2" @click="loadAllData" :disabled="loading">
         <i class="fa-solid fa-rotate" :class="{ 'spin': loading }"></i>
@@ -441,6 +457,13 @@ export default {
       ],
       typeColors,
       selectedZone: null,
+      realtimeConnected: false,
+      realtimeAttempted: false,
+      rescueChannel: null,
+      teamCapacityChannel: null,
+      autoDispatchChannel: null,
+      dashboardRefreshTimer: null,
+      connectionListenerBound: false,
     };
   },
   computed: {
@@ -591,9 +614,107 @@ export default {
   async created() {
     await this.loadAllData();
   },
+  mounted() {
+    this.bindRealtimeConnectionHint();
+    this.subscribeDashboardRealtime();
+  },
+  beforeUnmount() {
+    this.unsubscribeDashboardRealtime();
+    this.clearDashboardRefreshDebounce();
+    if (this.connectionListenerBound) {
+      window.removeEventListener("realtime-connection-change", this.onRealtimeConnectionChange);
+      this.connectionListenerBound = false;
+    }
+  },
   methods: {
-    async loadAllData() {
-      this.loading = true;
+    onRealtimeConnectionChange(e) {
+      this.realtimeConnected = e?.detail?.status === "connected";
+      this.realtimeAttempted = true;
+    },
+    bindRealtimeConnectionHint() {
+      const status = window.realtimeConnectionStatus;
+      if (status === "connected") {
+        this.realtimeConnected = true;
+        this.realtimeAttempted = true;
+      }
+      window.addEventListener("realtime-connection-change", this.onRealtimeConnectionChange);
+      this.connectionListenerBound = true;
+    },
+    clearDashboardRefreshDebounce() {
+      if (this.dashboardRefreshTimer) {
+        clearTimeout(this.dashboardRefreshTimer);
+        this.dashboardRefreshTimer = null;
+      }
+    },
+    scheduleDashboardRefresh() {
+      this.clearDashboardRefreshDebounce();
+      this.dashboardRefreshTimer = setTimeout(() => {
+        this.dashboardRefreshTimer = null;
+        this.loadAllData({ silent: true });
+      }, 450);
+    },
+    subscribeDashboardRealtime() {
+      if (!window.Echo) {
+        console.warn("[AdminDashboard] Echo chưa sẵn sàng, thử lại sau…");
+        setTimeout(() => this.subscribeDashboardRealtime(), 2500);
+        return;
+      }
+
+      const attachListeners = () => {
+        if (this.rescueChannel) return;
+
+        const onEvent = () => this.scheduleDashboardRefresh();
+
+        this.rescueChannel = window.Echo.channel("rescue-requests");
+        this.rescueChannel.listen("RescueRequestUpdated", onEvent);
+
+        this.teamCapacityChannel = window.Echo.channel("team.capacity");
+        this.teamCapacityChannel.listen(".suc_chua_doi_da_cap_nhat", onEvent);
+        this.teamCapacityChannel.listen(".co_doi_trong_tro_lai", onEvent);
+        this.teamCapacityChannel.listen(".assignment_da_hoan_thanh", onEvent);
+
+        this.autoDispatchChannel = window.Echo.channel("auto-dispatch.queue");
+        this.autoDispatchChannel.listen(".hang_doi_can_dieu_phoi_cap_nhat", onEvent);
+        this.autoDispatchChannel.listen(".co_doi_trong_tro_lai", onEvent);
+        this.autoDispatchChannel.listen(".assignment_da_hoan_thanh", onEvent);
+      };
+
+      const conn = window.Echo.connector?.pusher?.connection;
+      if (conn?.state === "connected") {
+        attachListeners();
+      } else if (conn) {
+        conn.bind("connected", attachListeners);
+        setTimeout(() => {
+          if (!this.rescueChannel) attachListeners();
+        }, 5000);
+      } else {
+        setTimeout(() => this.subscribeDashboardRealtime(), 2000);
+      }
+    },
+    unsubscribeDashboardRealtime() {
+      if (this.rescueChannel) {
+        this.rescueChannel.stopListening("RescueRequestUpdated");
+        window.Echo?.leave("rescue-requests");
+        this.rescueChannel = null;
+      }
+      if (this.teamCapacityChannel) {
+        this.teamCapacityChannel.stopListening(".suc_chua_doi_da_cap_nhat");
+        this.teamCapacityChannel.stopListening(".co_doi_trong_tro_lai");
+        this.teamCapacityChannel.stopListening(".assignment_da_hoan_thanh");
+        window.Echo?.leave("team.capacity");
+        this.teamCapacityChannel = null;
+      }
+      if (this.autoDispatchChannel) {
+        this.autoDispatchChannel.stopListening(".hang_doi_can_dieu_phoi_cap_nhat");
+        this.autoDispatchChannel.stopListening(".co_doi_trong_tro_lai");
+        this.autoDispatchChannel.stopListening(".assignment_da_hoan_thanh");
+        window.Echo?.leave("auto-dispatch.queue");
+        this.autoDispatchChannel = null;
+      }
+    },
+    async loadAllData(options = {}) {
+      const silent = options.silent === true;
+      if (!silent) this.loading = true;
       try {
         const [reqRes, teamRes, typeRes] = await Promise.all([
           rescueRequestAPI.getList().catch(() => ({ data: [] })),
@@ -608,7 +729,7 @@ export default {
       } catch (err) {
         console.error("Dashboard load error:", err);
       } finally {
-        this.loading = false;
+        if (!silent) this.loading = false;
       }
     },
     changeTimeRange(val) {

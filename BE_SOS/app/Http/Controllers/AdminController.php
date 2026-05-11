@@ -97,9 +97,9 @@ class AdminController extends Controller
             ], 401);
         }
 
-        $token = $user->currentAccessToken();
-        if ($token) {
-            $token->delete();
+        $currentTokenId = $user->currentAccessToken()?->id;
+        if ($currentTokenId) {
+            $user->tokens()->where('id', $currentTokenId)->delete();
         }
 
         return response()->json([
@@ -263,6 +263,60 @@ class AdminController extends Controller
             'status' => true,
             'message' => 'Kich hoat tai khoan thanh cong',
             'data' => $admin->makeHidden(['mat_khau', 'api_token']),
+        ]);
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::guard('admin')->user();
+
+        if (!$user || !($user instanceof Admin)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized',
+            ], 401);
+        }
+
+        // Validate input
+        $request->validate([
+            'ho_ten' => 'nullable|string|max:255',
+            'email' => 'nullable|email|unique:admin,email,' . $user->id_admin . ',id_admin',
+            'so_dien_thoai' => 'nullable|string',
+            'current_password' => 'nullable|string',
+            'new_password' => 'nullable|string|min:6|confirmed',
+        ]);
+
+        // If changing password, verify current password
+        if ($request->filled('new_password')) {
+            if (!$request->filled('current_password')) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Mat khau hien tai la bat buoc khi doi mat khau',
+                ], 400);
+            }
+
+            if (!Hash::check($request->current_password, $user->mat_khau)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Mat khau hien tai khong dung',
+                ], 400);
+            }
+
+            // Update password
+            $user->mat_khau = Hash::make($request->new_password);
+        }
+
+        // Update other fields
+        $user->update([
+            'ho_ten' => $request->ho_ten ?? $user->ho_ten,
+            'email' => $request->email ?? $user->email,
+            'so_dien_thoai' => $request->so_dien_thoai ?? $user->so_dien_thoai,
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Cap nhat thong tin thanh cong',
+            'data' => $user->fresh()->load('chucVu')->makeHidden(['mat_khau', 'api_token']),
         ]);
     }
 }
