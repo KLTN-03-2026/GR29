@@ -1,98 +1,91 @@
 <template>
     <div>
-        <nav class="navbar navbar-expand-lg navbar-dark shadow-sm py-2 px-4 now-navbar">
+        <nav class="navbar navbar-expand-lg navbar-dark py-0 px-4 now-navbar">
         <div class="container-fluid">
+            <!-- Brand -->
             <router-link class="navbar-brand d-flex align-items-center fw-bold now-brand" to="/">
                 <span class="now-brand__mark me-2">
-                    <i class="fa-solid fa-location-dot"></i>
+                    <i class="fa-solid fa-triangle-exclamation"></i>
                 </span>
-                nowSOS
+                <span class="now-brand__text">
+                    <span class="now-brand__now">now</span><span class="now-brand__sos">SOS</span>
+                </span>
             </router-link>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nowSosNav">
+
+            <!-- Toggler -->
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#nowSosNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
+
             <div class="collapse navbar-collapse" id="nowSosNav">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0 small text-uppercase now-nav">
+                <!-- Nav links -->
+                <ul class="navbar-nav me-auto mb-0 now-nav">
                     <li class="nav-item">
                         <router-link class="nav-link now-nav__link" to="/">
-                            <i class="fa-solid fa-bullhorn me-2"></i>Gửi yêu cầu cứu hộ
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i>Gửi yêu cầu cứu hộ
                         </router-link>
                     </li>
                     <li class="nav-item">
                         <router-link class="nav-link now-nav__link" to="/client/requests">
-                            <i class="fa-solid fa-bullhorn me-2"></i>Yêu cầu đã gửi
+                            <i class="fa-regular fa-paper-plane me-1"></i>Yêu cầu đã gửi
                         </router-link>
                     </li>
-
                     <li class="nav-item">
                         <router-link class="nav-link now-nav__link" to="/client/dang-xu-ly">
-                            <i class="fa-solid fa-bullhorn me-2"></i>Yêu cầu đang xử lý
+                            <i class="fa-solid fa-spinner me-1"></i>Yêu cầu đang xử lý
                         </router-link>
                     </li>
-
                     <li class="nav-item">
                         <router-link class="nav-link now-nav__link" to="/client/history">
-                            <i class="fa-solid fa-clock-rotate-left me-2"></i>Lịch sử yêu cầu
+                            <i class="fa-solid fa-clock-rotate-left me-1"></i>Lịch sử
                         </router-link>
                     </li>
-
                     <li class="nav-item">
                         <router-link class="nav-link now-nav__link" to="/safety">
-                            <i class="fa-solid fa-shield-halved me-2"></i>Thông tin an toàn
-                        </router-link>
-                    </li>
-
-                    <li class="nav-item">
-                        <router-link class="nav-link now-nav__link" to="/contact">
-                            <i class="fa-solid fa-headset me-2"></i>Liên hệ
+                            <i class="fa-solid fa-shield-halved me-1"></i>An toàn
                         </router-link>
                     </li>
                 </ul>
-                <div class="d-flex align-items-center">
+
+                <!-- Right side -->
+                <div class="d-flex align-items-center gap-2">
                     <template v-if="!isLoggedIn">
-                        <div
-                            class="d-none d-md-flex align-items-center me-3 border-end border-light border-opacity-25 pe-3">
-                            <span
-                                class="badge rounded-pill bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2 me-3"
-                                style="font-size: 0.7rem;">
-                                <i class="fa-solid fa-circle me-2 now-dot"></i>
-                                <p class="text-dark">HỆ THỐNG: ĐANG HOẠT ĐỘNG</p>
+                        <div class="d-none d-md-flex align-items-center me-2">
+                            <span class="now-status-pill">
+                                <i class="fa-solid fa-circle now-dot me-1"></i>ĐANG HOẠT ĐỘNG
                             </span>
                         </div>
-                        <div class="d-flex">
-                            <router-link to="/client/login"
-                                class="btn btn-outline-light btn-sm me-2 rounded-pill px-3 fw-semibold">Đăng
-                                nhập</router-link>
-                            <router-link to="/client/register"
-                                class="btn btn-warning btn-sm rounded-pill px-3 text-dark fw-semibold">Đăng
-                                ký</router-link>
-                        </div>
+                        <router-link to="/client/login"
+                            class="btn now-btn-login btn-sm rounded-pill px-3 fw-semibold">Đăng nhập</router-link>
+                        <router-link to="/client/register"
+                            class="btn now-btn-register btn-sm rounded-pill px-3 fw-semibold">Đăng ký</router-link>
                     </template>
                     <template v-else>
                         <div class="dropdown" ref="dropdownRef">
-                            <button class="btn now-avatar-btn dropdown-toggle d-flex align-items-center" type="button"
+                            <button class="btn now-avatar-btn d-flex align-items-center gap-2" type="button"
                                 @click="toggleDropdown">
-                                <span class="text-white me-2 d-none d-md-inline-block fw-semibold small">{{ displayName
-                                    }}</span>
+                                <span class="now-username d-none d-md-inline-block">{{ displayName }}</span>
                                 <img class="now-avatar" :src="avatarSrc" alt="User avatar" />
                             </button>
-                            <ul class="dropdown-menu dropdown-menu-end now-user-menu shadow"
+                            <ul class="dropdown-menu dropdown-menu-end now-user-menu shadow-lg"
                                 :class="{ 'show': isDropdownOpen }">
-                                <li class="px-3 py-2">
-                                    <div class="fw-semibold text-dark small">{{ displayName }}</div>
-                                    <div class="text-muted small">Tài khoản khách</div>
+                                <li class="px-3 pt-3 pb-2">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <img class="now-avatar" :src="avatarSrc" alt="avatar" style="width:36px;height:36px;" />
+                                        <div>
+                                            <div class="fw-semibold text-dark small">{{ displayName }}</div>
+                                            <div class="text-muted" style="font-size:0.7rem;">Tài khoản khách</div>
+                                        </div>
+                                    </div>
                                 </li>
+                                <li><hr class="dropdown-divider my-1" /></li>
                                 <li>
-                                    <hr class="dropdown-divider my-1" />
-                                </li>
-                                <li>
-                                    <router-link class="dropdown-item" to="/client/profile" @click="closeDropdown">
-                                        <i class="fa-solid fa-user me-2"></i>Profile
+                                    <router-link class="dropdown-item now-menu-item" to="/client/profile" @click="closeDropdown">
+                                        <i class="fa-solid fa-user me-2"></i>Hồ sơ cá nhân
                                     </router-link>
                                 </li>
                                 <li>
-                                    <router-link class="dropdown-item" to="/client/change-password"
-                                        @click="closeDropdown">
+                                    <router-link class="dropdown-item now-menu-item" to="/client/change-password" @click="closeDropdown">
                                         <i class="fa-solid fa-key me-2"></i>Đổi mật khẩu
                                     </router-link>
                                 </li>
@@ -106,12 +99,10 @@
                                         <i class="fa-solid fa-clock-rotate-left me-2"></i>Lịch sử yêu cầu
                                     </router-link>
                                 </li> -->
+                                <li><hr class="dropdown-divider my-1" /></li>
                                 <li>
-                                    <hr class="dropdown-divider my-1" />
-                                </li>
-                                <li>
-                                    <button class="dropdown-item text-danger" type="button" data-bs-toggle="modal"
-                                        data-bs-target="#logoutModal" @click="closeDropdown">
+                                    <button class="dropdown-item now-menu-item now-menu-item--danger" type="button"
+                                        data-bs-toggle="modal" data-bs-target="#logoutModal" @click="closeDropdown">
                                         <i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất
                                     </button>
                                 </li>
@@ -125,7 +116,7 @@
 
     <!-- Modal xác nhận đăng xuất -->
     <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered ">
+        <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header bg-light border-0">
                     <h5 class="modal-title w-100 text-center fw-bold text-dark" id="logoutModalLabel">
@@ -143,7 +134,6 @@
                 </div>
                 <div class="modal-footer border-0 bg-light">
                     <div class="d-flex w-100 gap-2 px-3">
-                        <!-- Thêm w-100 để nút dài ra, xóa btn-lg để cân bằng -->
                         <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">
                             <i class="fa-solid fa-xmark me-1"></i> Hủy
                         </button>
@@ -229,23 +219,22 @@ function logout() {
 </script>
 
 <style scoped>
-.cursor-pointer {
-    cursor: pointer;
-}
-
+/* ─── Navbar shell ─────────────────────────────────────── */
 .now-navbar {
-    background: linear-gradient(135deg, #15253b 0%, #1a2a40 40%, #16253a 100%);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(10px);
+    background: linear-gradient(90deg, #1d5278 0%, #225f8a 50%, #1e5680 100%);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.12);
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     z-index: 1050;
+    min-height: 56px;
 }
 
+/* ─── Brand ────────────────────────────────────────────── */
 .now-brand {
-    letter-spacing: 0.2px;
+    letter-spacing: 0.3px;
+    text-decoration: none;
 }
 
 .now-brand__mark {
@@ -254,47 +243,71 @@ function logout() {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.12);
-    color: #ff9800;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffca28;
+    font-size: 0.95rem;
+    flex-shrink: 0;
 }
 
+.now-brand__text {
+    font-size: 1.2rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.now-brand__now {
+    color: #ffffff;
+    letter-spacing: -0.3px;
+}
+
+.now-brand__sos {
+    color: #ff6b35;
+    letter-spacing: -0.3px;
+}
+
+/* ─── Nav links ────────────────────────────────────────── */
 .now-nav {
-    gap: 6px;
+    gap: 2px;
 }
 
 .now-nav__link {
     position: relative;
-    color: rgba(255, 255, 255, 0.65);
-    padding: 10px 12px;
-    border-radius: 12px;
-    transition: color 180ms ease, background-color 180ms ease;
+    color: rgba(255, 255, 255, 0.80);
+    padding: 16px 13px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    border-radius: 0;
+    transition: color 160ms ease, background-color 160ms ease;
+    white-space: nowrap;
 }
 
 .now-nav__link:hover {
-    color: rgba(255, 255, 255, 0.92);
-    background: rgba(255, 255, 255, 0.06);
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.08);
 }
 
+/* active underline pill */
 .now-nav__link::after {
     content: "";
     position: absolute;
     left: 12px;
     right: 12px;
-    bottom: 3px;
+    bottom: 0;
     height: 3px;
-    border-radius: 999px;
-    background: #ff9800;
+    border-radius: 4px 4px 0 0;
+    background: #ffca28;
     transform: scaleX(0);
-    transform-origin: left center;
-    transition: transform 220ms ease;
-    opacity: 0.95;
+    transform-origin: center;
+    transition: transform 200ms ease;
 }
 
 .now-nav__link.router-link-active,
 .now-nav__link.router-link-exact-active {
     color: #ffffff;
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.10);
 }
 
 .now-nav__link.router-link-active::after,
@@ -302,47 +315,135 @@ function logout() {
     transform: scaleX(1);
 }
 
-.now-dot {
-    font-size: 0.5rem;
+/* ─── Status pill ──────────────────────────────────────── */
+.now-status-pill {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.90);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 0.67rem;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    white-space: nowrap;
 }
 
+.now-dot {
+    font-size: 0.42rem;
+    color: #4ade80;
+    vertical-align: middle;
+}
+
+/* ─── Auth buttons ─────────────────────────────────────── */
+.now-btn-login {
+    color: #ffffff;
+    border: 1.5px solid rgba(255, 255, 255, 0.55);
+    background: transparent;
+    transition: background 160ms ease, border-color 160ms ease;
+}
+
+.now-btn-login:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.85);
+    color: #ffffff;
+}
+
+.now-btn-register {
+    background: #ff6b35;
+    color: #ffffff;
+    border: none;
+    transition: background 160ms ease, transform 160ms ease;
+}
+
+.now-btn-register:hover {
+    background: #e55b28;
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
+/* ─── Avatar button ────────────────────────────────────── */
 .now-avatar-btn {
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(255, 255, 255, 0.08);
-    padding: 6px;
+    background: rgba(255, 255, 255, 0.13);
+    border: 1.5px solid rgba(255, 255, 255, 0.30);
     border-radius: 999px;
-    line-height: 1;
+    padding: 5px 10px 5px 5px;
+    transition: background 160ms ease, border-color 160ms ease;
+}
+
+.now-avatar-btn:hover {
+    background: rgba(255, 255, 255, 0.20);
+    border-color: rgba(255, 255, 255, 0.55);
 }
 
 .now-avatar-btn:focus {
-    box-shadow: 0 0 0 0.25rem rgba(255, 152, 0, 0.18);
+    box-shadow: 0 0 0 3px rgba(255, 202, 40, 0.30);
+    outline: none;
 }
 
-.now-avatar-btn::after {
-    display: none;
+.now-username {
+    color: #ffffff;
+    font-size: 0.82rem;
+    font-weight: 600;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .now-avatar {
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
     border-radius: 999px;
     display: block;
+    border: 2px solid rgba(255, 255, 255, 0.40);
+    object-fit: cover;
 }
 
+/* ─── Dropdown menu ────────────────────────────────────── */
 .now-user-menu {
-    min-width: 240px;
+    min-width: 230px;
     border-radius: 14px;
-    border: 1px solid rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(0, 0, 0, 0.07);
     overflow: hidden;
     position: absolute !important;
     top: 100%;
     right: 0;
-    margin-top: 0.5rem;
+    margin-top: 8px;
     z-index: 1060;
-    /* Ensure dropdown displays above everything */
+    box-shadow: 0 12px 32px rgba(0,0,0,0.14);
 }
 
-/* Modal styles */
+.now-menu-item {
+    padding: 9px 18px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    transition: background 140ms ease, color 140ms ease;
+}
+
+.now-menu-item:hover {
+    background: #f0fdfd;
+    color: #0a7a7a;
+}
+
+.now-menu-item--danger {
+    color: #dc2626 !important;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+}
+
+.now-menu-item--danger:hover {
+    background: #fff5f5 !important;
+    color: #b91c1c !important;
+}
+
+/* ─── Logout modal ─────────────────────────────────────── */
 #logoutModal .modal-content {
     border-radius: 16px;
     border: none;
@@ -379,16 +480,9 @@ function logout() {
 }
 
 @keyframes pulse {
-    0% {
-        transform: scale(1);
-    }
-
-    50% {
-        transform: scale(1.05);
-    }
-
-    100% {
-        transform: scale(1);
-    }
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.05); }
+    100% { transform: scale(1); }
 }
 </style>
+

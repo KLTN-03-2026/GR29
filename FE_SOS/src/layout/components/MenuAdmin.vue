@@ -1,83 +1,94 @@
 <template>
   <div class="admin-menu d-flex flex-column h-100">
-    <div class="px-3 pt-3 pb-2 d-flex align-items-center">
-      <div class="brand-icon me-2">
+    <!-- Brand -->
+    <div class="menu-brand px-4 py-3 d-flex align-items-center gap-3">
+      <div class="brand-icon">
         <i class="fa-solid fa-wave-square"></i>
       </div>
       <div>
-        <div class="fw-semibold small text-white">nowSOS</div>
-        <div class="text-secondary-emphasis text-uppercase" style="font-size: 10px;">Điều phối cứu hộ</div>
+        <div class="brand-name">nowSOS</div>
+        <div class="brand-sub">Điều phối cứu hộ</div>
       </div>
     </div>
 
-    <hr class="border-secondary border-opacity-25 my-2" />
+    <div class="menu-divider mx-3"></div>
 
-    <nav class="flex-grow-1 px-2 pb-3 overflow-auto">
-      <div class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mb-2">Tổng quan</div>
+    <!-- Navigation -->
+    <nav class="flex-grow-1 px-3 pb-4 pt-2 overflow-auto">
+      <!-- Tổng quan -->
+      <div class="nav-section-label">Tổng quan</div>
+
       <router-link v-slot="{ href, navigate, isExactActive }" to="/admin" custom>
         <a :href="href" class="nav-item-link" :class="{ 'nav-item-link--active': isExactActive }"
           @click="(e) => { e.preventDefault(); navigate(); }">
-          <i class="fa-solid fa-gauge-high me-2"></i>Dashboard tổng quan
+          <i class="fa-solid fa-gauge-high nav-icon"></i>Dashboard tổng quan
         </a>
       </router-link>
-      <!-- <router-link class="nav-item-link" to="/admin/queue">
-        <i class="fa-solid fa-list-check me-2"></i>Hàng đợi theo ưu tiên
-      </router-link>
-      <router-link class="nav-item-link" to="/admin/dang-xu-ly">
-        <i class="fa-solid fa-spinner me-2"></i>Đang Xử Lý
-      </router-link> -->
-      
+
       <router-link class="nav-item-link" to="/admin/assignments">
-        <i class="fa-solid fa-person-military-pointing me-2"></i>Phân công đội cứu hộ
+        <i class="fa-solid fa-person-military-pointing nav-icon"></i>Phân công đội cứu hộ
       </router-link>
 
       <router-link class="nav-item-link" to="/admin/theo-doi-cuu-ho">
-        <i class="fa-solid fa-spinner me-2"></i>Theo dõi cứu hộ
+        <i class="fa-solid fa-spinner nav-icon"></i>Theo dõi cứu hộ
       </router-link>
-      
+
       <router-link class="nav-item-link" to="/admin/da-hoan-thanh">
-        <i class="fa-solid fa-circle-check me-2"></i>Đã Hoàn Thành
+        <i class="fa-solid fa-circle-check nav-icon"></i>Đã Hoàn Thành
       </router-link>
 
-      <div class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mt-3 mb-2">Giám sát</div>
+      <!-- Giám sát -->
+      <div class="nav-section-label mt-3">Giám sát</div>
+
       <router-link class="nav-item-link" to="/admin/heatmap">
-        <i class="fa-solid fa-fire me-2"></i>Bản đồ nhiệt nguy hiểm
+        <i class="fa-solid fa-fire nav-icon"></i>Bản đồ nhiệt nguy hiểm
       </router-link>
+
       <router-link class="nav-item-link" to="/admin/tracking">
-        <i class="fa-solid fa-route me-2"></i>Vị trí đội (real-time)
+        <i class="fa-solid fa-route nav-icon"></i>Vị trí đội (real-time)
       </router-link>
+
       <router-link class="nav-item-link" to="/admin/reports">
-        <i class="fa-solid fa-chart-column me-2"></i>Báo cáo thống kê
+        <i class="fa-solid fa-chart-column nav-icon"></i>Báo cáo thống kê
       </router-link>
 
-      <div v-if="canViewConfig" class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mt-3 mb-2">Cấu hình
-      </div>
+      <!-- Cấu hình -->
+      <div v-if="canViewConfig" class="nav-section-label mt-3">Cấu hình</div>
+
       <router-link v-if="canViewConfig" class="nav-item-link" to="/admin/realtime-dispatch">
-        <i class="fa-solid fa-bolt me-2"></i>Auto Dispatch
+        <i class="fa-solid fa-bolt nav-icon"></i>Auto Dispatch
       </router-link>
-      
-      
 
+      <!-- Quản lý -->
+      <div v-if="canViewAccounts" class="nav-section-label mt-3">Quản Lý</div>
 
-      <div v-if="canViewAccounts" class="text-uppercase text-secondary-emphasis fw-semibold small px-2 mt-3 mb-2">Quản Lý</div>
-        <router-link v-if="canViewConfig" class="nav-item-link" to="/admin/tai-nguyen">
-        <i class="fa-solid fa-helmet-safety me-2"></i>Tài nguyên
+      <router-link v-if="canViewConfig" class="nav-item-link" to="/admin/tai-nguyen">
+        <i class="fa-solid fa-helmet-safety nav-icon"></i>Tài nguyên
       </router-link>
+
       <router-link v-if="canViewConfig" class="nav-item-link" to="/admin/doi-cuu-ho">
-        <i class="fa-solid fa-helmet-safety me-2"></i>Đội cứu hộ 
+        <i class="fa-solid fa-helmet-safety nav-icon"></i>Đội cứu hộ
       </router-link>
+
       <router-link v-if="canViewAccounts" class="nav-item-link" to="/admin/accounts/admin">
-        <i class="fa-solid fa-user-shield me-2"></i>Tài khoản ADMIN
+        <i class="fa-solid fa-user-shield nav-icon"></i>Tài khoản ADMIN
       </router-link>
 
       <router-link v-if="canViewAccounts" class="nav-item-link" to="/admin/accounts/user">
-        <i class="fa-solid fa-user me-2"></i>Tài khoản USER
+        <i class="fa-solid fa-user nav-icon"></i>Tài khoản USER
       </router-link>
 
       <router-link v-if="canViewAccounts" class="nav-item-link" to="/admin/accounts/rescuer">
-        <i class="fa-solid fa-user-nurse me-2"></i>Tài khoản RESCUER
+        <i class="fa-solid fa-user-nurse nav-icon"></i>Tài khoản RESCUER
       </router-link>
     </nav>
+
+    <!-- Bottom version badge -->
+    <div class="menu-footer px-4 py-3">
+      <span class="version-tag">
+        <i class="fa-solid fa-circle-check me-1"></i> nowSOS v1.0
+      </span>
+    </div>
   </div>
 </template>
 
@@ -117,45 +128,125 @@ export default {
 </script>
 
 <style scoped>
+/* ─── Sidebar Shell ────────────────────────────────────── */
 .admin-menu {
-  background: radial-gradient(circle at top, #111827 0, #020617 48%, #020617 100%);
+  background: #ffffff;
   height: 100%;
+  border-right: 1px solid #e9ecef;
+}
+
+/* ─── Brand ────────────────────────────────────────────── */
+.menu-brand {
+  height: 56px; /* match topbar height */
 }
 
 .brand-icon {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   border-radius: 10px;
-  background: rgba(248, 250, 252, 0.1);
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #f97316;
-  font-size: 14px;
+  color: #ffffff;
+  font-size: 15px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
 }
 
+.brand-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+}
+
+.brand-sub {
+  font-size: 10.5px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 500;
+}
+
+/* ─── Divider ──────────────────────────────────────────── */
+.menu-divider {
+  height: 1px;
+  background: #f1f5f9;
+}
+
+/* ─── Section label ────────────────────────────────────── */
+.nav-section-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: #94a3b8;
+  padding: 2px 8px 6px;
+}
+
+/* ─── Nav links ────────────────────────────────────────── */
 .nav-item-link {
   display: flex;
   align-items: center;
-  padding: 0.45rem 0.75rem;
-  border-radius: 0.6rem;
-  margin-bottom: 0.1rem;
-  color: #9ca3af;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-bottom: 2px;
+  color: #475569;
   text-decoration: none;
-  font-size: 0.85rem;
-  transition: background-color 0.16s ease, color 0.16s ease;
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: background 0.14s ease, color 0.14s ease;
+  gap: 10px;
+}
+
+.nav-icon {
+  font-size: 13px;
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+  color: #94a3b8;
+  transition: color 0.14s;
 }
 
 .nav-item-link:hover {
-  background-color: rgba(55, 65, 81, 0.65);
-  color: #e5e7eb;
+  background: #f1f5f9;
+  color: #1e293b;
 }
 
+.nav-item-link:hover .nav-icon {
+  color: #2563eb;
+}
+
+/* Active state */
 .nav-item-link.router-link-active,
 .nav-item-link.router-link-exact-active,
 .nav-item-link.nav-item-link--active {
-  background: linear-gradient(90deg, #f97316, #fb923c);
-  color: #111827;
+  background: #eff6ff;
+  color: #2563eb;
   font-weight: 600;
+}
+
+.nav-item-link.router-link-active .nav-icon,
+.nav-item-link.router-link-exact-active .nav-icon,
+.nav-item-link.nav-item-link--active .nav-icon {
+  color: #2563eb;
+}
+
+/* ─── Footer ───────────────────────────────────────────── */
+.menu-footer {
+  border-top: 1px solid #f1f5f9;
+}
+
+.version-tag {
+  font-size: 11.5px;
+  color: #94a3b8;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
 }
 </style>

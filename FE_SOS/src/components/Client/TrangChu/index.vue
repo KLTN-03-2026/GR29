@@ -830,7 +830,7 @@ export default {
 /* --- HEADER --- */
 .sos-header {
     background: linear-gradient(135deg, var(--sos-primary) 0%, var(--sos-primary-dark) 100%);
-    padding: 24px 32px;
+    padding: 12px 32px;
     display: flex;
     align-items: center;
     gap: 16px;
@@ -850,9 +850,9 @@ export default {
 }
 
 .sos-header__badge {
-    width: 52px;
-    height: 52px;
-    border-radius: 14px;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
     background: rgba(255, 255, 255, 0.2);
     backdrop-filter: blur(8px);
     display: flex;
