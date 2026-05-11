@@ -653,11 +653,13 @@ export default {
       return this.teams;
     },
     busyTeams() {
-      // Overload = total assignments (pending + active) >= max capacity (members × 4)
+      // Capacity = members * 4 (dong nhat voi backend AutoDispatchService)
+      // Full = pending + active >= capacity
       return this.teams.filter(t => {
+        const members = t.thanh_viens?.length ?? 0;
+        const capacity = members * 4;
         const total = (t.pending_count ?? 0) + (t.active_count ?? 0);
-        const maxCap = this.getMaxCapacity(t);
-        return maxCap > 0 && total >= maxCap;
+        return capacity > 0 && total >= capacity;
       });
     },
     availableTeamsCount() {
@@ -1034,7 +1036,7 @@ export default {
       return 'Sẵn sàng';
     },
     getMaxCapacity(team) {
-      // max requests = number of members × 4
+      // Capacity = members * 4 (dong nhat voi backend AutoDispatchService)
       const members = team.thanh_viens?.length ?? 0;
       return members * 4;
     },
@@ -1042,17 +1044,18 @@ export default {
       return (team.pending_count ?? 0) + (team.active_count ?? 0);
     },
     getCapacityBarWidth(team) {
-      const active = team.active_count ?? 0;
+      // Hien thi tong (pending + active) / capacity
+      const total = (team.pending_count ?? 0) + (team.active_count ?? 0);
       const maxCap = this.getMaxCapacity(team);
       if (maxCap === 0) return '0%';
-      const pct = Math.min((active / maxCap) * 100, 100);
+      const pct = Math.min((total / maxCap) * 100, 100);
       return pct + '%';
     },
     getCapacityBarClass(team) {
-      const active = team.active_count ?? 0;
+      const total = (team.pending_count ?? 0) + (team.active_count ?? 0);
       const maxCap = this.getMaxCapacity(team);
       if (maxCap === 0) return 'bar-empty';
-      const ratio = active / maxCap;
+      const ratio = total / maxCap;
       if (ratio >= 1) return 'bar-full';
       if (ratio >= 0.5) return 'bar-warning';
       return 'bar-normal';
