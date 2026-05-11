@@ -50,8 +50,8 @@
 
     <!-- ========== TAB 2: TAI NGUYEN ========== -->
     <div v-if="activeTab === 'resources'">
-      <div class="card panel-card border-0 shadow-sm">
-        <div class="card-header bg-white border-bottom-0 pt-4 pb-3 px-4">
+      <div class="card panel-card border-0 shadow-sm bg-transparent">
+        <div class="card-header bg-white border-0 shadow-sm rounded-4 mb-4 pt-4 pb-3 px-4">
           <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
             <h5 class="fw-bolder text-dark mb-0">
               <i class="fa-solid fa-boxes-packing text-warning me-2"></i>Tài nguyên theo đội
@@ -69,57 +69,59 @@
           </div>
         </div>
         <div class="card-body p-0">
-          <div v-if="loadingResources" class="text-center py-5">
+          <div v-if="loadingResources" class="text-center py-5 bg-white rounded-4 shadow-sm">
             <div class="spinner"></div>
             <p class="text-muted mt-2 fw-medium">Đang tải tài nguyên...</p>
           </div>
-          <div v-else-if="filteredResources.length === 0" class="text-center py-5">
+          <div v-else-if="groupedResources.length === 0" class="text-center py-5 bg-white rounded-4 shadow-sm">
             <div class="empty-icon-wrap mx-auto mb-3"><i class="fa-solid fa-box-open fs-1"></i></div>
             <h6 class="fw-bold text-dark">Chưa có tài nguyên nào</h6>
             <p class="text-muted small">Tài nguyên sẽ được hiển thị khi có dữ liệu từ các đội</p>
           </div>
-          <div v-else class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th class="fw-bolder text-muted text-uppercase small ps-4">#</th>
-                  <th class="fw-bolder text-muted text-uppercase small">Đội</th>
-                  
-                  <th class="fw-bolder text-muted text-uppercase small">Tên tài nguyên</th>
-                  <th class="fw-bolder text-muted text-uppercase small">Số lượng</th>
-                  <th class="fw-bolder text-muted text-uppercase small">Trạng thái</th>
-                  <th class="fw-bolder text-muted text-uppercase small text-end pe-4">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(res, index) in filteredResources" :key="res.id_tai_nguyen" class="table-row-hover">
-                  <td class="ps-4 text-muted small fw-bold">{{ index + 1 }}</td>
-                  <td>
-                    <div class="fw-medium text-dark">{{ getTeamName(res.id_doi_cuu_ho) }}</div>
-                  </td>
-                
-                  <td class="fw-medium text-dark">{{ res.ten_tai_nguyen }}</td>
-                  <td>
-                    <span class="badge bg-dark-subtle text-dark-emphasis fw-bold fs-6 px-2">{{ res.so_luong }}</span>
-                  </td>
-                  <td>
-                    <span class="badge rounded-pill fw-medium" :class="res.trang_thai ? 'bg-success-subtle text-success-emphasis' : 'bg-secondary-subtle text-secondary-emphasis'">
-                      {{ res.trang_thai ? 'Hoạt động' : 'Tạm ngưng' }}
-                    </span>
-                  </td>
-                  <td class="text-end pe-4">
-                    <div class="d-flex gap-1 justify-content-end">
-                      <button class="btn btn-sm btn-outline-primary action-btn" @click="openEditResourceModal(res)" title="Sửa">
-                        <i class="fa-solid fa-pen-to-square"></i>
-                      </button>
-                      <button class="btn btn-sm btn-outline-danger action-btn" @click="confirmDeleteResource(res)" title="Xóa">
-                        <i class="fa-solid fa-trash"></i>
-                      </button>
+          <div v-else class="row g-4">
+            <div v-for="group in groupedResources" :key="group.teamId" class="col-md-6 col-xl-4">
+              <div class="card h-100 border-0 shadow-sm rounded-4 resource-team-card overflow-hidden transition-all">
+                <div class="card-header bg-white border-bottom pt-3 pb-3 px-4 d-flex align-items-center gap-3">
+                  <div class="team-icon-sm bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 42px; height: 42px;">
+                    <i class="fa-solid fa-users fs-5"></i>
+                  </div>
+                  <div class="overflow-hidden">
+                    <h6 class="fw-bolder text-dark mb-0 text-truncate" :title="group.teamName">{{ group.teamName }}</h6>
+                    <small class="text-muted fw-medium">{{ group.resources.length }} tài nguyên</small>
+                  </div>
+                </div>
+                <div class="card-body p-0">
+                  <div class="list-group list-group-flush">
+                    <div v-for="res in group.resources" :key="res.id_tai_nguyen" class="list-group-item bg-transparent border-bottom-0 px-4 py-3 d-flex justify-content-between align-items-center resource-list-item position-relative">
+                      <div class="d-flex align-items-center gap-3 overflow-hidden pe-2">
+                        <div class="resource-type-icon d-flex align-items-center justify-content-center rounded-3 flex-shrink-0" :class="getWarehouseIconClass(res.slug_tai_nguyen)" style="width: 45px; height: 45px;">
+                          <i :class="getWarehouseIcon(res.slug_tai_nguyen)" class="fs-5"></i>
+                        </div>
+                        <div class="overflow-hidden">
+                          <div class="fw-bold text-dark mb-1 text-truncate" :title="res.ten_tai_nguyen">{{ res.ten_tai_nguyen }}</div>
+                          <div class="d-flex gap-2 align-items-center flex-wrap">
+                            <span class="badge bg-dark-subtle text-dark-emphasis fw-bold rounded-pill px-2">SL: {{ res.so_luong }}</span>
+                            <span class="badge rounded-pill fw-medium" :class="res.trang_thai ? 'bg-success-subtle text-success-emphasis' : 'bg-secondary-subtle text-secondary-emphasis'">
+                              <i class="fa-solid" :class="res.trang_thai ? 'fa-check' : 'fa-pause'"></i> {{ res.trang_thai ? 'Hoạt động' : 'Tạm ngưng' }}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="dropdown ms-1 flex-shrink-0">
+                        <button class="btn btn-sm btn-light rounded-circle shadow-none border-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="width: 32px; height: 32px;">
+                          <i class="fa-solid fa-ellipsis-vertical text-secondary"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
+                          <li><a class="dropdown-item py-2 fw-medium d-flex align-items-center" href="#" @click.prevent="openEditResourceModal(res)"><i class="fa-solid fa-pen-to-square text-primary me-2" style="width: 16px; text-align: center;"></i>Chỉnh sửa</a></li>
+                          <li><hr class="dropdown-divider"></li>
+                          <li><a class="dropdown-item py-2 fw-medium text-danger d-flex align-items-center" href="#" @click.prevent="confirmDeleteResource(res)"><i class="fa-solid fa-trash me-2" style="width: 16px; text-align: center;"></i>Xóa tài nguyên</a></li>
+                        </ul>
+                      </div>
                     </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -692,6 +694,21 @@ export default {
         );
       }
       return list;
+    },
+    groupedResources() {
+      const groups = {};
+      this.filteredResources.forEach(res => {
+        const teamId = res.id_doi_cuu_ho;
+        if (!groups[teamId]) {
+          groups[teamId] = {
+            teamName: this.getTeamName(teamId),
+            teamId: teamId,
+            resources: []
+          };
+        }
+        groups[teamId].resources.push(res);
+      });
+      return Object.values(groups);
     },
     canSubmitAllocation() {
       return this.allocationForm.id_doi_cuu_ho &&

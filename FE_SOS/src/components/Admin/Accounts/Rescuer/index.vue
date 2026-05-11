@@ -31,8 +31,8 @@
                         <td>{{ item.ho_ten }}</td>
                         <td>{{ item.email }}</td>
                         <td>{{ item.so_dien_thoai }}</td>
-                        <td>{{ item.vai_tro_trong_doi }}</td>
-                        <td>{{ getTeamName(item.id_doi_cuu_ho) }}</td>
+                        <td>{{ rescuerRoleLabel(item.vai_tro_trong_doi) }}</td>
+                        <td>{{ teamLabel(item) }}</td>
 
                         <!-- TRẠNG THÁI -->
                         <td>
@@ -90,8 +90,9 @@
                         <label class="form-label small">Vai trò <span class="text-danger">*</span></label>
                         <select v-model="form.vai_tro_trong_doi" class="form-control">
                             <option value="" disabled>Chọn vai trò</option>
-                            <option value="Team Leader">Team Leader</option>
-                            <option value="Member">Member</option>
+                            <option :value="MANAGER_TEAM">Quản lý đội</option>
+                            <option :value="TEAMLEAD">Đội trưởng</option>
+                            <option :value="MEMBER">Thành viên</option>
                         </select>
                     </div>
                     <div class="mb-2">
@@ -145,8 +146,9 @@
                     <div class="mb-2">
                         <label class="form-label small">Vai trò</label>
                         <select v-model="selected.vai_tro_trong_doi" class="form-control">
-                            <option value="Team Leader">Team Leader</option>
-                            <option value="Member">Member</option>
+                            <option :value="MANAGER_TEAM">Quản lý đội</option>
+                            <option :value="TEAMLEAD">Đội trưởng</option>
+                            <option :value="MEMBER">Thành viên</option>
                         </select>
                     </div>
                     <div class="mb-2">
@@ -199,10 +201,14 @@
 <script>
 import "../../../../assets/js/bootstrap.bundle.min.js";
 import { rescuerAccountAPI, rescueTeamAPI } from "../../../../services/api";
+import { MANAGER_TEAM, TEAMLEAD, MEMBER } from "../../../../constants/roles.js";
 
 export default {
     data() {
         return {
+            MANAGER_TEAM,
+            TEAMLEAD,
+            MEMBER,
             rescuers: [],
             teams: [],
             selected: {},
@@ -234,8 +240,8 @@ export default {
 
         async fetchTeams() {
             try {
-                const response = await rescueTeamAPI.getList();
-                console.log("Teams response:", response.data);
+                // Lấy tất cả đội — mặc định GET /doi-cuu-ho chỉ trang 1 (15 bản ghi) nên getTeamName bị thiếu đội ngoài trang 1
+                const response = await rescueTeamAPI.getList({ get_all: true });
 
                 // Backend trả về: { success, message, data: { current_page, data: [...] } }
                 // response.data = { success, message, data: { ...pagination } }
@@ -263,6 +269,37 @@ export default {
             return team ? team.ten_doi : '—';
         },
 
+        /** Ưu tiên tên đội từ API đã join (doi_cuu_ho); fallback map từ danh sách đội đã tải */
+        teamLabel(item) {
+            const fromJoin = item?.doi_cuu_ho?.ten_doi;
+            if (fromJoin) return fromJoin;
+            return this.getTeamName(item?.id_doi_cuu_ho);
+        },
+
+        /** DB dùng 0/1/2 (constants RESCUER); có thể còn bản ghi chuỗi cũ */
+        rescuerRoleLabel(role) {
+            const n = Number(role);
+            if (!Number.isNaN(n) && Number.isFinite(n)) {
+                const map = {
+                    [MANAGER_TEAM]: "Quản lý đội",
+                    [TEAMLEAD]: "Đội trưởng",
+                    [MEMBER]: "Thành viên",
+                };
+                if (Object.prototype.hasOwnProperty.call(map, n)) return map[n];
+            }
+            const s = String(role ?? "").trim();
+            if (s === "Team Leader") return "Đội trưởng";
+            if (s === "Member") return "Thành viên";
+            return s || "—";
+        },
+
+        isValidRescuerRole(v) {
+            if (v === "" || v === null || v === undefined) return false;
+            const n = Number(v);
+            if (Number.isNaN(n)) return false;
+            return [MANAGER_TEAM, TEAMLEAD, MEMBER].includes(n);
+        },
+
         async toggleStatus(item) {
             try {
                 await rescuerAccountAPI.changeStatus(item.id_thanh_vien_doi);
@@ -284,7 +321,7 @@ export default {
 
         async addRescuer() {
             if (!this.form.ho_ten || !this.form.email || !this.form.so_dien_thoai
-                || !this.form.vai_tro_trong_doi || !this.form.id_doi_cuu_ho || !this.form.mat_khau) {
+                || !this.isValidRescuerRole(this.form.vai_tro_trong_doi) || !this.form.id_doi_cuu_ho || !this.form.mat_khau) {
                 this.$toast.error("Vui lòng điền đầy đủ thông tin!");
                 return;
             }
@@ -326,7 +363,7 @@ export default {
 
         async updateRescuer() {
             if (!this.selected.ho_ten || !this.selected.email || !this.selected.so_dien_thoai
-                || !this.selected.vai_tro_trong_doi || !this.selected.id_doi_cuu_ho) {
+                || !this.isValidRescuerRole(this.selected.vai_tro_trong_doi) || !this.selected.id_doi_cuu_ho) {
                 this.$toast.error("Vui lòng điền đầy đủ thông tin!");
                 return;
             }
