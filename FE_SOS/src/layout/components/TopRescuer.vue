@@ -58,13 +58,58 @@
                 </div>
               </li>
               <li><hr class="dropdown-divider my-1"></li>
-              <li><a class="dropdown-item text-danger" href="#" @click.prevent="logout"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
+              <li>
+                <router-link to="/rescuer/change-password" class="dropdown-item">
+                  <i class="fa-solid fa-key me-2"></i>Đổi mật khẩu
+                </router-link>
+              </li>
+              <li><hr class="dropdown-divider my-1"></li>
+              <li>
+                <!-- Dùng @click programmatic vì nằm trong Bootstrap dropdown -->
+                <a class="dropdown-item text-danger" href="#" @click.prevent="showLogoutModal">
+                  <i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất
+                </a>
+              </li>
             </ul>
           </div>
         </template>
       </div>
     </div>
   </nav>
+
+  <!-- Modal xác nhận đăng xuất – teleport để thoát khỏi overflow của layout -->
+  <teleport to="body">
+    <div class="modal fade" id="topRescuerLogoutModal" tabindex="-1" aria-labelledby="topRescuerLogoutModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+          <div class="modal-header bg-light border-0">
+            <h5 class="modal-title w-100 text-center fw-bold text-dark" id="topRescuerLogoutModalLabel">
+              <i class="fa-solid fa-circle-question text-warning me-2"></i>
+              Xác nhận đăng xuất
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+          </div>
+          <div class="modal-body text-center py-4">
+            <div class="mb-3">
+              <i class="fa-solid fa-right-from-bracket fa-3x text-danger mb-3"></i>
+            </div>
+            <h6 class="fw-semibold text-dark mb-2">Bạn muốn đăng xuất?</h6>
+            <p class="text-muted mb-0 small">Bạn sẽ cần đăng nhập lại để tiếp tục sử dụng dịch vụ.</p>
+          </div>
+          <div class="modal-footer border-0 bg-light">
+            <div class="d-flex w-100 gap-2 px-3">
+              <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">
+                <i class="fa-solid fa-xmark me-1"></i> Hủy
+              </button>
+              <button type="button" class="btn btn-danger w-100" @click="logout">
+                <i class="fa-solid fa-right-from-bracket me-1"></i> Đăng xuất
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </teleport>
 </template>
 
 <script>
@@ -106,7 +151,19 @@ export default {
     },
   },
   methods: {
+    showLogoutModal() {
+      const modalEl = document.getElementById("topRescuerLogoutModal");
+      if (modalEl) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+      }
+    },
     logout() {
+      // Đóng modal trước khi đăng xuất
+      const modalEl = document.getElementById("topRescuerLogoutModal");
+      if (modalEl) {
+        const bsModal = bootstrap.Modal.getInstance(modalEl);
+        if (bsModal) bsModal.hide();
+      }
       localStorage.removeItem("rescuer_token");
       localStorage.removeItem("rescuer_user");
       localStorage.removeItem("rescuer_team");

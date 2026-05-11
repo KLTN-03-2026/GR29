@@ -27,6 +27,7 @@ api.interceptors.request.use((config) => {
     match('/thanh-vien-doi/login') ||
     match('/rescuer/login') ||
     match('/rescuer/check-token') ||
+    match('/rescuer/change-password') ||
     match('/rescuer/gui-bao-cao') ||
     match('/rescuer/bao-cao') ||
     match('/rescuer/members') ||
@@ -117,6 +118,7 @@ export const adminAPI = {
   getDetail: (id) => api.get(`/admin/chi-tiet/${id}`),
   create: (data) => api.post('/admin/create', data),
   update: (id, data) => api.put(`/admin/update/${id}`, data),
+  updateProfile: (data) => api.post('/admin/profile/update', data),
   changeStatus: (id) => api.put(`/admin/change-status/${id}`),
   activate: (id) => api.put(`/admin/active/${id}`),
   search: (query) => api.get('/admin/search', { params: { noi_dung_tim: query } }),
@@ -315,6 +317,9 @@ export const rescuerAPI = {
 
   // Đánh giá cứu hộ
   getRatings: (yeuCauId) => api.get('/get-danh-gia-cuu-ho/yeu-cau/' + yeuCauId),
+
+  // Đổi mật khẩu rescuer
+  changePassword: (data) => api.post('/rescuer/change-password', data),
 
   // Thành viên đội (quản lý - role-filtered via API)
   getMembers: () => api.get('/rescuer/members'),

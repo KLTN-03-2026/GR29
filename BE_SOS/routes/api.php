@@ -140,6 +140,7 @@ Route::get('tim-kiem/doi-cuu-ho', [DoiCuuHoController::class, 'search']);
 // =========================================
 Route::middleware(['auth:admin', 'check.admin'])->group(function () {
     Route::get('admin/profile', [AdminController::class, 'getProfile']);
+    Route::post('admin/profile/update', [AdminController::class, 'updateProfile']);
     Route::post('admin/logout', [AdminController::class, 'logout']);
     Route::get('admin/list', [AdminController::class, 'index']);
     Route::get('admin/chi-tiet/{id}', [AdminController::class, 'show']);
@@ -242,6 +243,9 @@ Route::middleware(['auth:thanh-vien-doi', 'check.rescuer'])->group(function () {
     // TEAMLEAD(1): see only members of the same team
     // MEMBER(2): see only members of the same team (route guard blocks access on FE)
     Route::get('rescuer/members', [ThanhVienDoiController::class, 'getMembersFiltered']);
+
+    // Đổi mật khẩu rescuer
+    Route::post('rescuer/change-password', [ThanhVienDoiController::class, 'changePassword']);
 
     // Tài nguyên cứu hộ - Checkout / Return
     Route::post('tai-nguyen/{id}/checkout', [DoiCuuHoController::class, 'checkout']);
