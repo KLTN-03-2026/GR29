@@ -53,7 +53,8 @@
       </div>
 
       <p class="switch-page">
-        Chưa có tài khoản? <router-link to="/client/register">Đăng ký ngay</router-link>
+        Chưa có tài khoản?
+        <router-link :to="{ path: '/client/register', query: $route.query }">Đăng ký ngay</router-link>
       </p>
     </div>
   </div>
@@ -61,6 +62,7 @@
 
 <script>
 import { authAPI } from "../../../services/api.js";
+import { getSafeClientRedirect } from "../../../utils/safeClientRedirect.js";
 
 export default {
   data() {
@@ -83,7 +85,8 @@ export default {
           localStorage.setItem("token", body.token);
           localStorage.setItem("user", JSON.stringify(body.data || {}));
           this.$toast.success(body.message || "Đăng nhập thành công");
-          this.$router.push("/");
+          const nextPath = getSafeClientRedirect(this.$route.query.redirect);
+          this.$router.push(nextPath || "/");
         } else {
           this.$toast.error(body.message || "Đăng nhập thất bại");
         }

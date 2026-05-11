@@ -12,6 +12,23 @@ const api = axios.create({
   },
 });
 
+/** Xóa Content-Type để gửi FormData kèm boundary đúng (tránh 422 phía Laravel). */
+function axiosFormDataConfig() {
+  return {
+    transformRequest: [
+      (body, headers) => {
+        if (headers && typeof headers.delete === 'function') {
+          headers.delete('Content-Type');
+        } else if (headers && typeof headers === 'object') {
+          delete headers['Content-Type'];
+          delete headers['content-type'];
+        }
+        return body;
+      },
+    ],
+  };
+}
+
 // Bearer: chọn token đúng theo route đang gọi, tránh gửi nhầm token giữa các role
 api.interceptors.request.use((config) => {
   const url = config.url || '';
@@ -163,11 +180,11 @@ export const rescueRequestAPI = {
   getByUser: (userId) => api.get('/yeu-cau-cuu-ho', { params: { id_nguoi_dung: userId } }),
   getDetail: (id) => api.get(`/yeu-cau-cuu-ho/${id}`),
   create: (data) => {
-    // Nếu là FormData (có file upload) thì bỏ Content-Type để axios tự set boundary
+    // FormData: PHẢI xóa Content-Type để trình duyệt/axios gắn multipart + boundary.
+    // Ghi đè 'multipart/form-data' không có boundary hoặc để mặc định application/json
+    // đều khiến Laravel không đọc được trường → 422 (validation).
     if (data instanceof FormData) {
-      return api.post('/yeu-cau-cuu-ho', data, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      return api.post('/yeu-cau-cuu-ho', data, axiosFormDataConfig());
     }
     return api.post('/yeu-cau-cuu-ho', data);
   },
@@ -296,9 +313,7 @@ export const rescuerAPI = {
   // Kết quả cứu hộ
   createResult: (phanCongId, data) => {
     if (data instanceof FormData) {
-      return api.post('/post-ket-qua-cuu-ho/phan-cong/' + phanCongId, data, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      return api.post('/post-ket-qua-cuu-ho/phan-cong/' + phanCongId, data, axiosFormDataConfig());
     }
     return api.post('/post-ket-qua-cuu-ho/phan-cong/' + phanCongId, data);
   },
@@ -308,9 +323,7 @@ export const rescuerAPI = {
   // Báo cáo cứu hộ (Issue #4 - rescue_reports table)
   guiBaoCao: (data) => {
     if (data instanceof FormData) {
-      return api.post('/rescuer/gui-bao-cao', data, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      return api.post('/rescuer/gui-bao-cao', data, axiosFormDataConfig());
     }
     return api.post('/rescuer/gui-bao-cao', data);
   },

@@ -10,12 +10,23 @@ use App\Services\DistanceService;
 use App\Services\AutoDispatchService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 class YeuCauCuuHoController extends Controller
 {
+    /**
+     * Giới hạn gửi yêu cầu — tắt khi test: config/rescue_rate_limit.php + .env
+     * Xóa bộ đếm: php artisan rescue:clear-rate-limit --device=... | --user=...
+     */
+    /** Số yêu cầu cứu hộ tối đa mỗi cửa sổ thời gian (theo user hoặc thiết bị). */
+    private const RESCUE_STORE_MAX_PER_WINDOW = 3;
+
+    /** Cửa sổ giới hạn (giây), mặc định 15 phút. */
+    private const RESCUE_STORE_DECAY_SECONDS = 900;
+
     protected DistanceService $distanceService;
 
     public function __construct(DistanceService $distanceService)
@@ -33,6 +44,45 @@ class YeuCauCuuHoController extends Controller
                 'error' => $exception->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Khóa rate limit: người đăng nhập theo id_nguoi_dung, khách theo device_id.
+     */
+    private function rescueStoreRateLimiterKey(Request $request, bool $hasUser): ?string
+    {
+        if ($hasUser) {
+            $id = $request->input('id_nguoi_dung');
+            if ($id === null || $id === '') {
+                return null;
+            }
+
+            return 'rescue-store:user:'.(int) $id;
+        }
+
+        $deviceId = (string) $request->input('device_id', '');
+        if ($deviceId === '') {
+            return null;
+        }
+
+        return 'rescue-store:device:'.hash('sha256', $deviceId);
+    }
+
+    private function rescueStoreRateLimitExceededMessage(int $secondsUntilRetry): string
+    {
+        if ($secondsUntilRetry <= 0) {
+            return 'Mỗi tài khoản hoặc thiết bị chỉ được gửi tối đa 3 yêu cầu cứu hộ trong 15 phút. Vui lòng thử lại sau.';
+        }
+        $m = intdiv($secondsUntilRetry, 60);
+        $s = $secondsUntilRetry % 60;
+        if ($m > 0 && $s > 0) {
+            return "Mỗi tài khoản hoặc thiết bị chỉ được gửi tối đa 3 yêu cầu cứu hộ trong 15 phút. Vui lòng thử lại sau {$m} phút {$s} giây.";
+        }
+        if ($m > 0) {
+            return "Mỗi tài khoản hoặc thiết bị chỉ được gửi tối đa 3 yêu cầu cứu hộ trong 15 phút. Vui lòng thử lại sau {$m} phút.";
+        }
+
+        return "Mỗi tài khoản hoặc thiết bị chỉ được gửi tối đa 3 yêu cầu cứu hộ trong 15 phút. Vui lòng thử lại sau {$s} giây.";
     }
 
     /**
@@ -458,10 +508,12 @@ class YeuCauCuuHoController extends Controller
                         'message' => 'Phien lam viec khong hop le. Vui long thu lai.',
                     ], 422);
                 }
-                if ($guestSession->is_linked) {
+                // is_linked chỉ đánh dấu đã gộp yêu cầu cũ vào tài khoản — không chặn gửi yêu cầu mới
+                // cùng thiết bị (vd: đã đăng xuất hoặc tiếp tục dùng khách).
+                if ((string) $guestSession->device_id !== (string) $request->input('device_id')) {
                     return Response::json([
                         'success' => false,
-                        'message' => 'Phien lam viec da duoc lien ket voi tai khoan khac.',
+                        'message' => 'Thong tin thiet bi khong khop voi phien lam viec.',
                     ], 422);
                 }
             }
@@ -530,6 +582,18 @@ class YeuCauCuuHoController extends Controller
                 $validated['trang_thai'] = 'CHO_XU_LY';
             }
 
+            $rateKey = $this->rescueStoreRateLimiterKey($request, $hasUser);
+            $rateLimitEnabled = (bool) config('rescue_rate_limit.enabled', true);
+            if ($rateLimitEnabled && $rateKey !== null && RateLimiter::tooManyAttempts($rateKey, self::RESCUE_STORE_MAX_PER_WINDOW)) {
+                $retryAfter = RateLimiter::availableIn($rateKey);
+
+                return Response::json([
+                    'success' => false,
+                    'message' => $this->rescueStoreRateLimitExceededMessage($retryAfter),
+                    'retry_after' => $retryAfter,
+                ], 429);
+            }
+
             // Handle file upload - store file and save filename to DB
             $hinhAnhPath = null;
             if ($request->hasFile('hinh_anh')) {
@@ -563,6 +627,10 @@ class YeuCauCuuHoController extends Controller
                 'muc_khan_cap' => $validated['muc_do_khan_cap'] ?? 'MEDIUM',
                 'trang_thai' => 'WAITING'
             ]);
+
+            if ($rateLimitEnabled && $rateKey !== null) {
+                RateLimiter::hit($rateKey, self::RESCUE_STORE_DECAY_SECONDS);
+            }
 
             $item->load('nguoiDung', 'loaiSuCo.chiTiets', 'hangDoiXuLy');
 

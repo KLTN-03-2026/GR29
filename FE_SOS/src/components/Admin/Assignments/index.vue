@@ -496,8 +496,14 @@ function parseRequests(payload) {
   return items.map((item) => {
     const sev = item.muc_do_khan_cap || item.muc_do;
     const sevInfo = getSeverityInfo(sev);
+    const loaiSuCoRaw = item.loai_su_co;
     const typeName = normalizeText(
-      item.loai_su_co?.ten_danh_muc || item.loai_su_co?.ten_loai_su_co || item.loai_su_co?.ten_loai || item.loai || "Sự cố"
+      (typeof loaiSuCoRaw === 'string' ? loaiSuCoRaw : null)
+      || loaiSuCoRaw?.ten_danh_muc
+      || loaiSuCoRaw?.ten_loai_su_co
+      || loaiSuCoRaw?.ten_loai
+      || item.loai
+      || "Sự cố"
     );
     const reporterName = normalizeText(
       item.nguoi_dung?.ho_ten || item.nguoi_dung?.name || item.reporter || "Khách hàng"
@@ -513,11 +519,11 @@ function parseRequests(payload) {
       chiTietSuCo = item.chi_tiet.map(c => c.ten_chi_tiet || c.ten || c.name || c.label).filter(Boolean);
     } else if (typeof item.chi_tiet === 'string' && item.chi_tiet.trim()) {
       chiTietSuCo = item.chi_tiet.split(',').map(s => s.trim()).filter(Boolean);
-    } else if (Array.isArray(item.loai_su_co?.chi_tiets)) {
+    } else if (typeof loaiSuCoRaw === 'object' && loaiSuCoRaw && Array.isArray(loaiSuCoRaw.chi_tiets)) {
       // Backend returns chi tiết under loaiSuCo.chiTiets relationship
-      chiTietSuCo = item.loai_su_co.chi_tiets.map(c => c.ten_chi_tiet || c.ten || c.name || c.label).filter(Boolean);
-    } else if (Array.isArray(item.loai_su_co?.chiTiets)) {
-      chiTietSuCo = item.loai_su_co.chiTiets.map(c => c.ten_chi_tiet || c.ten || c.name || c.label).filter(Boolean);
+      chiTietSuCo = loaiSuCoRaw.chi_tiets.map(c => c.ten_chi_tiet || c.ten || c.name || c.label).filter(Boolean);
+    } else if (typeof loaiSuCoRaw === 'object' && loaiSuCoRaw && Array.isArray(loaiSuCoRaw.chiTiets)) {
+      chiTietSuCo = loaiSuCoRaw.chiTiets.map(c => c.ten_chi_tiet || c.ten || c.name || c.label).filter(Boolean);
     }
 
     return {
@@ -537,7 +543,7 @@ function parseRequests(payload) {
       trangThai: item.trang_thai,
       chiTietSuCo: chiTietSuCo,
       idLoaiSuCo: item.id_loai_su_co || null,
-      hinhAnh: getImageUrl(item.hinh_anh),
+      hinhAnh: getImageUrl(item.hinh_anh || item.imageUrl || item.hinhAnhUrl),
     };
   });
 }

@@ -45,6 +45,11 @@
                             <i class="fa-solid fa-shield-halved me-1"></i>An toàn
                         </router-link>
                     </li>
+                    <li class="nav-item">
+                        <router-link class="nav-link now-nav__link" to="/contact">
+                            <i class="fa-solid fa-envelope me-1"></i>Liên hệ
+                        </router-link>
+                    </li>
                 </ul>
 
                 <!-- Right side -->
