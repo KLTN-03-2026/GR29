@@ -19,6 +19,7 @@ use App\Http\Controllers\ThanhVienDoiController;
 use App\Http\Controllers\BaoCaoCuuHoController;
 use App\Http\Controllers\GuestSessionController;
 use App\Http\Controllers\AutoDispatchController;
+use App\Http\Controllers\YeuCauCapPhatController;
 
 // =========================================
 // PUBLIC ROUTES
@@ -106,8 +107,6 @@ Route::get('get-doi-cuu-ho/{id}/thanh-vien', [DoiCuuHoController::class, 'getTha
 Route::post('post-doi-cuu-ho/{id}/thanh-vien', [DoiCuuHoController::class, 'addThanhVien']);
 Route::delete('delete-doi-cuu-ho/{id}/thanh-vien/{id_thanh_vien}', [DoiCuuHoController::class, 'removeThanhVien']);
 Route::get('get-doi-cuu-ho/{id}/tai-nguyen', [DoiCuuHoController::class, 'getTaiNguyen']);
-Route::post('post-doi-cuu-ho/{id}/tai-nguyen', [DoiCuuHoController::class, 'addTaiNguyen']);
-Route::put('put-doi-cuu-ho/{id}/tai-nguyen/{id_tai_nguyen}', [DoiCuuHoController::class, 'updateTaiNguyen']);
 Route::get('get-doi-cuu-ho/{id}/vi-tri', [DoiCuuHoController::class, 'getViTri']);
 Route::post('post-doi-cuu-ho/{id}/vi-tri', [DoiCuuHoController::class, 'addViTri']);
 Route::get('get-doi-cuu-ho/{id}/nang-luc', [DoiCuuHoController::class, 'getNangLuc']);
@@ -193,8 +192,10 @@ Route::middleware(['auth:admin', 'check.admin'])->group(function () {
     Route::get('admin/tai-nguyen/kho', [DoiCuuHoController::class, 'getKhoTaiNguyen']);
     Route::post('admin/tai-nguyen/kho/nhap', [DoiCuuHoController::class, 'nhapKho']);
     Route::post('admin/tai-nguyen/kho/cap-nhat', [DoiCuuHoController::class, 'capNhatKhoTaiNguyen']);
-    Route::get('admin/tai-nguyen/lich-su-cap', [DoiCuuHoController::class, 'getLichSuCapPhat']);
-    Route::post('admin/tai-nguyen/cap-phat', [DoiCuuHoController::class, 'capPhatTaiNguyen']);
+    Route::get('admin/tai-nguyen/lich-su-cap', [YeuCauCapPhatController::class, 'lichSu']);
+    Route::get('admin/tai-nguyen/yeu-cau-cap-phat', [YeuCauCapPhatController::class, 'danhSachAdmin']);
+    Route::post('admin/tai-nguyen/yeu-cau-cap-phat/{id}/cap-phat', [YeuCauCapPhatController::class, 'capPhatTheoYeuCau']);
+    Route::post('admin/tai-nguyen/yeu-cau-cap-phat/{id}/tu-choi', [YeuCauCapPhatController::class, 'tuChoiYeuCau']);
     Route::get('admin/tai-nguyen/doi/{id}', [DoiCuuHoController::class, 'getTaiNguyenByDoi']);
 
     Route::put('ket-qua-cuu-ho/{id}', [KetQuaCuuHoController::class, 'update']);
@@ -246,6 +247,10 @@ Route::middleware(['auth:thanh-vien-doi', 'check.rescuer'])->group(function () {
 
     // Đổi mật khẩu rescuer
     Route::post('rescuer/change-password', [ThanhVienDoiController::class, 'changePassword']);
+
+    // Yêu cầu cấp phát tài nguyên (rescuer)
+    Route::get('rescuer/tai-nguyen/kho-xem', [YeuCauCapPhatController::class, 'xemTonKhoRescuer']);
+    Route::post('rescuer/tai-nguyen/yeu-cau-cap-phat', [YeuCauCapPhatController::class, 'guiYeuCauRescuer']);
 
     // Tài nguyên cứu hộ - Checkout / Return
     Route::post('tai-nguyen/{id}/checkout', [DoiCuuHoController::class, 'checkout']);
