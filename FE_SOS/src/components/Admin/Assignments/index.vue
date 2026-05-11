@@ -609,6 +609,7 @@ export default {
       assigning: false,
       error: '',
       realtimeChannel: null,
+      teamChannel: null,
       pollingInterval: null,
       dispatchEnabled: false,
       togglingDispatch: false,
@@ -653,11 +654,11 @@ export default {
       return this.teams;
     },
     busyTeams() {
-      // Capacity = members * 4 (dong nhat voi backend AutoDispatchService)
+      // Capacity = members * 1 (dong nhat voi backend AutoDispatchService)
       // Full = pending + active >= capacity
       return this.teams.filter(t => {
         const members = t.thanh_viens?.length ?? 0;
-        const capacity = members * 4;
+        const capacity = members * 1;
         const total = (t.pending_count ?? 0) + (t.active_count ?? 0);
         return capacity > 0 && total >= capacity;
       });
@@ -785,10 +786,19 @@ export default {
 
       if (this.realtimeChannel) return;
 
+      // Subscribe to rescue requests updates
       this.realtimeChannel = window.Echo.channel('rescue-requests');
       this.realtimeChannel.listen('RescueRequestUpdated', (event) => {
         this.handleRescueUpdate(event);
       });
+
+      // Subscribe to team updates for capacity changes
+      if (!this.teamChannel) {
+        this.teamChannel = window.Echo.channel('team-updates');
+        this.teamChannel.listen('TeamCapacityUpdated', (event) => {
+          this.handleTeamCapacityUpdate(event);
+        });
+      }
     },
     startPolling() {
       this.stopPolling();
@@ -809,6 +819,11 @@ export default {
         this.realtimeChannel.stopListening('RescueRequestUpdated');
         window.Echo?.leave('rescue-requests');
         this.realtimeChannel = null;
+      }
+      if (this.teamChannel) {
+        this.teamChannel.stopListening('TeamCapacityUpdated');
+        window.Echo?.leave('team-updates');
+        this.teamChannel = null;
       }
     },
     extractRequestIdFromEvent(event) {
@@ -901,6 +916,36 @@ export default {
 
       this.pendingRequests.unshift(updatedRequest);
       this.syncSelectedRequestAfterRefresh();
+      
+      // Fallback: Refresh team data when requests are updated to ensure capacity is current
+      this.refreshTeamDataSilently();
+    },
+    handleTeamCapacityUpdate(event) {
+      console.log('[AdminAssignments] Team capacity update received:', event);
+      
+      const teamId = Number(event?.team_id || event?.id_doi_cuu_ho);
+      if (!teamId) return;
+
+      const teamIndex = this.teams.findIndex(t => Number(t.id) === teamId);
+      if (teamIndex === -1) return;
+
+      // Update team capacity data
+      const updatedTeam = {
+        ...this.teams[teamIndex],
+        active_count: Number(event?.active_count) ?? this.teams[teamIndex].active_count,
+        pending_count: Number(event?.pending_count) ?? this.teams[teamIndex].pending_count,
+        trang_thai: event?.trang_thai ?? this.teams[teamIndex].trang_thai,
+        trang_thai_theo_nang_luc: event?.trang_thai_theo_nang_luc ?? this.teams[teamIndex].trang_thai_theo_nang_luc,
+      };
+
+      this.teams.splice(teamIndex, 1, updatedTeam);
+      
+      console.log(`[AdminAssignments] Team ${teamId} capacity updated:`, {
+        active_count: updatedTeam.active_count,
+        pending_count: updatedTeam.pending_count,
+        total: updatedTeam.active_count + updatedTeam.pending_count,
+        capacity: this.getMaxCapacity(updatedTeam)
+      });
     },
     syncSelectedRequestAfterRefresh() {
       if (this.selectedReq) {
@@ -1006,6 +1051,31 @@ export default {
         this.loadingTeams = false;
       }
     },
+    async refreshTeamDataSilently() {
+      try {
+        const response = await rescueTeamAPI.getList({ get_all: true });
+        const rawData = response?.data || response;
+        const updatedTeams = parseTeams(rawData);
+        
+        // Update existing teams with new capacity data
+        updatedTeams.forEach(updatedTeam => {
+          const teamIndex = this.teams.findIndex(t => Number(t.id) === Number(updatedTeam.id));
+          if (teamIndex !== -1) {
+            this.teams.splice(teamIndex, 1, {
+              ...this.teams[teamIndex],
+              active_count: updatedTeam.active_count,
+              pending_count: updatedTeam.pending_count,
+              trang_thai: updatedTeam.trang_thai,
+              trang_thai_theo_nang_luc: updatedTeam.trang_thai_theo_nang_luc,
+            });
+          }
+        });
+        
+        console.log('[AdminAssignments] Team data refreshed silently');
+      } catch (error) {
+        console.error('Lỗi làm mới dữ liệu đội cứu hộ:', error);
+      }
+    },
     selectRequest(req) {
       this.selectedReq = req;
     },
@@ -1036,9 +1106,9 @@ export default {
       return 'Sẵn sàng';
     },
     getMaxCapacity(team) {
-      // Capacity = members * 4 (dong nhat voi backend AutoDispatchService)
+      // Capacity = members * 1 (dong nhat voi backend AutoDispatchService)
       const members = team.thanh_viens?.length ?? 0;
-      return members * 4;
+      return members * 1;
     },
     getTotalAssignments(team) {
       return (team.pending_count ?? 0) + (team.active_count ?? 0);

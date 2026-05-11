@@ -371,7 +371,7 @@ class AutoDispatchController extends Controller
                     'ten_doi' => $doi->ten_doi,
                     'khoang_cach_km' => $doi->distance,
                     'so_thanh_vien' => $doi->thanhViens ? $doi->thanhViens->count() : 0,
-                    'suc_chua' => ($doi->thanhViens ? $doi->thanhViens->count() : 0) * 4,
+                    'suc_chua' => ($doi->thanhViens ? $doi->thanhViens->count() : 0) * 1,
                     'so_nhiem_vu_hien_tai' => $doi->so_nhiem_vu_dang_xu_ly ?? 0,
                     'diem_nguy_hiem' => $diemNguyHiem,
                     'diem_khoang_cach' => $diemKhoangCach,
