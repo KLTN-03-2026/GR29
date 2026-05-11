@@ -99,19 +99,19 @@ class DoiCuuHoController extends Controller
 
     /**
      * Append real-time capacity fields to a team object.
-     * CAPACITY = thanhVien * 4 (dong nhat voi AutoDispatchService + frontend Assignments)
+     * CAPACITY = thanhVien * 1 (dong nhat voi AutoDispatchService + frontend Assignments)
      * Active statuses: DANG_XU_LY, DA_PHAN_CONG, DA_DEN_HIEN_TRUONG
      * MOI = pending (chua tieu ton capacity)
      */
     private function appendCapacityFields($team)
     {
         $soThanhVien = $team->thanhViens ? $team->thanhViens->count() : 0;
-        // capacity = soThanhVien * 4 (dong nhat voi AutoDispatchService + frontend)
-        $capacity = $soThanhVien * 4;
+        // capacity = soThanhVien * 1 (dong nhat voi AutoDispatchService + frontend)
+        $capacity = $soThanhVien * 1;
 
-        // Dem nhiem vu active: DANG_XU_LY, DA_PHAN_CONG, DA_DEN_HIEN_TRUONG
-        // MOI = pending, chua tieu ton capacity
-        $activeStatuses = ['DANG_XU_LY', 'DA_PHAN_CONG', 'DA_DEN_HIEN_TRUONG'];
+        // Dem nhiem vu active: DANG_XU_LY, DA_PHAN_CONG, DA_DEN_HIEN_TRUONG, MOI
+        // MOI = da phan cong, CO tieu ton capacity (vi da duoc gan cho doi)
+        $activeStatuses = ['DANG_XU_LY', 'DA_PHAN_CONG', 'DA_DEN_HIEN_TRUONG', 'MOI'];
         $phanCongList = $team->phanCongs ?? collect();
         $soYeuCauDangXuLy = $phanCongList
             ->filter(fn($pc) => in_array(strtoupper(trim($pc->trang_thai_nhiem_vu ?? '')), $activeStatuses, true))
@@ -846,12 +846,12 @@ class DoiCuuHoController extends Controller
                 ->get()
                 ->filter(function ($team) {
                     $soThanhVien = $team->thanhViens ? $team->thanhViens->count() : 0;
-                    // capacity = soThanhVien * 4 (dong nhat voi AutoDispatchService + frontend)
-                    $capacity = $soThanhVien * 4;
+                    // capacity = soThanhVien * 1 (dong nhat voi AutoDispatchService + frontend)
+                    $capacity = $soThanhVien * 1;
 
-                    // active: DANG_XU_LY, DA_PHAN_CONG, DA_DEN_HIEN_TRUONG
-                    // MOI = pending, chua tieu ton capacity
-                    $activeStatuses = ['DANG_XU_LY', 'DA_PHAN_CONG', 'DA_DEN_HIEN_TRUONG'];
+                    // active: DANG_XU_LY, DA_PHAN_CONG, DA_DEN_HIEN_TRUONG, MOI
+                    // MOI = da phan cong, CO tieu ton capacity (vi da duoc gan cho doi)
+                    $activeStatuses = ['DANG_XU_LY', 'DA_PHAN_CONG', 'DA_DEN_HIEN_TRUONG', 'MOI'];
                     $soYeuCauDangXuLy = $team->phanCongs()
                         ->whereIn('trang_thai_nhiem_vu', $activeStatuses)
                         ->count();

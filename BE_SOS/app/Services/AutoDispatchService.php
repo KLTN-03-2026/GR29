@@ -7,6 +7,9 @@ use App\Models\DoiCuuHo;
 use App\Models\PhanCongCuuHo;
 use App\Models\YeuCauCuuHo;
 use App\Services\DistanceService;
+use App\Events\SucChuaDoiDaCapNhat;
+use App\Events\CoDoiTrongTroLai;
+use App\Events\AssignmentDaHoanThanh;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -15,7 +18,7 @@ use Illuminate\Support\Facades\Log;
  * AutoDispatchService - Service xu ly dieu phoi tu dong doi cuu ho den yeu cau cuu ho.
  *
  * NGUYEN TAC HOAT DONG (TUYET DOI):
- * 1. Capacity = thanhVien * 4 (dong nhat voi frontend)
+ * 1. Capacity = thanhVien * 1 (dong nhat voi frontend)
  * 2. Nhiem vu tieu ton capacity: MOI, DANG_XU_LY, DA_PHAN_CONG, DA_DEN_HIEN_TRUONG
  * 3. MOI (da phan cong, chua tiep nhan) -> CO tieu ton capacity (vi da duoc gan cho doi)
  * 4. HOAN_THANH, THAT_BAI, HUY_BO -> KHONG tieu ton capacity
@@ -28,19 +31,20 @@ class AutoDispatchService
 {
     private DistanceService $distanceService;
 
-    private const SO_DOI_TOI_DA = 5;
+    private const SO_DOI_TOI_DA = 20;
     private const DISPATCH_LOCK_GIOAY = 5;
     private const SO_LAN_RETRY_TOI_DA = 3;
 
     /**
      * Cac trang thai nhiem vu duoc tinh la ACTIVE (dang xu ly, tieu ton capacity).
-     * MOI: da phan cong, chua tiep nhan -> CO tieu ton capacity (vi da duoc gan cho doi)
+     * CHO_XU_LY: cho xu ly -> CO tieu ton capacity (vi da trong hang doi)
+     * DA_DIEU_PHOI: da dieu phoi -> CO tieu ton capacity (vi da gan cho doi)
+     * DANG_DI_CHUYEN: dang di chuyen -> CO tieu ton capacity
      * DANG_XU_LY: dang xu ly -> CO tieu ton capacity
-     * DA_PHAN_CONG: da phan cong, dang di chuyen -> CO tieu ton capacity
-     * DA_DEN_HIEN_TRUONG: da den hien truong -> CO tieu ton capacity
-     * HOAN_THANH, THAT_BAI, HUY_BO -> KHONG tieu ton capacity
+     * MOI: moi (da phan cong, chua tiep nhan) -> CO tieu ton capacity (vi da duoc gan cho doi)
+     * HOAN_THANH, DA_HUY, THAT_BAI -> KHONG tieu ton capacity
      */
-    private const ACTIVE_STATUSES = ['MOI', 'DANG_XU_LY', 'DA_PHAN_CONG', 'DA_DEN_HIEN_TRUONG'];
+    private const ACTIVE_STATUSES = ['CHO_XU_LY', 'DA_DIEU_PHOI', 'DANG_DI_CHUYEN', 'DANG_XU_LY', 'MOI'];
 
     public function __construct(DistanceService $distanceService)
     {
@@ -232,19 +236,17 @@ class AutoDispatchService
             // Tinh capacity REAL-TIME tu DB
             $soThanhVien = $doi->thanhViens ? $doi->thanhViens->count() : 0;
             $doi->so_thanh_vien = $soThanhVien;
-            $doi->capacity = $soThanhVien * 4;
+            $doi->capacity = $soThanhVien * 1;
 
-            // Tinh active count tu DB truc tiep
+            // Tinh active count tu DB truc tiep - DUNG TIEN CHUAN MOI
             $activeCount = PhanCongCuuHo::where('id_doi_cuu_ho', $doi->id_doi_cuu_ho)
                 ->whereIn('trang_thai_nhiem_vu', self::ACTIVE_STATUSES)
                 ->count();
             $doi->active_count_real = $activeCount;
 
-            // Danh gia: coi nhu "pending" nhung CHUA duoc tinh vao active
-            $pendingCount = PhanCongCuuHo::where('id_doi_cuu_ho', $doi->id_doi_cuu_ho)
-                ->where('trang_thai_nhiem_vu', 'MOI')
-                ->count();
-            $doi->pending_count_real = $pendingCount;
+            // Danh gia: MOI khong duoc tinh vao active nua (da chuyen sang CHO_XU_LY)
+            // MOI chi la trang thai cu, khong con su dung
+            $doi->pending_count_real = 0;
         }
 
         // Loc bo team qua tai TRUOC KHI sort - DUNG logic duy nhat
@@ -346,6 +348,7 @@ class AutoDispatchService
 
     /**
      * Tinh diem khop loai su co giua yeu cau va doi cuu ho.
+     * Ưu tiên cao nhất cho đội có cùng loại sự cố.
      */
     private function tinhDiemLoaiSuCoInternal(YeuCauCuuHo $yeuCau, DoiCuuHo $doi): int
     {
@@ -365,14 +368,15 @@ class AutoDispatchService
             return 0;
         }
 
-        return in_array((int) $idLoaiSuCoYeuCau, $loaiSuCoIds, true) ? 6 : 0;
+        // Tăng điểm khớp loại sự cố lên 20 để ưu tiên hơn khoảng cách
+        return in_array((int) $idLoaiSuCoYeuCau, $loaiSuCoIds, true) ? 20 : 0;
     }
 
     /**
      * Tinh diem tai (capacity) cua doi.
      * Su dung REAL-TIME data: active_count_real (tinh tu DB truc tiep trong layDanhSachDoiGanNhatInternal).
      *
-     * Capacity = soThanhVien * 4 (dong nhat voi frontend Assignments/index.vue)
+     * Capacity = soThanhVien * 1 (dong nhat voi frontend Assignments/index.vue)
      * Tinh tat ca trang thai dang xu ly: MOI, DANG_XU_LY, DA_PHAN_CONG, DA_DEN_HIEN_TRUONG
      * MOI = da phan cong, CO tieu ton capacity (vi da duoc gan cho doi)
      */
@@ -381,7 +385,7 @@ class AutoDispatchService
         // Su dung gia tri da duoc tinh san trong layDanhSachDoiGanNhatInternal
         // Neu khong co, tinh real-time
         $soThanhVien = $doi->so_thanh_vien ?? ($doi->thanhViens ? $doi->thanhViens->count() : 0);
-        $capacity = $doi->capacity ?? ($soThanhVien * 4);
+        $capacity = $doi->capacity ?? ($soThanhVien * 1);
 
         if (isset($doi->active_count_real)) {
             $tai = $doi->active_count_real;
@@ -481,7 +485,7 @@ class AutoDispatchService
                 }
 
                 $soThanhVien = $lockedDoi->thanhViens ? $lockedDoi->thanhViens->count() : 0;
-                $capacity = $soThanhVien * 4;
+                $capacity = $soThanhVien * 1;
 
                 if ($capacity > 0) {
                     // Step 2: Count active assignments FOR UPDATE (acquires gap lock on the range)
@@ -528,6 +532,9 @@ class AutoDispatchService
                 try {
                     $yeuCau->load(['phanCongs.doiCuuHo', 'phanCongs.thanhVienTiepNhan', 'phanCongs.ketQua', 'loaiSuCo']);
                     event(new \App\Events\RescueRequestUpdated($yeuCau, 'auto_dispatched'));
+
+                    // Broadcast capacity update realtime
+                    $this->capNhatSucChuaRealtime($doi->id_doi_cuu_ho);
                 } catch (\Throwable $ex) {
                     Log::warning('[AutoDispatch] Broadcast that bai', [
                         'id_yeu_cau' => $yeuCau->id_yeu_cau,
@@ -684,5 +691,48 @@ class AutoDispatchService
     public function tinhDiemLoaiSuCo(YeuCauCuuHo $yeuCau, DoiCuuHo $doi): int
     {
         return $this->tinhDiemLoaiSuCoInternal($yeuCau, $doi);
+    }
+
+    /**
+     * Cap nhat suc chua realtime qua Reverb
+     */
+    public function capNhatSucChuaRealtime(int $doiId): void
+    {
+        try {
+            $doi = DoiCuuHo::with(['thanhViens', 'phanCongs'])->find($doiId);
+            if (!$doi) {
+                return;
+            }
+
+            $maxAssignments = $doi->thanhViens ? $doi->thanhViens->count() : 0;
+            $activeCount = PhanCongCuuHo::where('id_doi_cuu_ho', $doiId)
+                ->whereIn('trang_thai_nhiem_vu', self::ACTIVE_STATUSES)
+                ->count();
+            $availableCapacity = $maxAssignments - $activeCount;
+
+            $payload = [
+                'team_id' => $doiId,
+                'team_name' => $doi->ten_doi,
+                'current_assignments' => $activeCount,
+                'max_assignments' => $maxAssignments,
+                'available_capacity' => $availableCapacity,
+                'timestamp' => now()->toISOString()
+            ];
+
+            // Broadcast các sự kiện realtime
+            event(new SucChuaDoiDaCapNhat($payload));
+
+            if ($availableCapacity > 0) {
+                event(new CoDoiTrongTroLai($payload));
+            }
+
+            Log::info('[AutoDispatch] Cập nhật sức chứa realtime', $payload);
+
+        } catch (\Throwable $e) {
+            Log::error('[AutoDispatch] Lỗi cập nhật sức chứa realtime', [
+                'doi_id' => $doiId,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }
