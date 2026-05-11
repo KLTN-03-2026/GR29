@@ -14,29 +14,33 @@ use Illuminate\Support\Facades\Log;
 /**
  * AutoDispatchService - Service xu ly dieu phoi tu dong doi cuu ho den yeu cau cuu ho.
  *
- * Quy trinh:
- * 1. Tinh diem nguy hiem tu chiTiet (max diem_uu_tien)
- * 2. Tinh diem khoang cach (dua tren km tu Google Distance Matrix)
- * 3. Tinh diem tai cua doi (capacity = so_thanh_vien * 4)
- * 4. Tinh diem thoi gian cho (anti-starvation)
- * 5. Tong hop diem, chon doi tot nhat
- * 6. Su dung DB transaction + lock de tran double assignment
+ * NGUYEN TAC HOAT DONG (TUYET DOI):
+ * 1. Capacity = thanhVien * 4 (dong nhat voi frontend)
+ * 2. Nhiem vu tieu ton capacity: MOI, DANG_XU_LY, DA_PHAN_CONG, DA_DEN_HIEN_TRUONG
+ * 3. MOI (da phan cong, chua tiep nhan) -> CO tieu ton capacity (vi da duoc gan cho doi)
+ * 4. HOAN_THANH, THAT_BAI, HUY_BO -> KHONG tieu ton capacity
+ * 5. Capacity tinh tu DATABASE thoi gian thuc, KHONG dung cache
+ * 6. Kiem tra capacity ATOMIC TRUOC KHI assign
+ * 7. Uu tien team gan nhat co capacity (distance first, capacity second)
+ * 8. KHONG phu thuoc vao realtime render/UI/Reverb
  */
 class AutoDispatchService
 {
     private DistanceService $distanceService;
 
-    /** Gioi han so doi gan nhat can danh gia */
     private const SO_DOI_TOI_DA = 5;
-
-    /** Thoi gian cache vi tri doi (giay) */
-    private const CACHE_GIOI_HAN_GIAY = 10;
-
-    /** Thoi gian debounce dispatch lock (giay) */
     private const DISPATCH_LOCK_GIOAY = 5;
-
-    /** So lan retry toi da */
     private const SO_LAN_RETRY_TOI_DA = 3;
+
+    /**
+     * Cac trang thai nhiem vu duoc tinh la ACTIVE (dang xu ly, tieu ton capacity).
+     * MOI: da phan cong, chua tiep nhan -> CO tieu ton capacity (vi da duoc gan cho doi)
+     * DANG_XU_LY: dang xu ly -> CO tieu ton capacity
+     * DA_PHAN_CONG: da phan cong, dang di chuyen -> CO tieu ton capacity
+     * DA_DEN_HIEN_TRUONG: da den hien truong -> CO tieu ton capacity
+     * HOAN_THANH, THAT_BAI, HUY_BO -> KHONG tieu ton capacity
+     */
+    private const ACTIVE_STATUSES = ['MOI', 'DANG_XU_LY', 'DA_PHAN_CONG', 'DA_DEN_HIEN_TRUONG'];
 
     public function __construct(DistanceService $distanceService)
     {
@@ -101,6 +105,7 @@ class AutoDispatchService
                 ];
             }
 
+            // Lay danh sach doi gan nhat + tinh capacity theo thoi gian thuc
             $danhSachDoi = $this->layDanhSachDoiGanNhatInternal($yeuCau);
 
             if ($danhSachDoi->isEmpty()) {
@@ -112,7 +117,7 @@ class AutoDispatchService
                 ];
             }
 
-            // Tinh diem chi phu thuoc yeu cau (khong phu thuoc doi) - chi tinh 1 lan
+            // Tinh diem chi phu thuoc yeu cau (chi tinh 1 lan)
             $diemNguyHiem = $this->tinhDiemNguyHiemInternal($yeuCau);
             $diemThoiGian = $this->tinhDiemThoiGianInternal($yeuCau);
 
@@ -126,6 +131,9 @@ class AutoDispatchService
             $diemTotNhat = PHP_INT_MIN;
 
             foreach ($danhSachDoi as $doi) {
+                // KHONG can kiem tra capacity nua vi da duoc loc o layDanhSachDoiGanNhatInternal
+                // Tranh race condition giua 2 truy van DB tai thoi diem khac nhau
+
                 $diemKhoangCach = $this->tinhDiemKhoangCachInternal($doi);
                 $diemTai = $this->tinhDiemTaiInternal($doi);
                 $diemLoaiSuCo = $this->tinhDiemLoaiSuCoInternal($yeuCau, $doi);
@@ -141,10 +149,12 @@ class AutoDispatchService
                     'khoang_cach_km' => $doi->distance ?? null,
                     'loai_su_co_cua_doi' => $doi->loaiSuCos->map(fn($l) => $l->id_loai_su_co ?? $l->id)->toArray(),
                     'id_loai_su_co_yeu_cau' => $yeuCau->id_loai_su_co,
+                    'capacity' => $doi->capacity,
+                    'active_count' => $doi->active_count_real,
                 ]);
 
                 if ($diemTai === -100) {
-                    Log::debug('[AutoDispatch] Bo qua doi qua tai', [
+                    Log::debug('[AutoDispatch] Bo qua doi qua tai (scoring)', [
                         'doi_id' => $doi->id_doi_cuu_ho,
                         'ten_doi' => $doi->ten_doi,
                     ]);
@@ -160,11 +170,11 @@ class AutoDispatchService
             }
 
             if (!$doiTotNhat) {
-                Log::warning('[AutoDispatch] Khong co doi phu hop nao', ['id_yeu_cau' => $idYeuCau]);
+                Log::warning('[AutoDispatch] Khong co doi phu hop nao (tat ca deu qua tai)', ['id_yeu_cau' => $idYeuCau]);
                 return [
                     'thanh_cong' => false,
                     'doi_id' => null,
-                    'thong_diep' => 'Khong co doi cuu ho phu hop trong khu vuc',
+                    'thong_diep' => 'Khong co doi cuu ho phu hop trong khu vuc (tat ca deu qua tai)',
                 ];
             }
 
@@ -174,77 +184,130 @@ class AutoDispatchService
         }
     }
 
+
     /**
      * Lay danh sach doi gan nhat (internal).
+     * BO CACHE - luon tinh capacity tu DB thoi gian thuc.
+     * Chi lay top 5 doi gan nhat, da loai bo team qua tai.
      */
     private function layDanhSachDoiGanNhatInternal(YeuCauCuuHo $yeuCau)
     {
-        $cacheKey = "nearest_teams_{$yeuCau->id_yeu_cau}";
+        $reqLat = $yeuCau->vi_tri_lat ? floatval($yeuCau->vi_tri_lat) : null;
+        $reqLng = $yeuCau->vi_tri_lng ? floatval($yeuCau->vi_tri_lng) : null;
 
-        return Cache::remember($cacheKey, self::CACHE_GIOI_HAN_GIAY, function () use ($yeuCau) {
-            $reqLat = $yeuCau->vi_tri_lat ? floatval($yeuCau->vi_tri_lat) : null;
-            $reqLng = $yeuCau->vi_tri_lng ? floatval($yeuCau->vi_tri_lng) : null;
+        if ($reqLat === null || $reqLng === null) {
+            Log::warning('[AutoDispatch] Yeu cau khong co toa do', ['id_yeu_cau' => $yeuCau->id_yeu_cau]);
+            return collect();
+        }
 
-            if ($reqLat === null || $reqLng === null) {
-                return collect();
+        // Lay ALL doi cuu ho (khong co cache)
+        $tatCaDoi = DoiCuuHo::with([
+            'thanhViens',
+            'phanCongs',
+            'loaiSuCos',
+        ])->get();
+
+        if ($tatCaDoi->isEmpty()) {
+            return collect();
+        }
+
+        // Tinh khoang cach toi tat ca doi
+        $viTriDoi = [];
+        foreach ($tatCaDoi as $doi) {
+            if ($doi->vi_tri_lat !== null && $doi->vi_tri_lng !== null) {
+                $viTriDoi[] = [
+                    'key' => 'hq_' . $doi->id_doi_cuu_ho,
+                    'lat' => floatval($doi->vi_tri_lat),
+                    'lng' => floatval($doi->vi_tri_lng),
+                ];
+            }
+        }
+
+        $ketQuaKhoangCach = $this->distanceService->calculateDistances($reqLat, $reqLng, $viTriDoi);
+
+        foreach ($tatCaDoi as $doi) {
+            $hqKey = 'hq_' . $doi->id_doi_cuu_ho;
+            $doi->distance = $ketQuaKhoangCach[$hqKey] ?? null;
+
+            // Tinh capacity REAL-TIME tu DB
+            $soThanhVien = $doi->thanhViens ? $doi->thanhViens->count() : 0;
+            $doi->so_thanh_vien = $soThanhVien;
+            $doi->capacity = $soThanhVien * 4;
+
+            // Tinh active count tu DB truc tiep
+            $activeCount = PhanCongCuuHo::where('id_doi_cuu_ho', $doi->id_doi_cuu_ho)
+                ->whereIn('trang_thai_nhiem_vu', self::ACTIVE_STATUSES)
+                ->count();
+            $doi->active_count_real = $activeCount;
+
+            // Danh gia: coi nhu "pending" nhung CHUA duoc tinh vao active
+            $pendingCount = PhanCongCuuHo::where('id_doi_cuu_ho', $doi->id_doi_cuu_ho)
+                ->where('trang_thai_nhiem_vu', 'MOI')
+                ->count();
+            $doi->pending_count_real = $pendingCount;
+        }
+
+        // Loc bo team qua tai TRUOC KHI sort - DUNG logic duy nhat
+        $danhSach = $tatCaDoi->filter(function ($doi) {
+            $capacity = $doi->capacity ?? 0;
+            if ($capacity <= 0) {
+                Log::debug('[AutoDispatch] Loai bo doi khong co thanh vien', [
+                    'doi_id' => $doi->id_doi_cuu_ho,
+                    'ten_doi' => $doi->ten_doi,
+                    'so_thanh_vien' => $doi->so_thanh_vien ?? 0,
+                ]);
+                return false;
             }
 
-            $tatCaDoi = DoiCuuHo::with([
-                'thanhViens',
-                'phanCongs',
-                'loaiSuCos',
-            ])->get();
+            $active = $doi->active_count_real ?? 0;
+            $conSlot = $capacity - $active;
 
-            if ($tatCaDoi->isEmpty()) {
-                return collect();
+            if ($active >= $capacity) {
+                Log::debug('[AutoDispatch] Loai bo doi qua tai', [
+                    'doi_id' => $doi->id_doi_cuu_ho,
+                    'ten_doi' => $doi->ten_doi,
+                    'so_thanh_vien' => $doi->so_thanh_vien ?? 0,
+                    'capacity' => $capacity,
+                    'active_count' => $active,
+                    'con_slot' => $conSlot,
+                ]);
+                return false;
             }
 
-            $viTriDoi = [];
-            foreach ($tatCaDoi as $doi) {
-                if ($doi->vi_tri_lat !== null && $doi->vi_tri_lng !== null) {
-                    $viTriDoi[] = [
-                        'key' => 'hq_' . $doi->id_doi_cuu_ho,
-                        'lat' => floatval($doi->vi_tri_lat),
-                        'lng' => floatval($doi->vi_tri_lng),
-                    ];
-                }
-            }
+            Log::debug('[AutoDispatch] Giu lai doi con slot', [
+                'doi_id' => $doi->id_doi_cuu_ho,
+                'ten_doi' => $doi->ten_doi,
+                'so_thanh_vien' => $doi->so_thanh_vien ?? 0,
+                'capacity' => $capacity,
+                'active_count' => $active,
+                'con_slot' => $conSlot,
+            ]);
 
-            $ketQuaKhoangCach = $this->distanceService->calculateDistances($reqLat, $reqLng, $viTriDoi);
-
-            foreach ($tatCaDoi as $doi) {
-                $hqKey = 'hq_' . $doi->id_doi_cuu_ho;
-                $doi->distance = $ketQuaKhoangCach[$hqKey] ?? null;
-
-                $activeStatuses = ['DANG_XU_LY', 'DA_PHAN_CONG', 'DA_DEN_HIEN_TRUONG'];
-                $soNhiemVu = $doi->phanCongs
-                    ? $doi->phanCongs->filter(fn($pc) => in_array(strtoupper(trim($pc->trang_thai_nhiem_vu ?? '')), $activeStatuses, true))->count()
-                    : 0;
-                $doi->so_nhiem_vu_dang_xu_ly = $soNhiemVu;
-            }
-
-            $danhSach = $tatCaDoi->sort(function ($a, $b) {
-                $distA = $a->distance;
-                $distB = $b->distance;
-
-                $coDistA = is_numeric($distA);
-                $coDistB = is_numeric($distB);
-
-                if ($coDistA && !$coDistB) return -1;
-                if (!$coDistA && $coDistB) return 1;
-
-                if ($coDistA && $coDistB) {
-                    $diff = abs($distA - $distB);
-                    if ($diff > 0.01) {
-                        return $distA <=> $distB;
-                    }
-                }
-
-                return 0;
-            });
-
-            return $danhSach->values()->take(self::SO_DOI_TOI_DA);
+            return true;
         });
+
+        // Sort theo khoang cach (uu tien gan nhat)
+        $sorted = $danhSach->sort(function ($a, $b) {
+            $distA = $a->distance;
+            $distB = $b->distance;
+
+            $coDistA = is_numeric($distA);
+            $coDistB = is_numeric($distB);
+
+            if ($coDistA && !$coDistB) return -1;
+            if (!$coDistA && $coDistB) return 1;
+
+            if ($coDistA && $coDistB) {
+                $diff = abs($distA - $distB);
+                if ($diff > 0.01) {
+                    return $distA <=> $distB;
+                }
+            }
+
+            return 0;
+        });
+
+        return $sorted->values()->take(self::SO_DOI_TOI_DA);
     }
 
     /**
@@ -275,16 +338,14 @@ class AutoDispatchService
     {
         $km = $doi->distance ?? 0;
 
-        if ($km <= 1) return 10;   // Rất gần
-        if ($km <= 3) return 7;    // Gần
-        if ($km <= 5) return 4;    // Trung bình
-        return 1;                   // Xa nhưng vẫn có điểm
+        if ($km <= 1) return 10;
+        if ($km <= 3) return 7;
+        if ($km <= 5) return 4;
+        return 1;
     }
 
     /**
      * Tinh diem khop loai su co giua yeu cau va doi cuu ho.
-     * Tra ve 0 neu khong khop, 6 neu khop.
-     * Uu tien doi cung loai su co nhung van de khoang cach quan trong.
      */
     private function tinhDiemLoaiSuCoInternal(YeuCauCuuHo $yeuCau, DoiCuuHo $doi): int
     {
@@ -309,26 +370,68 @@ class AutoDispatchService
 
     /**
      * Tinh diem tai (capacity) cua doi.
+     * Su dung REAL-TIME data: active_count_real (tinh tu DB truc tiep trong layDanhSachDoiGanNhatInternal).
+     *
+     * Capacity = soThanhVien * 4 (dong nhat voi frontend Assignments/index.vue)
+     * Tinh tat ca trang thai dang xu ly: MOI, DANG_XU_LY, DA_PHAN_CONG, DA_DEN_HIEN_TRUONG
+     * MOI = da phan cong, CO tieu ton capacity (vi da duoc gan cho doi)
      */
     private function tinhDiemTaiInternal(DoiCuuHo $doi): int
     {
-        $soThanhVien = $doi->thanhViens ? $doi->thanhViens->count() : 0;
-        $sucChua = $soThanhVien * 4;
-        $tai = $doi->so_nhiem_vu_dang_xu_ly ?? 0;
+        // Su dung gia tri da duoc tinh san trong layDanhSachDoiGanNhatInternal
+        // Neu khong co, tinh real-time
+        $soThanhVien = $doi->so_thanh_vien ?? ($doi->thanhViens ? $doi->thanhViens->count() : 0);
+        $capacity = $doi->capacity ?? ($soThanhVien * 4);
 
-        if ($tai >= $sucChua && $sucChua > 0) {
+        if (isset($doi->active_count_real)) {
+            $tai = $doi->active_count_real;
+        } else {
+            // Tinh real-time khi khong co gia tri duoc tinh san
+            $tai = PhanCongCuuHo::where('id_doi_cuu_ho', $doi->id_doi_cuu_ho)
+                ->whereIn('trang_thai_nhiem_vu', self::ACTIVE_STATUSES)
+                ->count();
+        }
+
+        if ($capacity === 0) {
+            Log::debug('[AutoDispatch] Doi khong co thanh vien', [
+                'doi_id' => $doi->id_doi_cuu_ho,
+                'ten_doi' => $doi->ten_doi,
+                'so_thanh_vien' => $soThanhVien,
+            ]);
             return -100;
         }
 
-        if ($sucChua === 0) {
+        // Double-check - khong nen xay ra vi da duoc loc o layDanhSachDoiGanNhatInternal
+        if ($tai >= $capacity) {
+            Log::warning('[AutoDispatch] tinhDiemTaiInternal: Phat hien doi qua tai (sau khi loc)', [
+                'doi_id' => $doi->id_doi_cuu_ho,
+                'ten_doi' => $doi->ten_doi,
+                'capacity' => $capacity,
+                'active_count' => $tai,
+            ]);
             return -100;
         }
 
-        $tyLe = $tai / $sucChua;
+        $tyLe = $tai / $capacity;
+        $diem = 0;
 
-        if ($tyLe <= 0.25) return 2;
-        if ($tyLe <= 0.5) return 1;
-        return 0;
+        if ($tyLe <= 0.25) {
+            $diem = 2;
+        } elseif ($tyLe <= 0.5) {
+            $diem = 1;
+        }
+
+        Log::debug('[AutoDispatch] Tinh diem tai', [
+            'doi_id' => $doi->id_doi_cuu_ho,
+            'ten_doi' => $doi->ten_doi,
+            'so_thanh_vien' => $soThanhVien,
+            'capacity' => $capacity,
+            'active_count' => $tai,
+            'ty_le' => round($tyLe, 2),
+            'diem_tai' => $diem,
+        ]);
+
+        return $diem;
     }
 
     /**
@@ -341,19 +444,9 @@ class AutoDispatchService
     }
 
     /**
-     * Tinh tong diem.
-     */
-    private function tinhDiemTong(YeuCauCuuHo $yeuCau, DoiCuuHo $doi): float
-    {
-        return $this->tinhDiemNguyHiemInternal($yeuCau)
-            + $this->tinhDiemKhoangCachInternal($doi)
-            + $this->tinhDiemTaiInternal($doi)
-            + $this->tinhDiemThoiGianInternal($yeuCau)
-            + $this->tinhDiemLoaiSuCoInternal($yeuCau, $doi);
-    }
-
-    /**
      * Gan doi cho yeu cau.
+     * Su dung DB transaction de dam bao atomicity.
+     * Re-check capacity TRUOC KHI insert de tranh race condition.
      */
     private function ganDoiChoYeuCau(YeuCauCuuHo $yeuCau, DoiCuuHo $doi, float $diemTong): array
     {
@@ -373,6 +466,47 @@ class AutoDispatchService
                     ];
                 }
 
+                // === RACE CONDITION FIX ===
+                // Step 1: Lock team row to serialize concurrent dispatches to the same team
+                $lockedDoi = DoiCuuHo::where('id_doi_cuu_ho', $doi->id_doi_cuu_ho)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$lockedDoi) {
+                    return [
+                        'thanh_cong' => false,
+                        'doi_id' => null,
+                        'thong_diep' => 'Doi cuu ho khong ton tai',
+                    ];
+                }
+
+                $soThanhVien = $lockedDoi->thanhViens ? $lockedDoi->thanhViens->count() : 0;
+                $capacity = $soThanhVien * 4;
+
+                if ($capacity > 0) {
+                    // Step 2: Count active assignments FOR UPDATE (acquires gap lock on the range)
+                    // This serializes with any concurrent insert into phan_cong_cuu_ho
+                    $activeCount = PhanCongCuuHo::where('id_doi_cuu_ho', $doi->id_doi_cuu_ho)
+                        ->whereIn('trang_thai_nhiem_vu', self::ACTIVE_STATUSES)
+                        ->lockForUpdate()
+                        ->count();
+
+                    if ($activeCount >= $capacity) {
+                        Log::warning('[AutoDispatch] Race condition ngan chan: team da full', [
+                            'id_yeu_cau' => $yeuCau->id_yeu_cau,
+                            'id_doi_cuu_ho' => $doi->id_doi_cuu_ho,
+                            'capacity' => $capacity,
+                            'active_count' => $activeCount,
+                        ]);
+                        return [
+                            'thanh_cong' => false,
+                            'doi_id' => null,
+                            'thong_diep' => "Doi {$doi->ten_doi} da duoc phan cong boi tien trinh khac",
+                        ];
+                    }
+                }
+                // === END RACE CONDITION FIX ===
+
                 $phanCong = PhanCongCuuHo::create([
                     'id_yeu_cau' => $yeuCau->id_yeu_cau,
                     'id_doi_cuu_ho' => $doi->id_doi_cuu_ho,
@@ -383,7 +517,6 @@ class AutoDispatchService
                 $yeuCau->update(['trang_thai' => 'DA_PHAN_CONG']);
                 $doi->update(['trang_thai' => 'BAN_CHI_DINH']);
 
-                // Cap nhat HangDoiXuLy: chuyen WAITING -> PROCESSING khi da phan cong
                 if ($yeuCau->hangDoiXuLy) {
                     $yeuCau->hangDoiXuLy->update([
                         'trang_thai' => 'PROCESSING',
@@ -408,8 +541,6 @@ class AutoDispatchService
                     'ten_doi' => $doi->ten_doi,
                     'diem_tong' => round($diemTong, 2),
                 ]);
-
-                Cache::forget("nearest_teams_{$yeuCau->id_yeu_cau}");
 
                 return [
                     'thanh_cong' => true,
@@ -473,7 +604,6 @@ class AutoDispatchService
 
     /**
      * Bat dieu phoi tu dong.
-     * Dong thoi dispatch job cho tat ca yeu cau dang cho xu ly (chua phan cong).
      */
     public static function batDieuPhoi(): void
     {
@@ -524,51 +654,33 @@ class AutoDispatchService
         return self::layTrangThai();
     }
 
-    // === Public Accessor Methods (for Controller Debug) ===
+    // === Public Accessor Methods ===
 
-    /**
-     * Lay danh sach doi gan nhat (public accessor).
-     */
     public function layDanhSachDoiGanNhat(YeuCauCuuHo $yeuCau)
     {
         return $this->layDanhSachDoiGanNhatInternal($yeuCau);
     }
 
-    /**
-     * Tinh diem nguy hiem (public accessor).
-     */
     public function tinhDiemNguyHiem(YeuCauCuuHo $yeuCau): float
     {
         return $this->tinhDiemNguyHiemInternal($yeuCau);
     }
 
-    /**
-     * Tinh diem khoang cach (public accessor).
-     */
     public function tinhDiemKhoangCach(DoiCuuHo $doi): int
     {
         return $this->tinhDiemKhoangCachInternal($doi);
     }
 
-    /**
-     * Tinh diem tai (public accessor).
-     */
     public function tinhDiemTai(DoiCuuHo $doi): int
     {
         return $this->tinhDiemTaiInternal($doi);
     }
 
-    /**
-     * Tinh diem thoi gian (public accessor).
-     */
     public function tinhDiemThoiGian(YeuCauCuuHo $yeuCau): float
     {
         return $this->tinhDiemThoiGianInternal($yeuCau);
     }
 
-    /**
-     * Tinh diem loai su co (public accessor).
-     */
     public function tinhDiemLoaiSuCo(YeuCauCuuHo $yeuCau, DoiCuuHo $doi): int
     {
         return $this->tinhDiemLoaiSuCoInternal($yeuCau, $doi);

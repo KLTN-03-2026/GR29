@@ -99,39 +99,41 @@ class DoiCuuHoController extends Controller
 
     /**
      * Append real-time capacity fields to a team object.
-     * Used by index() and show() to provide a single source of truth to the frontend.
+     * CAPACITY = thanhVien * 4 (dong nhat voi AutoDispatchService + frontend Assignments)
+     * Active statuses: DANG_XU_LY, DA_PHAN_CONG, DA_DEN_HIEN_TRUONG
+     * MOI = pending (chua tieu ton capacity)
      */
     private function appendCapacityFields($team)
     {
         $soThanhVien = $team->thanhViens ? $team->thanhViens->count() : 0;
-        // sucChuaToiDa = soThanhVien * 3 (3 requests / 1 rescuer)
-        $sucChuaToiDa = $soThanhVien * 3;
+        // capacity = soThanhVien * 4 (dong nhat voi AutoDispatchService + frontend)
+        $capacity = $soThanhVien * 4;
 
-        // soYeuCauDangXuLy = count of assignments where status IN (DANG_XU_LY, DA_PHAN_CONG)
-        // DANG_XU_LY: đội đang xử lý
-        // DA_PHAN_CONG: đã phân công, đang tiếp nhận / di chuyển
-        $activeStatuses = ['DANG_XU_LY', 'DA_PHAN_CONG'];
+        // Dem nhiem vu active: DANG_XU_LY, DA_PHAN_CONG, DA_DEN_HIEN_TRUONG
+        // MOI = pending, chua tieu ton capacity
+        $activeStatuses = ['DANG_XU_LY', 'DA_PHAN_CONG', 'DA_DEN_HIEN_TRUONG'];
         $phanCongList = $team->phanCongs ?? collect();
         $soYeuCauDangXuLy = $phanCongList
             ->filter(fn($pc) => in_array(strtoupper(trim($pc->trang_thai_nhiem_vu ?? '')), $activeStatuses, true))
             ->count();
 
-        // MOI: đã được phân công nhưng chưa tiếp nhận (chưa tính vào active)
+        // MOI: da duoc phan cong nhung chua tiep nhan (pending, chua tieu ton capacity)
         $pendingCount = $phanCongList
             ->filter(fn($pc) => strtoupper(trim($pc->trang_thai_nhiem_vu ?? '')) === 'MOI')
             ->count();
 
         $team->active_count = $soYeuCauDangXuLy;
         $team->pending_count = $pendingCount;
-        $team->capacity = $sucChuaToiDa;
-        // overload khi soYeuCauDangXuLy >= sucChuaToiDa (>=, không phải >)
-        $team->trang_thai_theo_nang_luc = ($soYeuCauDangXuLy >= $sucChuaToiDa && $sucChuaToiDa > 0) ? 'overload' : 'available';
+        $team->capacity = $capacity;
+        // overload khi active >= capacity (>=, khong phai >)
+        $team->trang_thai_theo_nang_luc = ($soYeuCauDangXuLy >= $capacity && $capacity > 0) ? 'overload' : 'available';
 
         \Log::channel('daily')->info('[CAPACITY] teamId=' . ($team->id_doi_cuu_ho ?? $team->id)
             . ' | soThanhVien=' . $soThanhVien
-            . ' | soYeuCauDangXuLy=' . $soYeuCauDangXuLy
-            . ' | sucChuaToiDa=' . $sucChuaToiDa
-            . ' | trang_thai_theo_nang_luc=' . $team->trang_thai_theo_nang_luc);
+            . ' | capacity=' . $capacity
+            . ' | activeCount=' . $soYeuCauDangXuLy
+            . ' | pendingCount=' . $pendingCount
+            . ' | trang_thai=' . $team->trang_thai_theo_nang_luc);
 
         return $team;
     }
@@ -844,17 +846,18 @@ class DoiCuuHoController extends Controller
                 ->get()
                 ->filter(function ($team) {
                     $soThanhVien = $team->thanhViens ? $team->thanhViens->count() : 0;
-                    // sucChuaToiDa = soThanhVien * 3 (3 requests / 1 rescuer)
-                    $sucChuaToiDa = $soThanhVien * 3;
+                    // capacity = soThanhVien * 4 (dong nhat voi AutoDispatchService + frontend)
+                    $capacity = $soThanhVien * 4;
 
-                    // soYeuCauDangXuLy = count of assignments where status IN (DANG_XU_LY, DA_PHAN_CONG)
-                    $activeStatuses = ['DANG_XU_LY', 'DA_PHAN_CONG'];
+                    // active: DANG_XU_LY, DA_PHAN_CONG, DA_DEN_HIEN_TRUONG
+                    // MOI = pending, chua tieu ton capacity
+                    $activeStatuses = ['DANG_XU_LY', 'DA_PHAN_CONG', 'DA_DEN_HIEN_TRUONG'];
                     $soYeuCauDangXuLy = $team->phanCongs()
                         ->whereIn('trang_thai_nhiem_vu', $activeStatuses)
                         ->count();
 
                     // available if below capacity; teams with 0 members are excluded
-                    return $soThanhVien > 0 && $soYeuCauDangXuLy < $sucChuaToiDa;
+                    return $soThanhVien > 0 && $soYeuCauDangXuLy < $capacity;
                 })
                 ->map(function ($team) {
                     $this->appendCapacityFields($team);

@@ -178,15 +178,18 @@ class YeuCauCuuHoController extends Controller
                 ]);
 
                 $soThanhVien = $team->thanhViens ? $team->thanhViens->count() : 0;
-                $sucChuaToiDa = $soThanhVien * 3;
+                // capacity = soThanhVien * 4 (dong nhat voi AutoDispatchService + frontend)
+                $capacity = $soThanhVien * 4;
 
-                $activeStatuses = ['DANG_XU_LY', 'DA_PHAN_CONG'];
+                // active: DANG_XU_LY, DA_PHAN_CONG, DA_DEN_HIEN_TRUONG
+                // MOI = pending, chua tieu ton capacity
+                $activeStatuses = ['DANG_XU_LY', 'DA_PHAN_CONG', 'DA_DEN_HIEN_TRUONG'];
                 $phanCongList = $team->phanCongs ?? collect();
                 $soYeuCauDangXuLy = $phanCongList
                     ->filter(fn($pc) => in_array(strtoupper(trim($pc->trang_thai_nhiem_vu ?? '')), $activeStatuses, true))
                     ->count();
 
-                $trangThaiTheoNangLuc = $soYeuCauDangXuLy >= $sucChuaToiDa && $sucChuaToiDa > 0 ? 'overload' : 'available';
+                $trangThaiTheoNangLuc = $soYeuCauDangXuLy >= $capacity && $capacity > 0 ? 'overload' : 'available';
 
                 $teamData = [
                     'id'                     => $team->id_doi_cuu_ho,
@@ -205,7 +208,7 @@ class YeuCauCuuHoController extends Controller
                     'cung_quan'       => $cungQuan,
                     'khoang_cach_km'  => $khoangCachCuoi,
                     'active_count'           => $soYeuCauDangXuLy,
-                    'capacity'              => $sucChuaToiDa,
+                    'capacity'              => $capacity,
                     'trang_thai_theo_nang_luc' => $trangThaiTheoNangLuc,
                 ];
 
