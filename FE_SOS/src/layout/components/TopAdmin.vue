@@ -1,7 +1,7 @@
 <template>
   <header class="admin-topbar navbar navbar-expand px-3 py-2">
     <div class="d-flex align-items-center gap-3 flex-grow-1">
-      <button class="btn btn-sm btn-outline-light d-md-none" type="button">
+      <button class="btn btn-sm btn-outline-light d-md-none" type="button" @click="$emit('toggle-sidebar')">
         <i class="fa-solid fa-bars"></i>
       </button>
       <div class="d-flex align-items-center gap-2">

@@ -1,10 +1,11 @@
 <template>
   <div class="admin-shell">
-    <aside class="admin-sidebar d-none d-md-flex flex-column">
+    <aside class="admin-sidebar d-none d-md-flex flex-column" :class="{ open: isSidebarOpen }">
       <MenuRescuer />
     </aside>
+    <div v-if="isSidebarOpen" class="admin-sidebar-backdrop d-md-none" @click="closeSidebar"></div>
     <div class="admin-main">
-      <TopRescuer />
+      <TopRescuer @toggle-sidebar="toggleSidebar" />
       <main class="admin-content">
         <router-view></router-view>
       </main>
@@ -25,6 +26,19 @@ export default {
   components: {
     TopRescuer,
     MenuRescuer,
+  },
+  data() {
+    return {
+      isSidebarOpen: false,
+    };
+  },
+  methods: {
+    toggleSidebar() {
+      this.isSidebarOpen = !this.isSidebarOpen;
+    },
+    closeSidebar() {
+      this.isSidebarOpen = false;
+    },
   },
 };
 </script>
@@ -65,6 +79,13 @@ export default {
   flex: 1;
 }
 
+.admin-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 1040;
+}
+
 @media (max-width: 767.98px) {
   .admin-shell {
     flex-direction: column;
@@ -73,9 +94,22 @@ export default {
   }
 
   .admin-sidebar {
-    position: static;
-    width: 100%;
-    height: auto;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 260px;
+    max-width: 85vw;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    z-index: 1050;
+    background: #111827;
+    display: flex !important;
+    overflow-y: auto;
+  }
+
+  .admin-sidebar.open {
+    transform: translateX(0);
   }
 
   .admin-main {
@@ -85,6 +119,7 @@ export default {
 
   .admin-content {
     overflow: visible;
+    padding-top: 1rem;
   }
 }
 </style>

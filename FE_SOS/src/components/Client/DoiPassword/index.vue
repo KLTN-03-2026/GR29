@@ -80,6 +80,8 @@
 </template>
 
 <script>
+import { clientAPI } from "../../../services/api.js";
+
 export default {
   name: 'ChangePasswordBeautiful',
   data() {
@@ -118,7 +120,40 @@ export default {
     }
   },
   methods: {
-    handleChangePassword() { alert("Đã cập nhật!"); },
+    async handleChangePassword() {
+      if (this.form.new_password !== this.form.confirm_password) {
+        alert('Mật khẩu xác nhận không khớp!');
+        return;
+      }
+
+      if (!this.isPasswordStrong) {
+        alert('Mật khẩu mới phải mạnh hơn!');
+        return;
+      }
+
+      try {
+        const response = await clientAPI.updateProfile({
+          current_password: this.form.current_password,
+          new_password: this.form.new_password,
+          new_password_confirmation: this.form.confirm_password
+        });
+
+        if (response.data.status) {
+          alert('Đã cập nhật mật khẩu thành công!');
+          // Reset form
+          this.form.current_password = '';
+          this.form.new_password = '';
+          this.form.confirm_password = '';
+          // Có thể redirect về profile
+          this.$router.push('/client/profile');
+        } else {
+          alert(response.data.message || 'Có lỗi xảy ra!');
+        }
+      } catch (error) {
+        console.error('Change password error:', error);
+        alert(error.response?.data?.message || 'Có lỗi xảy ra khi đổi mật khẩu!');
+      }
+    },
     forgotPassword() { alert("Đã gửi email!"); }
   }
 }

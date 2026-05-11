@@ -182,6 +182,36 @@ class NguoiDungController extends Controller
             ], 401);
         }
 
+        // Validate input
+        $request->validate([
+            'ho_ten' => 'nullable|string|max:255',
+            'email' => 'nullable|email|unique:nguoi_dung,email,' . $user->id_nguoi_dung . ',id_nguoi_dung',
+            'so_dien_thoai' => 'nullable|string',
+            'current_password' => 'nullable|string',
+            'new_password' => 'nullable|string|min:6|confirmed',
+        ]);
+
+        // If changing password, verify current password
+        if ($request->filled('new_password')) {
+            if (!$request->filled('current_password')) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Mat khau hien tai la bat buoc khi doi mat khau',
+                ], 400);
+            }
+
+            if (!Hash::check($request->current_password, $user->mat_khau)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Mat khau hien tai khong dung',
+                ], 400);
+            }
+
+            // Update password
+            $user->mat_khau = Hash::make($request->new_password);
+        }
+
+        // Update other fields
         $user->update([
             'ho_ten' => $request->ho_ten ?? $user->ho_ten,
             'email' => $request->email ?? $user->email,
