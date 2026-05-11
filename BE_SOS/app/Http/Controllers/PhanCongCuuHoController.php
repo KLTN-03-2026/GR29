@@ -5,12 +5,20 @@ namespace App\Http\Controllers;
 use App\Events\RescueRequestUpdated;
 use App\Events\RescuerLocationUpdated;
 use App\Models\{PhanCongCuuHo, DoiCuuHo};
+use App\Services\AutoDispatchService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class PhanCongCuuHoController extends Controller
 {
+    private AutoDispatchService $dispatchService;
+
+    public function __construct(AutoDispatchService $dispatchService)
+    {
+        $this->dispatchService = $dispatchService;
+    }
+
     private function safeBroadcastRescueUpdate($yeuCau, string $action): void
     {
         try {
@@ -227,6 +235,15 @@ class PhanCongCuuHoController extends Controller
         // release the team so it becomes available again.
         if (in_array($newStatus, ['HOAN_THANH', 'THAT_BAI'], true)) {
             $this->releaseTeamAfterCompletion($item->id_doi_cuu_ho);
+
+            // Broadcast realtime capacity update
+            $this->broadcastCapacityUpdate($item->id_doi_cuu_ho);
+
+            // Broadcast assignment completion event
+            $this->broadcastAssignmentCompletion($item, $newStatus);
+        } else {
+            // Broadcast capacity update for other status changes too
+            $this->broadcastCapacityUpdate($item->id_doi_cuu_ho);
         }
 
         $item->load([
@@ -248,6 +265,43 @@ class PhanCongCuuHoController extends Controller
         }
 
         return response()->json($item);
+    }
+
+    /**
+     * Broadcast capacity update for team using AutoDispatchService
+     */
+    private function broadcastCapacityUpdate(int $teamId): void
+    {
+        // Use AutoDispatchService method for consistent capacity calculation
+        $this->dispatchService->capNhatSucChuaRealtime($teamId);
+    }
+
+    /**
+     * Broadcast assignment completion event
+     */
+    private function broadcastAssignmentCompletion(PhanCongCuuHo $phanCong, string $status): void
+    {
+        try {
+            $payload = [
+                'assignment_id' => $phanCong->id_phan_cong,
+                'team_id' => $phanCong->id_doi_cuu_ho,
+                'request_id' => $phanCong->id_yeu_cau,
+                'status' => $status,
+                'completion_time' => now()->toISOString(),
+                'team_name' => $phanCong->doiCuuHo->ten_doi ?? 'Unknown'
+            ];
+
+            // Broadcast assignment completion using AutoDispatchService
+            $this->dispatchService->capNhatSucChuaRealtime($phanCong->id_doi_cuu_ho);
+
+            Log::info('[PhanCongCuuHo] Broadcast assignment completion', $payload);
+
+        } catch (\Throwable $e) {
+            Log::error('[PhanCongCuuHo] Lỗi broadcast assignment completion', [
+                'assignment_id' => $phanCong->id_phan_cong,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 
     /**

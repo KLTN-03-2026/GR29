@@ -178,12 +178,12 @@ class YeuCauCuuHoController extends Controller
                 ]);
 
                 $soThanhVien = $team->thanhViens ? $team->thanhViens->count() : 0;
-                // capacity = soThanhVien * 4 (dong nhat voi AutoDispatchService + frontend)
-                $capacity = $soThanhVien * 4;
+                // capacity = soThanhVien * 1 (dong nhat voi AutoDispatchService + frontend)
+                $capacity = $soThanhVien * 1;
 
-                // active: DANG_XU_LY, DA_PHAN_CONG, DA_DEN_HIEN_TRUONG
-                // MOI = pending, chua tieu ton capacity
-                $activeStatuses = ['DANG_XU_LY', 'DA_PHAN_CONG', 'DA_DEN_HIEN_TRUONG'];
+                // active: DANG_XU_LY, DA_PHAN_CONG, DA_DEN_HIEN_TRUONG, MOI
+                // MOI = da phan cong, CO tieu ton capacity (vi da duoc gan cho doi)
+                $activeStatuses = ['DANG_XU_LY', 'DA_PHAN_CONG', 'DA_DEN_HIEN_TRUONG', 'MOI'];
                 $phanCongList = $team->phanCongs ?? collect();
                 $soYeuCauDangXuLy = $phanCongList
                     ->filter(fn($pc) => in_array(strtoupper(trim($pc->trang_thai_nhiem_vu ?? '')), $activeStatuses, true))
