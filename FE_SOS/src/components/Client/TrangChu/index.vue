@@ -303,6 +303,73 @@
             </div>
         </div>
     </div>
+
+    <Teleport to="body">
+        <Transition name="sos-rl-fade">
+            <div
+                v-if="rateLimitModalOpen"
+                class="sos-rl-overlay"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="sos-rl-title"
+            >
+                <div class="sos-rl-backdrop" @click="closeRateLimitModal"></div>
+                <div class="sos-rl-dialog">
+                    <div class="sos-rl-icon-wrap" aria-hidden="true">
+                        <i class="fa-solid fa-hourglass-half"></i>
+                    </div>
+                    <h2 id="sos-rl-title" class="sos-rl-title">Đã đạt giới hạn gửi yêu cầu</h2>
+                    <p class="sos-rl-desc">{{ rateLimitModalMessage }}</p>
+                    <div class="sos-rl-countdown" aria-live="polite">
+                        <span class="sos-rl-countdown__label">Thời gian còn lại</span>
+                        <span class="sos-rl-countdown__value">{{ rateLimitCountdownLabel }}</span>
+                    </div>
+                    <p v-if="rateLimitSecondsRemaining <= 0" class="sos-rl-ready">Bạn có thể thử gửi lại.</p>
+                    <button type="button" class="sos-rl-btn" @click="closeRateLimitModal">Đóng</button>
+                </div>
+            </div>
+        </Transition>
+    </Teleport>
+
+    <Teleport to="body">
+        <Transition name="sos-gs-fade">
+            <div
+                v-if="guestPostSuccessModalOpen"
+                class="sos-gs-overlay"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="sos-gs-title"
+            >
+                <div class="sos-gs-backdrop" @click="closeGuestPostSuccessModal"></div>
+                <div class="sos-gs-dialog">
+                    <div class="sos-gs-icon" aria-hidden="true">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <h2 id="sos-gs-title" class="sos-gs-title">Yêu cầu đã được gửi</h2>
+                    <p v-if="guestPostSuccessRequestId" class="sos-gs-lead">
+                        Mã yêu cầu: <strong>#{{ guestPostSuccessRequestId }}</strong>
+                    </p>
+                    <p class="sos-gs-text">Hệ thống đã tiếp nhận yêu cầu cứu hộ của bạn.</p>
+                    <p class="sos-gs-highlight">
+                        Nếu bạn muốn xem trạng thái yêu cầu vừa gửi, vui lòng
+                        <strong>đăng ký tài khoản</strong> dùng
+                        <strong>cùng số điện thoại</strong> bạn vừa nhập
+                        (<strong>{{ guestPostSuccessModalPhone }}</strong>) trên
+                        <strong>thiết bị này</strong>. Sau khi đăng ký, các yêu cầu đã gửi có thể được
+                        liên kết với tài khoản của bạn.
+                    </p>
+                    <div class="sos-gs-actions">
+                        <button type="button" class="sos-gs-btn sos-gs-btn--ghost" @click="closeGuestPostSuccessModal">
+                            Đóng
+                        </button>
+                        <button type="button" class="sos-gs-btn sos-gs-btn--primary" @click="goDangKySauGuiKhach">
+                            Đăng ký
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Transition>
+    </Teleport>
 </template>
 
 <script>
@@ -387,6 +454,17 @@ function anhXaChiTietSuCo(item, index) {
     };
 }
 
+/** Phản hồi giới hạn gửi yêu cầu (429 hoặc message từ backend). */
+function laPhanHoiGioiHanGuiYeuCau(error) {
+    const status = Number(error?.response?.status);
+    const data = error?.response?.data;
+    const msg = typeof data?.message === "string" ? data.message : "";
+    const needle = "chỉ được gửi tối đa 3 yêu cầu cứu hộ trong 15 phút";
+    if (status === 429) return true;
+    if (msg.includes(needle)) return true;
+    return false;
+}
+
 export default {
     components: { MapboxMap },
     data() {
@@ -420,12 +498,25 @@ export default {
             units: [
                 { name: "Cảnh sát", d: "1.2 km - 5p", i: "fa-shield-halved", c: "bg-primary", t: "text-primary" },
                 { name: "BV Đa khoa", d: "0.8 km - 3p", i: "fa-hospital", c: "bg-danger", t: "text-danger" }
-            ]
+            ],
+            rateLimitModalOpen: false,
+            rateLimitModalMessage: "",
+            rateLimitSecondsRemaining: 0,
+            rateLimitTimerId: null,
+            guestPostSuccessModalOpen: false,
+            guestPostSuccessModalPhone: "",
+            guestPostSuccessRequestId: "",
         };
     },
     computed: {
         isUserLoggedIn() {
             return !!(localStorage.getItem("token") || localStorage.getItem("user") || localStorage.getItem("client"));
+        },
+        rateLimitCountdownLabel() {
+            const s = Math.max(0, Math.floor(Number(this.rateLimitSecondsRemaining) || 0));
+            const m = Math.floor(s / 60);
+            const r = s % 60;
+            return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
         },
     },
     mounted() {
@@ -433,6 +524,8 @@ export default {
     },
     beforeUnmount() {
         window.removeEventListener('storage', this.handleStorageChange);
+        this.closeRateLimitModal();
+        this.closeGuestPostSuccessModal();
     },
     async created() {
         await this.taiDanhSachLoaiSuCo();
@@ -460,6 +553,51 @@ export default {
             }
 
             alert(message);
+        },
+        closeRateLimitModal() {
+            if (this.rateLimitTimerId != null) {
+                clearInterval(this.rateLimitTimerId);
+                this.rateLimitTimerId = null;
+            }
+            this.rateLimitModalOpen = false;
+            this.rateLimitModalMessage = "";
+            this.rateLimitSecondsRemaining = 0;
+        },
+        closeGuestPostSuccessModal() {
+            this.guestPostSuccessModalOpen = false;
+            this.guestPostSuccessModalPhone = "";
+            this.guestPostSuccessRequestId = "";
+        },
+        goDangKySauGuiKhach() {
+            const phone = this.guestPostSuccessModalPhone || "";
+            this.closeGuestPostSuccessModal();
+            this.$router.push({
+                path: "/client/register",
+                query: phone ? { phone } : {},
+            });
+        },
+        openRateLimitModal(retryAfterSeconds, message) {
+            this.closeRateLimitModal();
+            const sec = Math.max(0, Math.ceil(Number(retryAfterSeconds) || 0));
+            this.rateLimitModalMessage =
+                message ||
+                "Mỗi tài khoản hoặc thiết bị chỉ được gửi tối đa 3 yêu cầu cứu hộ trong 15 phút.";
+            this.rateLimitSecondsRemaining = sec;
+            this.rateLimitModalOpen = true;
+            if (sec <= 0) {
+                return;
+            }
+            this.rateLimitTimerId = setInterval(() => {
+                if (this.rateLimitSecondsRemaining <= 1) {
+                    this.rateLimitSecondsRemaining = 0;
+                    if (this.rateLimitTimerId != null) {
+                        clearInterval(this.rateLimitTimerId);
+                        this.rateLimitTimerId = null;
+                    }
+                } else {
+                    this.rateLimitSecondsRemaining -= 1;
+                }
+            }, 1000);
         },
         chuanHoaChiTietSuCo(payload) {
             const detailSources = [
@@ -731,11 +869,8 @@ export default {
 
                 const response = await rescueRequestAPI.create(payload);
                 const newId = response?.data?.data?.id_yeu_cau || response?.data?.id_yeu_cau || "";
+                const phoneDaGui = loggedIn ? "" : this.guestPhone.trim();
 
-                this.hienToast(
-                    "success",
-                    `Gui yeu cau cuu ho thanh cong${newId ? `. Ma yeu cau: ${newId}` : "."}`
-                );
                 this.description = "";
                 this.address = "";
                 this.addressSearch = "";
@@ -752,27 +887,49 @@ export default {
                 this.selectedType = null;
                 this.incidentDetails = [];
                 if (loggedIn) {
+                    this.hienToast(
+                        "success",
+                        `Gui yeu cau cuu ho thanh cong${newId ? `. Ma yeu cau: ${newId}` : "."}`
+                    );
                     this.$router.push("/client/requests");
                 } else {
+                    this.guestPostSuccessRequestId = newId ? String(newId) : "";
+                    this.guestPostSuccessModalPhone = phoneDaGui;
                     this.guestPhone = "";
                     this.guestPhoneError = "";
+                    this.guestPostSuccessModalOpen = true;
                 }
             } catch (error) {
                 const hinhAnhLoi = error?.response?.data?.errors?.hinh_anh?.[0] || "";
                 let message;
-                if (hinhAnhLoi && (hinhAnhLoi.toLowerCase().includes("xác thực") || hinhAnhLoi.toLowerCase().includes("authentication") || hinhAnhLoi.toLowerCase().includes("xac thuc"))) {
+                if (laPhanHoiGioiHanGuiYeuCau(error)) {
+                    const data = error?.response?.data;
+                    const retryAfter = Number(data?.retry_after);
+                    const msg =
+                        (typeof data?.message === "string" && data.message) ||
+                        "Mỗi tài khoản hoặc thiết bị chỉ được gửi tối đa 3 yêu cầu cứu hộ trong 15 phút.";
+                    this.openRateLimitModal(Number.isFinite(retryAfter) ? retryAfter : 0, msg);
+                    console.error("Giới hạn gửi yêu cầu:", error?.response?.status, data);
+                    return;
+                } else if (hinhAnhLoi && (hinhAnhLoi.toLowerCase().includes("xác thực") || hinhAnhLoi.toLowerCase().includes("authentication") || hinhAnhLoi.toLowerCase().includes("xac thuc"))) {
                     message = "Bạn chưa gửi ảnh.";
                 } else if (hinhAnhLoi) {
                     message = hinhAnhLoi;
                 } else {
+                    const errs = error?.response?.data?.errors;
+                    const firstValidation =
+                        errs && typeof errs === "object"
+                            ? Object.values(errs).flat().find(Boolean)
+                            : null;
                     message =
                         error?.response?.data?.message ||
+                        firstValidation ||
                         error?.response?.data?.errors?.id_loai_su_co?.[0] ||
                         error?.response?.data?.errors?.vi_tri_lat?.[0] ||
                         error?.response?.data?.errors?.vi_tri_lng?.[0] ||
                         "Không thể gửi yêu cầu cứu hộ. Vui lòng kiểm tra lại thông tin và thử lại.";
                 }
-                console.error("Gửi yêu cầu cứu hộ thất bại:", error);
+                console.error("Gửi yêu cầu cứu hộ thất bại:", error?.response?.status, error?.response?.data);
                 this.hienToast("error", message);
             } finally {
                 this.submitting = false;
@@ -1762,5 +1919,275 @@ export default {
         padding: 14px 20px;
         font-size: 15px;
     }
+}
+</style>
+
+<style>
+/* Modal giới hạn: Teleport ra body — không dùng scoped */
+.sos-rl-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 21000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.sos-rl-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(3px);
+}
+
+.sos-rl-dialog {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+    background: #fff;
+    border-radius: 18px;
+    padding: 1.5rem 1.35rem 1.25rem;
+    text-align: center;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
+}
+
+.sos-rl-icon-wrap {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 0.85rem;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #b45309;
+    font-size: 1.5rem;
+}
+
+.sos-rl-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 0.6rem;
+    line-height: 1.35;
+}
+
+.sos-rl-desc {
+    font-size: 0.88rem;
+    color: #64748b;
+    line-height: 1.5;
+    margin: 0 0 1rem;
+}
+
+.sos-rl-countdown {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.85rem 0.5rem;
+    margin-bottom: 0.75rem;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+.sos-rl-countdown__label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #94a3b8;
+}
+
+.sos-rl-countdown__value {
+    font-family: ui-monospace, "Cascadia Code", monospace;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #0e7490;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+}
+
+.sos-rl-ready {
+    font-size: 0.88rem;
+    color: #059669;
+    font-weight: 600;
+    margin: 0 0 0.75rem;
+}
+
+.sos-rl-btn {
+    width: 100%;
+    border: none;
+    border-radius: 12px;
+    padding: 0.65rem 1rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    background: linear-gradient(90deg, #0891b2 0%, #0e7490 100%);
+    color: #fff;
+}
+
+.sos-rl-btn:hover {
+    filter: brightness(1.05);
+}
+
+.sos-rl-fade-enter-active,
+.sos-rl-fade-leave-active {
+    transition: opacity 0.2s ease;
+}
+
+.sos-rl-fade-enter-active .sos-rl-dialog,
+.sos-rl-fade-leave-active .sos-rl-dialog {
+    transition: transform 0.22s ease, opacity 0.22s ease;
+}
+
+.sos-rl-fade-enter-from,
+.sos-rl-fade-leave-to {
+    opacity: 0;
+}
+
+.sos-rl-fade-enter-from .sos-rl-dialog,
+.sos-rl-fade-leave-to .sos-rl-dialog {
+    transform: translateY(10px) scale(0.98);
+    opacity: 0;
+}
+
+/* Modal: khách gửi yêu cầu thành công (Teleport body — global) */
+.sos-gs-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 20950;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.sos-gs-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(3px);
+}
+
+.sos-gs-dialog {
+    position: relative;
+    width: 100%;
+    max-width: 440px;
+    background: #fff;
+    border-radius: 18px;
+    padding: 1.5rem 1.35rem 1.25rem;
+    text-align: left;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.16);
+}
+
+.sos-gs-icon {
+    width: 52px;
+    height: 52px;
+    margin: 0 auto 0.75rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #059669;
+    font-size: 1.45rem;
+}
+
+.sos-gs-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 0.5rem;
+    text-align: center;
+}
+
+.sos-gs-lead {
+    font-size: 0.9rem;
+    color: #0e7490;
+    text-align: center;
+    margin: 0 0 0.75rem;
+}
+
+.sos-gs-text {
+    font-size: 0.9rem;
+    color: #475569;
+    line-height: 1.55;
+    margin: 0 0 0.75rem;
+}
+
+.sos-gs-highlight {
+    font-size: 0.88rem;
+    color: #334155;
+    line-height: 1.55;
+    margin: 0 0 1.1rem;
+    padding: 0.75rem 0.85rem;
+    background: #f0fdfa;
+    border: 1px solid #99f6e4;
+    border-radius: 12px;
+}
+
+.sos-gs-actions {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+}
+
+@media (min-width: 400px) {
+    .sos-gs-actions {
+        flex-direction: row;
+        justify-content: flex-end;
+    }
+}
+
+.sos-gs-btn {
+    flex: 1;
+    min-height: 44px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.92rem;
+    cursor: pointer;
+    border: none;
+    padding: 0.5rem 1rem;
+}
+
+.sos-gs-btn--ghost {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.sos-gs-btn--ghost:hover {
+    background: #e2e8f0;
+}
+
+.sos-gs-btn--primary {
+    background: linear-gradient(90deg, #059669 0%, #047857 100%);
+    color: #fff;
+}
+
+.sos-gs-btn--primary:hover {
+    filter: brightness(1.05);
+}
+
+.sos-gs-fade-enter-active,
+.sos-gs-fade-leave-active {
+    transition: opacity 0.2s ease;
+}
+
+.sos-gs-fade-enter-active .sos-gs-dialog,
+.sos-gs-fade-leave-active .sos-gs-dialog {
+    transition: transform 0.22s ease, opacity 0.22s ease;
+}
+
+.sos-gs-fade-enter-from,
+.sos-gs-fade-leave-to {
+    opacity: 0;
+}
+
+.sos-gs-fade-enter-from .sos-gs-dialog,
+.sos-gs-fade-leave-to .sos-gs-dialog {
+    transform: translateY(10px) scale(0.98);
+    opacity: 0;
 }
 </style>

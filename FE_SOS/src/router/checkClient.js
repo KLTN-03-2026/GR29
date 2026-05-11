@@ -1,11 +1,13 @@
 import axios from "axios";
 import { createToaster } from "@meforma/vue-toaster";
+import { emitClientAuthRequired } from "../utils/clientAuthPrompt";
 
 const toaster = createToaster({ position: "top-right" });
 export default function (to, from, next) {
     const token = localStorage.getItem("token") || localStorage.getItem("user_token");
     if (!token) {
-        next("/client/login");
+        emitClientAuthRequired(to.fullPath);
+        next(false);
         return;
     }
 

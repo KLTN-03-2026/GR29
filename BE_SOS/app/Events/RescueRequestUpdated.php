@@ -29,7 +29,9 @@ class RescueRequestUpdated implements ShouldBroadcastNow
             'phanCongs.doiCuuHo',
             'phanCongs.thanhVienTiepNhan',
             'phanCongs.ketQua',
-            'loaiSuCo',
+            'loaiSuCo.chiTiets',
+            'nguoiDung',
+            'guestSession',
         ]);
 
         $this->requestId = $request->id_yeu_cau ?? $request->id;
@@ -45,6 +47,46 @@ class RescueRequestUpdated implements ShouldBroadcastNow
         $this->teamId = $phanCong?->id_doi_cuu_ho ?? null;
         $this->teamName = $team?->ten_doi ?? null;
         $this->assignmentStatus = $phanCong?->trang_thai_nhiem_vu ?? null;
+
+        $loai = $request->loaiSuCo;
+        $loaiSuCoPayload = null;
+        if ($loai) {
+            $chiTiets = $loai->relationLoaded('chiTiets')
+                ? $loai->chiTiets->map(fn ($c) => [
+                    'ten_chi_tiet' => $c->ten_chi_tiet ?? null,
+                    'ten' => $c->ten_chi_tiet ?? null,
+                    'name' => $c->ten_chi_tiet ?? null,
+                ])->values()->toArray()
+                : [];
+
+            $loaiSuCoPayload = [
+                'id_loai_su_co' => $loai->id_loai_su_co,
+                'ten_danh_muc' => $loai->ten_danh_muc ?? null,
+                'ten_loai_su_co' => $loai->ten_danh_muc ?? $loai->ten_loai_su_co ?? null,
+                'chi_tiets' => $chiTiets,
+            ];
+        }
+
+        $nguoiDungPayload = null;
+        if ($request->nguoiDung) {
+            $u = $request->nguoiDung;
+            $nguoiDungPayload = [
+                'id_nguoi_dung' => $u->id_nguoi_dung ?? $u->id ?? null,
+                'ho_ten' => $u->ho_ten ?? $u->name ?? null,
+                'name' => $u->ho_ten ?? $u->name ?? null,
+                'so_dien_thoai' => $u->so_dien_thoai ?? $u->phone ?? null,
+            ];
+        } elseif ($request->guest_session_id && $request->guestSession) {
+            $gs = $request->guestSession;
+            $guestName = $gs->guest_name ?: 'Khách hàng';
+            $nguoiDungPayload = [
+                'ho_ten' => $guestName,
+                'name' => $guestName,
+                'so_dien_thoai' => $gs->so_dien_thoai ?? null,
+            ];
+        }
+
+        $hinhAnhRaw = $request->getAttributes()['hinh_anh'] ?? $request->hinh_anh ?? null;
 
         $this->data = [
             'id' => $this->requestId,
@@ -73,12 +115,24 @@ class RescueRequestUpdated implements ShouldBroadcastNow
             ])->toArray(),
             'action' => $action,
             'updated_at' => $this->broadcastAt,
-            'mo_ta' => $request->mo_ta ?? null,
-            'vi_tri_dia_chi' => $request->vi_tri_dia_chi ?? null,
-            'muc_do_khan_cap' => $request->muc_do_khan_cap ?? null,
-            'loai_su_co' => $request->loaiSuCo
-                ? ($request->loaiSuCo->ten_danh_muc ?? $request->loaiSuCo->ten_loai_su_co ?? null)
+            'created_at' => $request->created_at?->toISOString(),
+            'thoi_gian_gui' => $request->thoi_gian_gui
+                ? (is_string($request->thoi_gian_gui) ? $request->thoi_gian_gui : $request->thoi_gian_gui->toISOString())
                 : null,
+            'mo_ta' => $request->mo_ta ?? null,
+            'chi_tiet' => $request->chi_tiet ?? null,
+            'vi_tri_lat' => $request->vi_tri_lat ?? null,
+            'vi_tri_lng' => $request->vi_tri_lng ?? null,
+            'vi_tri_dia_chi' => $request->vi_tri_dia_chi ?? null,
+            'dia_chi' => $request->vi_tri_dia_chi ?? null,
+            'hinh_anh' => $hinhAnhRaw,
+            'imageUrl' => $request->hinhAnhUrl ?? null,
+            'so_nguoi_bi_anh_huong' => $request->so_nguoi_bi_anh_huong ?? null,
+            'diem_uu_tien' => $request->diem_uu_tien ?? null,
+            'id_loai_su_co' => $request->id_loai_su_co ?? null,
+            'muc_do_khan_cap' => $request->muc_do_khan_cap ?? null,
+            'loai_su_co' => $loaiSuCoPayload,
+            'nguoi_dung' => $nguoiDungPayload,
         ];
     }
 

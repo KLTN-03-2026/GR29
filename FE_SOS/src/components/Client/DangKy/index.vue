@@ -131,7 +131,8 @@
       </div>
 
       <p class="switch-page">
-        Đã có tài khoản? <router-link to="/client/login">Đăng nhập</router-link>
+        Đã có tài khoản?
+        <router-link :to="{ path: '/client/login', query: $route.query }">Đăng nhập</router-link>
       </p>
     </div>
   </div>
@@ -140,6 +141,7 @@
 
 <script>
 import { authAPI } from "../../../services/api.js";
+import { getSafeClientRedirect } from "../../../utils/safeClientRedirect.js";
 
 export default {
   data() {
@@ -156,6 +158,17 @@ export default {
       isLoading: false,
       linkedRequestsCount: 0,
     };
+  },
+
+  mounted() {
+    const raw = this.$route.query.phone;
+    if (raw != null && String(raw).trim() !== "") {
+      try {
+        this.nguoi_dung.so_dien_thoai = decodeURIComponent(String(raw).trim());
+      } catch {
+        this.nguoi_dung.so_dien_thoai = String(raw).trim();
+      }
+    }
   },
 
   methods: {
@@ -186,9 +199,13 @@ export default {
           localStorage.removeItem("admin_user");
           localStorage.setItem("token", body.token);
           localStorage.setItem("user", JSON.stringify(body.data || {}));
-          this.$router.push("/");
+          const nextPath = getSafeClientRedirect(this.$route.query.redirect);
+          this.$router.push(nextPath || "/");
         } else {
-          this.$router.push("/client/login");
+          const safe = getSafeClientRedirect(this.$route.query.redirect);
+          this.$router.push(
+            safe ? { path: "/client/login", query: { redirect: safe } } : { path: "/client/login" }
+          );
         }
       } catch (err) {
         const errors = err.response?.data?.errors;

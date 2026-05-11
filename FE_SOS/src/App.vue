@@ -1,5 +1,6 @@
 <template>
   <ConnectionStatusBanner />
+  <ClientAuthRequiredModal />
   <client-layout v-if="layoutName === 'client-layout'" />
   <admin-layout v-else-if="layoutName === 'admin-layout'" />
   <rescuer-layout v-else-if="layoutName === 'rescuer-layout'" />
@@ -12,6 +13,7 @@ import RescuerLayout from "./layout/wrapper/rescuer.vue";
 import AdminLayout from "./layout/wrapper/admin.vue";
 import DefaultLayout from "./layout/wrapper/index.vue";
 import ConnectionStatusBanner from "./components/common/ConnectionStatusBanner.vue";
+import ClientAuthRequiredModal from "./components/common/ClientAuthRequiredModal.vue";
 
 const default_layout = "default";
 
@@ -22,6 +24,7 @@ export default {
     AdminLayout,
     DefaultLayout,
     ConnectionStatusBanner,
+    ClientAuthRequiredModal,
   },
   computed: {
     layoutName() {
