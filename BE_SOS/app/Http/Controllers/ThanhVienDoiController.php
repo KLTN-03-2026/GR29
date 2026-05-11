@@ -166,4 +166,36 @@ class ThanhVienDoiController extends Controller
             'data' => $members,
         ]);
     }
+
+    public function changePassword(Request $request)
+    {
+        $user = Auth::guard('thanh-vien-doi')->user();
+
+        if (!$user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized',
+            ], 401);
+        }
+
+        $request->validate([
+            'current_password'          => 'required|string',
+            'new_password'              => 'required|string|min:6|confirmed',
+        ]);
+
+        if (!Hash::check($request->current_password, $user->mat_khau)) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Mật khẩu hiện tại không đúng',
+            ], 400);
+        }
+
+        $user->mat_khau = Hash::make($request->new_password);
+        $user->save();
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Đổi mật khẩu thành công',
+        ]);
+    }
 }

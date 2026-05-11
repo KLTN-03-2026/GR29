@@ -231,6 +231,11 @@ const routes = [
         component: () => import("../components/Admin/Accounts/Rescuer/index.vue"),
         meta: { layout: "admin", roles: ["admin"] },
     },
+    {
+        path: "/admin/change-password",
+        component: () => import("../components/Admin/DoiPassword/index.vue"),
+        meta: { layout: "admin" },
+    },
 
     // 
     { path: "/dashboard", redirect: "/admin" },
@@ -282,6 +287,11 @@ const routes = [
         path: "/rescuer/quan-ly-thanh-vien",
         component: () => import("../components/Rescuer/QuanLy/index.vue"),
         meta: { layout: "rescuer", roles: ["rescuer_non_member"] },
+    },
+    {
+        path: "/rescuer/change-password",
+        component: () => import("../components/Rescuer/DoiPassword/index.vue"),
+        meta: { layout: "rescuer" },
     },
 
 ];
