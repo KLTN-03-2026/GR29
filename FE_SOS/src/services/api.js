@@ -31,6 +31,7 @@ api.interceptors.request.use((config) => {
     match('/rescuer/gui-bao-cao') ||
     match('/rescuer/bao-cao') ||
     match('/rescuer/members') ||
+    match('/rescuer/tai-nguyen') ||
     match('/doi-cuu-ho/login') ||
     match('/doi-cuu-ho/check-token') ||
     match('/get-doi-cuu-ho') ||
@@ -198,8 +199,6 @@ export const rescueTeamAPI = {
   addMember: (id, data) => api.post(`/doi-cuu-ho/thanh-vien/${id}`, data),
   removeMember: (id, memberId) => api.delete(`/doi-cuu-ho/thanh-vien/${id}/${memberId}`),
   getResources: (id) => api.get(`/doi-cuu-ho/tai-nguyen/${id}`),
-  addResource: (id, data) => api.post(`/doi-cuu-ho/tai-nguyen/${id}`, data),
-  updateResource: (id, resourceId, data) => api.put(`/doi-cuu-ho/tai-nguyen/${id}/${resourceId}`, data),
   getLocations: (id) => api.get(`/doi-cuu-ho/vi-tri/${id}`),
   addLocation: (id, data) => api.post(`/doi-cuu-ho/vi-tri/${id}`, data),
   getCapabilities: (id) => api.get(`/doi-cuu-ho/nang-luc/${id}`),
@@ -282,10 +281,10 @@ export const rescuerAPI = {
   // Đội cứu hộ
   getTeamMembers: (id) => api.get('/get-doi-cuu-ho/' + id + '/thanh-vien'),
   getTeamResources: (id) => api.get('/get-doi-cuu-ho/' + id + '/tai-nguyen'),
-  addTeamResource: (id, data) =>
-    api.post('/post-doi-cuu-ho/' + id + '/tai-nguyen', data),
-  updateTeamResource: (id, resourceId, data) =>
-    api.put('/put-doi-cuu-ho/' + id + '/tai-nguyen/' + resourceId, data),
+  /** Tồn kho theo loại (để rescuer xem & chọn khi yêu cầu) */
+  xemTonKhoTaiNguyen: () => api.get('/rescuer/tai-nguyen/kho-xem'),
+  /** Gửi yêu cầu cấp phát lên admin */
+  guiYeuCauCapPhatTaiNguyen: (data) => api.post('/rescuer/tai-nguyen/yeu-cau-cap-phat', data),
   getTeamLocations: (id) => api.get('/get-doi-cuu-ho/' + id + '/vi-tri'),
   addTeamLocation: (id, data) =>
     api.post('/post-doi-cuu-ho/' + id + '/vi-tri', data),
@@ -374,8 +373,12 @@ export const adminResourcesAPI = {
   getLichSuKho: (params = {}) => api.get('/admin/tai-nguyen/kho/lich-su', { params }),
   nhapKho: (data) => api.post('/admin/tai-nguyen/kho/nhap', data),
 
-  // Cap phat
-  capPhat: (data) => api.post('/admin/tai-nguyen/cap-phat', data),
+  // Yêu cầu cấp phát (TAB Cấp phát admin)
+  layDanhSachYeuCauCapPhat: (params = {}) =>
+    api.get('/admin/tai-nguyen/yeu-cau-cap-phat', { params }),
+  capPhatTheoYeuCau: (id) => api.post(`/admin/tai-nguyen/yeu-cau-cap-phat/${id}/cap-phat`),
+  tuChoiYeuCauCapPhat: (id, data = {}) =>
+    api.post(`/admin/tai-nguyen/yeu-cau-cap-phat/${id}/tu-choi`, data),
   getLichSuCapPhat: (params = {}) => api.get('/admin/tai-nguyen/lich-su-cap', { params }),
 };
 

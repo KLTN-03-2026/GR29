@@ -582,7 +582,7 @@ function parseTeams(payload) {
       phan_congs: phanCongs,
       // active_count: task thực sự đang xử lý (DANG_XU_LY / DA_DEN_HIEN_TRUONG)
       active_count: item.active_count ?? 0,
-      // pending_count: task mới phân công chưa tiếp nhận (MOI)
+      // pending_count: task mới phân công chưa tiếp nhận (MOI / DA_PHAN_CONG)
       pending_count: item.pending_count ?? 0,
       // capacity: tổng số task tối đa = số thành viên
       capacity: item.capacity ?? 0,
@@ -610,7 +610,6 @@ export default {
       error: '',
       realtimeChannel: null,
       teamChannel: null,
-      pollingInterval: null,
       dispatchEnabled: false,
       togglingDispatch: false,
 
@@ -655,11 +654,11 @@ export default {
     },
     busyTeams() {
       // Capacity = members * 1 (dong nhat voi backend AutoDispatchService)
-      // Full = pending + active >= capacity
+      // Full = actual assignments >= capacity
       return this.teams.filter(t => {
         const members = t.thanh_viens?.length ?? 0;
         const capacity = members * 1;
-        const total = (t.pending_count ?? 0) + (t.active_count ?? 0);
+        const total = this.getTotalAssignments(t);
         return capacity > 0 && total >= capacity;
       });
     },
@@ -712,13 +711,11 @@ export default {
     this.loadDispatchStatus();
     this.setupRealtimeSync();
     this.subscribeToRescueUpdates();
-    this.startPolling();
     this.initData();
   },
   beforeUnmount() {
     this.cleanupRealtimeSync();
     this.unsubscribeFromRescueUpdates();
-    this.stopPolling();
   },
   mounted() {
     const queryId = this.$route.query.id;
@@ -792,6 +789,11 @@ export default {
         this.handleRescueUpdate(event);
       });
 
+      // Subscribe to task status changes
+      this.realtimeChannel.listen('TaskStatusChanged', (event) => {
+        this.handleTaskStatusChange(event);
+      });
+
       // Subscribe to team updates for capacity changes
       if (!this.teamChannel) {
         this.teamChannel = window.Echo.channel('team-updates');
@@ -800,23 +802,10 @@ export default {
         });
       }
     },
-    startPolling() {
-      this.stopPolling();
-      this.pollingInterval = setInterval(() => {
-        const status = window.realtimeConnectionStatus || 'connecting';
-        if (status === 'connected') return;
-        this.loadRequests({ silent: true }).catch(() => { });
-      }, 15000);
-    },
-    stopPolling() {
-      if (this.pollingInterval) {
-        clearInterval(this.pollingInterval);
-        this.pollingInterval = null;
-      }
-    },
     unsubscribeFromRescueUpdates() {
       if (this.realtimeChannel) {
         this.realtimeChannel.stopListening('RescueRequestUpdated');
+        this.realtimeChannel.stopListening('TaskStatusChanged');
         window.Echo?.leave('rescue-requests');
         this.realtimeChannel = null;
       }
@@ -941,6 +930,62 @@ export default {
       this.teams.splice(teamIndex, 1, updatedTeam);
       
       console.log(`[AdminAssignments] Team ${teamId} capacity updated:`, {
+        active_count: updatedTeam.active_count,
+        pending_count: updatedTeam.pending_count,
+        total: updatedTeam.active_count + updatedTeam.pending_count,
+        capacity: this.getMaxCapacity(updatedTeam)
+      });
+
+      // Force Vue reactivity update
+      this.$forceUpdate();
+    },
+    handleTaskStatusChange(event) {
+      console.log('[AdminAssignments] Task status change received:', event);
+      
+      const teamId = Number(event?.team_id || event?.id_doi_cuu_ho);
+      const oldStatus = event?.old_status;
+      const newStatus = event?.new_status;
+      
+      if (!teamId || !oldStatus || !newStatus) return;
+      
+      const teamIndex = this.teams.findIndex(t => Number(t.id) === teamId);
+      if (teamIndex === -1) return;
+      
+      const team = this.teams[teamIndex];
+      let activeCount = team.active_count ?? 0;
+      let pendingCount = team.pending_count ?? 0;
+      
+      // Update counts based on status transition
+      if (oldStatus === 'MOI' && newStatus === 'DANG_XU_LY') {
+        // Task moved from pending to active
+        pendingCount = Math.max(0, pendingCount - 1);
+        activeCount = activeCount + 1;
+      } else if (oldStatus === 'DA_PHAN_CONG' && newStatus === 'DANG_XU_LY') {
+        // Task moved from pending to active
+        pendingCount = Math.max(0, pendingCount - 1);
+        activeCount = activeCount + 1;
+      } else if (oldStatus === 'DANG_XU_LY' && newStatus === 'DA_XU_LY') {
+        // Task completed
+        activeCount = Math.max(0, activeCount - 1);
+      } else if (oldStatus === 'MOI' && newStatus === 'DA_XU_LY') {
+        // Task completed directly from pending
+        pendingCount = Math.max(0, pendingCount - 1);
+      } else if (oldStatus === 'DA_PHAN_CONG' && newStatus === 'DA_XU_LY') {
+        // Task completed directly from pending
+        pendingCount = Math.max(0, pendingCount - 1);
+      }
+      
+      const updatedTeam = {
+        ...team,
+        active_count: activeCount,
+        pending_count: pendingCount,
+      };
+      
+      this.teams.splice(teamIndex, 1, updatedTeam);
+      
+      console.log(`[AdminAssignments] Team ${teamId} capacity updated via task status change:`, {
+        oldStatus,
+        newStatus,
         active_count: updatedTeam.active_count,
         pending_count: updatedTeam.pending_count,
         total: updatedTeam.active_count + updatedTeam.pending_count,
@@ -1092,14 +1137,14 @@ export default {
       }
     },
     getTeamStatusClass(team) {
-      const total = (team.pending_count ?? 0) + (team.active_count ?? 0);
+      const total = this.getTotalAssignments(team);
       const maxCap = this.getMaxCapacity(team);
       if (maxCap > 0 && total >= maxCap) return 'st-overload';
       if (team.active_count > 0) return 'st-processing';
       return 'st-ready';
     },
     getTeamStatusLabel(team) {
-      const total = (team.pending_count ?? 0) + (team.active_count ?? 0);
+      const total = this.getTotalAssignments(team);
       const maxCap = this.getMaxCapacity(team);
       if (maxCap > 0 && total >= maxCap) return 'Đội quá tải, chọn đội khác';
       if (team.active_count > 0) return 'Đang xử lý';
@@ -1111,18 +1156,26 @@ export default {
       return members * 1;
     },
     getTotalAssignments(team) {
-      return (team.pending_count ?? 0) + (team.active_count ?? 0);
+      // Override backend calculation with actual count from phan_congs data
+      // Backend may return incorrect counts, so we count actual assignments
+      const phanCongs = team.phan_congs || [];
+      const validStatuses = ['MOI', 'DA_PHAN_CONG', 'DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'];
+      const actualCount = phanCongs.filter(pc => 
+        validStatuses.includes(pc.trang_thai || pc.trang_thai_nhiem_vu)
+      ).length;
+      
+      return actualCount;
     },
     getCapacityBarWidth(team) {
-      // Hien thi tong (pending + active) / capacity
-      const total = (team.pending_count ?? 0) + (team.active_count ?? 0);
+      // Use actual count from phan_congs data instead of backend counts
+      const total = this.getTotalAssignments(team);
       const maxCap = this.getMaxCapacity(team);
       if (maxCap === 0) return '0%';
       const pct = Math.min((total / maxCap) * 100, 100);
       return pct + '%';
     },
     getCapacityBarClass(team) {
-      const total = (team.pending_count ?? 0) + (team.active_count ?? 0);
+      const total = this.getTotalAssignments(team);
       const maxCap = this.getMaxCapacity(team);
       if (maxCap === 0) return 'bar-empty';
       const ratio = total / maxCap;

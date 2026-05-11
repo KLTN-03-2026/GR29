@@ -266,106 +266,164 @@
       </div>
     </div>
 
-    <!-- ========== TAB 4: CAP PHAT ========== -->
-    <div v-if="activeTab === 'allocation'">
-      <div class="row g-4">
-        <!-- Cap phat form -->
-        <div class="col-xl-5">
-          <div class="card panel-card border-0 shadow-sm h-100">
-            <div class="card-header bg-white border-bottom-0 pt-4 pb-3 px-4">
-              <h5 class="fw-bolder text-dark mb-0">
-                <i class="fa-solid fa-paper-plane text-primary me-2"></i>Cấp phát tài nguyên
+    <!-- ========== TAB 4: CẤP PHÁT (yêu cầu từ rescuer + lịch sử) ========== -->
+    <div v-if="activeTab === 'allocation'" class="allocation-tab-root">
+      <div class="row g-4 mb-4">
+        <div class="col-12">
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-2">
+            <div>
+              <h5 class="fw-bolder text-dark mb-1">
+                <i class="fa-solid fa-inbox text-primary me-2"></i>Hàng đợi yêu cầu cấp phát
               </h5>
-              <p class="text-muted small mb-0 mt-1">Chọn đội và loại tài nguyên để cấp phát</p>
+              <p class="text-muted small mb-0">Cứu hộ viên gửi yêu cầu — admin duyệt và trừ kho. Cập nhật realtime qua Reverb.</p>
             </div>
-            <div class="card-body">
-              <div class="mb-3">
-                <label class="form-label text-muted small fw-bolder text-uppercase">Chọn đội cứu hộ</label>
-                <select v-model="allocationForm.id_doi_cuu_ho" class="form-select custom-input">
-                  <option value="">-- Chọn đội --</option>
-                  <option v-for="t in teams" :key="t.id_doi_cuu_ho" :value="t.id_doi_cuu_ho">{{ t.ten_doi }}</option>
-                </select>
+            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill fw-medium" @click="taiLaiToanBoCapPhat">
+              <i class="fa-solid fa-rotate me-1"></i>Tải lại
+            </button>
+          </div>
+          <div v-if="dangTaiDanhSachYeuCau" class="text-center py-5 bg-white rounded-4 shadow-sm">
+            <div class="spinner mx-auto"></div>
+            <p class="text-muted small mt-2 mb-0">Đang tải yêu cầu...</p>
+          </div>
+          <div v-else-if="danhSachYeuCauCapPhat.length === 0" class="text-center py-5 bg-white rounded-4 shadow-sm border border-light">
+            <i class="fa-solid fa-clipboard-check text-secondary opacity-25 fs-1 d-block mb-3"></i>
+            <p class="text-muted small mb-0">Không có yêu cầu chờ duyệt</p>
+          </div>
+          <div v-else class="row g-3">
+            <div v-for="yc in danhSachYeuCauCapPhat" :key="'yc-' + yc.id" class="col-12 col-xl-6">
+              <div
+                class="card border-0 shadow-sm rounded-4 h-100 cap-request-card overflow-hidden"
+                :class="{ 'border-danger-subtle ring-insufficient': yc.trang_thai === 'CHO_DUYET' && !yc.du_kho }"
+              >
+                <div class="card-body p-4">
+                  <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                    <div>
+                      <div class="fw-bolder text-dark">{{ yc.ten_doi || '—' }}</div>
+                      <div class="small text-muted">
+                        <i class="fa-solid fa-user me-1"></i>{{ yc.ten_nguoi_yeu_cau || '—' }}
+                        <span class="mx-1">·</span>
+                        <i class="fa-regular fa-clock me-1"></i>{{ formatDate(yc.created_at) }} {{ formatTime(yc.created_at) }}
+                      </div>
+                    </div>
+                    <span class="badge rounded-pill fw-medium shrink-0" :class="badgeTrangThaiYeuCau(yc.trang_thai)">
+                      {{ chuoiTrangThaiYeuCau(yc.trang_thai) }}
+                    </span>
+                  </div>
+                  <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <span class="badge fw-medium" :class="getResourceTypeBadge(laySlugHienThi(yc.slug_tai_nguyen))">
+                      <i :class="getResourceTypeIcon(laySlugHienThi(yc.slug_tai_nguyen))" class="me-1"></i>
+                      {{ layNhanLoaiTaiNguyen(yc.slug_tai_nguyen) }}
+                    </span>
+                    <span class="badge bg-dark-subtle text-dark-emphasis">YC: {{ yc.so_luong_yeu_cau }}</span>
+                    <span class="badge bg-secondary-subtle text-secondary-emphasis">Kho: {{ yc.so_luong_ton_kho }}</span>
+                  </div>
+                  <div v-if="yc.ghi_chu" class="small text-muted mb-3 fst-italic">“{{ yc.ghi_chu }}”</div>
+                  <div v-if="yc.trang_thai === 'CHO_DUYET' && !yc.du_kho" class="alert alert-danger py-2 px-3 small mb-3 mb-md-0">
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i>Kho không đủ — không thể cấp phát cho đến khi nhập thêm.
+                  </div>
+                  <div v-if="yc.trang_thai === 'CHO_DUYET'" class="d-flex flex-wrap gap-2 mt-3">
+                    <button
+                      type="button"
+                      class="btn btn-primary btn-sm rounded-pill fw-bold px-3"
+                      :disabled="!yc.du_kho || dangXuLyCapPhat === yc.id"
+                      @click="xuLyCapPhatTheoYeuCau(yc.id)"
+                    >
+                      <span v-if="dangXuLyCapPhat === yc.id"><i class="fa-solid fa-spinner fa-spin me-1"></i></span>
+                      <i v-else class="fa-solid fa-paper-plane me-1"></i>Cấp phát
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary btn-sm rounded-pill px-3"
+                      :disabled="dangXuLyTuChoi === yc.id || dangXuLyCapPhat === yc.id"
+                      @click="xuLyTuChoiYeuCau(yc.id)"
+                    >
+                      <span v-if="dangXuLyTuChoi === yc.id"><i class="fa-solid fa-spinner fa-spin me-1"></i></span>
+                      Từ chối
+                    </button>
+                  </div>
+                </div>
+                <div v-if="yc.trang_thai === 'CHO_DUYET' && yc.du_kho" class="px-4 pb-3">
+                  <div class="progress rounded-pill" style="height: 8px;">
+                    <div
+                      class="progress-bar rounded-pill"
+                      :class="thanhTienTrinhTonKho(yc)"
+                      role="progressbar"
+                      :style="{ width: phanTramTienTrinhTon(yc) + '%' }"
+                    ></div>
+                  </div>
+                  <div class="d-flex justify-content-between small text-muted mt-1">
+                    <span>Tồn sau cấp (ước tính)</span>
+                    <span class="fw-bold text-dark">{{ Math.max(0, (yc.so_luong_ton_kho || 0) - (yc.so_luong_yeu_cau || 0)) }}</span>
+                  </div>
+                </div>
               </div>
-              <div class="mb-3">
-                <label class="form-label text-muted small fw-bolder text-uppercase">Loại tài nguyên</label>
-                <select v-model="allocationForm.slug_tai_nguyen" class="form-select custom-input">
-                  <option value="">-- Chọn loại --</option>
-                  <option value="Vehicle">Xe cứu hộ</option>
-                  <option value="Supply">Nhu yếu phẩm</option>
-                  <option value="Medical">Vật tư y tế</option>
-                  <option value="Equipment">Dụng cụ thiết bị</option>
-                </select>
-              </div>
-              <div class="mb-3">
-                <label class="form-label text-muted small fw-bolder text-uppercase">Số lượng cấp phát</label>
-                <input v-model.number="allocationForm.so_luong_cap" type="number" min="1" class="form-control custom-input"
-                  placeholder="Nhập số lượng...">
-              </div>
-              <div class="mb-3">
-                <label class="form-label text-muted small fw-bolder text-uppercase">Ghi chú</label>
-                <textarea v-model="allocationForm.ghi_chu" class="form-control custom-input" rows="2"
-                  placeholder="Ghi chú thêm (tùy chọn)..."></textarea>
-              </div>
-              <button class="btn btn-primary w-100 fw-bolder py-2" :disabled="!canSubmitAllocation || submittingAllocation"
-                @click="submitAllocation">
-                <span v-if="submittingAllocation"><i class="fa-solid fa-spinner fa-spin me-2"></i>Đang cấp phát...</span>
-                <span v-else><i class="fa-solid fa-paper-plane me-2"></i>Cấp phát ngay</span>
-              </button>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Lich su cap phat -->
-        <div class="col-xl-7">
-          <div class="card panel-card border-0 shadow-sm h-100">
-            <div class="card-header bg-white border-bottom-0 pt-4 pb-3 px-4">
-              <h5 class="fw-bolder text-dark mb-0">
-                <i class="fa-solid fa-clock-rotate-left text-secondary me-2"></i>Lịch sử cấp phát
-              </h5>
-              <p class="text-muted small mb-0 mt-1">Xem tài nguyên đã cấp cho từng đội</p>
+      <div class="card panel-card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+          <h5 class="fw-bolder text-dark mb-0">
+            <i class="fa-solid fa-clock-rotate-left text-secondary me-2"></i>Lịch sử cấp phát
+          </h5>
+          <p class="text-muted small mb-0 mt-1">Đội nhận, người yêu cầu, admin xử lý và thời gian</p>
+        </div>
+        <div class="card-body px-4 pt-3 pb-4">
+          <div class="row g-2 align-items-end mb-3">
+            <div class="col-md-3">
+              <label class="form-label text-muted small fw-bolder text-uppercase mb-1">Đội</label>
+              <select v-model="boLocLichSu.id_doi_cuu_ho" class="form-select custom-input form-select-sm" @change="taiLichSuCapPhatCoBoLoc">
+                <option value="">Tất cả</option>
+                <option v-for="t in teams" :key="'ls-' + t.id_doi_cuu_ho" :value="String(t.id_doi_cuu_ho)">{{ t.ten_doi }}</option>
+              </select>
             </div>
-            <div class="card-body p-0">
-              <div v-if="loadingAllocation" class="text-center py-4">
-                <div class="spinner"></div>
-              </div>
-              <div v-else-if="allocationHistory.length === 0" class="text-center py-4">
-                <p class="text-muted small mb-0">Chưa có lịch sử cấp phát nào</p>
-              </div>
-              <div v-else class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                  <thead class="table-light">
-                    <tr>
-                      <th class="fw-bolder text-muted text-uppercase small ps-4">Đội</th>
-                      <th class="fw-bolder text-muted text-uppercase small">Loại</th>
-                      <th class="fw-bolder text-muted text-uppercase small">Số lượng đã cấp</th>
-                      <th class="fw-bolder text-muted text-uppercase small">Trạng thái</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="item in allocationHistory" :key="item.id_tai_nguyen" class="table-row-hover">
-                      <td class="ps-4">
-                        <div class="fw-medium text-dark">{{ item.doiCuuHo?.ten_doi || '—' }}</div>
-                        <div class="small text-muted">{{ item.doiCuuHo?.khu_vuc_quan_ly || '' }}</div>
-                      </td>
-                      <td>
-                        <span class="badge fw-medium" :class="getResourceTypeBadge(item.slug_tai_nguyen)">
-                          <i :class="getResourceTypeIcon(item.slug_tai_nguyen)" class="me-1" :style="{ color: getResourceTypeColor(item.slug_tai_nguyen) }"></i>
-                          {{ getResourceTypeLabel(item.slug_tai_nguyen) }}
-                        </span>
-                      </td>
-                      <td>
-                        <span class="badge bg-dark-subtle text-dark-emphasis fw-bold">{{ item.so_luong }}</span>
-                      </td>
-                      <td>
-                        <span class="badge rounded-pill fw-medium" :class="item.trang_thai ? 'bg-success-subtle text-success-emphasis' : 'bg-secondary-subtle text-secondary-emphasis'">
-                          {{ item.trang_thai ? 'Hoạt động' : 'Tạm ngưng' }}
-                        </span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+            <div class="col-md-2">
+              <label class="form-label text-muted small fw-bolder text-uppercase mb-1">Từ ngày</label>
+              <input v-model="boLocLichSu.tu_ngay" type="date" class="form-control custom-input form-control-sm" @change="taiLichSuCapPhatCoBoLoc">
             </div>
+            <div class="col-md-2">
+              <label class="form-label text-muted small fw-bolder text-uppercase mb-1">Đến ngày</label>
+              <input v-model="boLocLichSu.den_ngay" type="date" class="form-control custom-input form-control-sm" @change="taiLichSuCapPhatCoBoLoc">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label text-muted small fw-bolder text-uppercase mb-1">Trạng thái</label>
+              <select v-model="boLocLichSu.trang_thai" class="form-select custom-input form-select-sm" @change="taiLichSuCapPhatCoBoLoc">
+                <option value="">Đã cấp + Từ chối</option>
+                <option value="DA_CAP_PHAT">Đã cấp phát</option>
+                <option value="TU_CHOI">Từ chối</option>
+              </select>
+            </div>
+          </div>
+          <div v-if="dangTaiLichSuCapPhat" class="text-center py-4">
+            <div class="spinner"></div>
+          </div>
+          <div v-else-if="lichSuCapPhat.length === 0" class="text-center py-4 text-muted small">Chưa có lịch sử</div>
+          <div v-else class="table-responsive rounded-3 border">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th class="fw-bolder text-muted text-uppercase small ps-3">Đội nhận</th>
+                  <th class="fw-bolder text-muted text-uppercase small">Người YC</th>
+                  <th class="fw-bolder text-muted text-uppercase small">Tài nguyên</th>
+                  <th class="fw-bolder text-muted text-uppercase small">SL</th>
+                  <th class="fw-bolder text-muted text-uppercase small">Admin</th>
+                  <th class="fw-bolder text-muted text-uppercase small">id duyệt</th>
+                  <th class="fw-bolder text-muted text-uppercase small pe-3">Thời gian duyệt</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in lichSuCapPhat" :key="'lsr-' + row.id" class="table-row-hover">
+                  <td class="ps-3 fw-medium">{{ row.ten_doi || '—' }}</td>
+                  <td>{{ row.ten_nguoi_yeu_cau || '—' }}</td>
+                  <td>{{ layNhanLoaiTaiNguyen(row.slug_tai_nguyen) }}</td>
+                  <td><span class="badge bg-dark-subtle text-dark-emphasis">{{ row.so_luong_yeu_cau }}</span></td>
+                  <td>{{ row.ten_nguoi_duyet || '—' }}</td>
+                  <td class="small text-muted">{{ row.id_nguoi_duyet ?? '—' }}</td>
+                  <td class="pe-3 small">{{ formatDate(row.thoi_gian_duyet) }} {{ formatTime(row.thoi_gian_duyet) }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -553,6 +611,14 @@ const TEN_MACC_DINH = {
   Equipment: 'Dụng cụ thiết bị',
 };
 
+/** Nhãn loại đồng bộ với bảng kho (slug snake_case) */
+const TEN_SLUG_KHO = {
+  xe_cuu_ho: 'Xe cứu hộ',
+  nhu_yeu_pham: 'Nhu yếu phẩm',
+  vat_tu_y_te: 'Vật tư y tế',
+  dung_cu_thi_cong: 'Dụng cụ thi công',
+};
+
 export default {
   name: "AdminResources",
   data() {
@@ -582,16 +648,20 @@ export default {
       filterWarehouseType: '',
       filterWarehouseAction: '',
 
-      // Allocation
-      allocationHistory: [],
-      loadingAllocation: false,
-      allocationForm: {
+      // TAB Cấp phát — yêu cầu từ rescuer
+      danhSachYeuCauCapPhat: [],
+      dangTaiDanhSachYeuCau: false,
+      lichSuCapPhat: [],
+      dangTaiLichSuCapPhat: false,
+      dangXuLyCapPhat: null,
+      dangXuLyTuChoi: null,
+      boLocLichSu: {
         id_doi_cuu_ho: '',
-        slug_tai_nguyen: '',
-        so_luong_cap: null,
-        ghi_chu: '',
+        tu_ngay: '',
+        den_ngay: '',
+        trang_thai: '',
       },
-      submittingAllocation: false,
+      kenhEchoYeuCau: null,
 
       // Team modal
       showTeamModal: false,
@@ -710,11 +780,6 @@ export default {
       });
       return Object.values(groups);
     },
-    canSubmitAllocation() {
-      return this.allocationForm.id_doi_cuu_ho &&
-        this.allocationForm.slug_tai_nguyen &&
-        this.allocationForm.so_luong_cap > 0;
-    },
     canSubmitResource() {
       return this.editingResource
         ? (this.resourceForm.slug_tai_nguyen && this.resourceForm.so_luong >= 0)
@@ -722,11 +787,17 @@ export default {
     },
   },
   watch: {
-    activeTab(tab) {
+    activeTab(tab, tabTruoc) {
+      if (tabTruoc === 'allocation' && tab !== 'allocation') {
+        this.ngatEchoYeuCauCapPhat();
+      }
       if (tab === 'teams') this.loadTeams();
       else if (tab === 'resources') this.loadResources();
       else if (tab === 'warehouse') { this.loadWarehouse(); this.loadWarehouseHistory(); }
-      else if (tab === 'allocation') this.loadAllocationHistory();
+      else if (tab === 'allocation') {
+        this.taiLaiToanBoCapPhat();
+        this.$nextTick(() => this.ketNoiEchoYeuCauCapPhat());
+      }
     },
     'teamForm.vi_tri_lat'(val) { this.updateTeamMarker(); },
     'teamForm.vi_tri_lng'(val) { this.updateTeamMarker(); },
@@ -735,6 +806,7 @@ export default {
     await this.loadTeams();
   },
   beforeUnmount() {
+    this.ngatEchoYeuCauCapPhat();
     if (this.teamMap) {
       this.teamMap.remove();
       this.teamMap = null;
@@ -809,18 +881,140 @@ export default {
         this.loadingWarehouseHistory = false;
       }
     },
-    async loadAllocationHistory() {
-      this.loadingAllocation = true;
+    layNhanLoaiTaiNguyen(slug) {
+      if (!slug) return '—';
+      return TEN_SLUG_KHO[slug] || TEN_HIEN_THI[slug] || slug;
+    },
+    laySlugHienThi(slug) {
+      if (TEN_HIEN_THI[slug]) return slug;
+      const rev = Object.keys(TEN_HIEN_THI).find((k) => TEN_SLUG_KHO[slug] === TEN_HIEN_THI[k]);
+      return rev || slug;
+    },
+    badgeTrangThaiYeuCau(tt) {
+      const map = {
+        CHO_DUYET: 'bg-warning-subtle text-warning-emphasis',
+        DA_CAP_PHAT: 'bg-success-subtle text-success-emphasis',
+        TU_CHOI: 'bg-danger-subtle text-danger-emphasis',
+      };
+      return map[tt] || 'bg-secondary-subtle text-secondary-emphasis';
+    },
+    chuoiTrangThaiYeuCau(tt) {
+      const map = {
+        CHO_DUYET: 'Chờ duyệt',
+        DA_CAP_PHAT: 'Đã cấp phát',
+        TU_CHOI: 'Từ chối',
+      };
+      return map[tt] || tt || '—';
+    },
+    phanTramTienTrinhTon(yc) {
+      const ton = parseInt(yc.so_luong_ton_kho, 10) || 0;
+      const xin = parseInt(yc.so_luong_yeu_cau, 10) || 1;
+      if (ton <= 0) return 0;
+      const p = Math.round((Math.min(xin, ton) / ton) * 100);
+      return Math.min(100, Math.max(4, p));
+    },
+    thanhTienTrinhTonKho(yc) {
+      const ton = parseInt(yc.so_luong_ton_kho, 10) || 0;
+      const xin = parseInt(yc.so_luong_yeu_cau, 10) || 0;
+      if (xin > ton) return 'bg-danger';
+      if (xin / ton > 0.5) return 'bg-warning';
+      return 'bg-success';
+    },
+    async taiDanhSachYeuCauCapPhat() {
+      this.dangTaiDanhSachYeuCau = true;
       try {
-        const res = await adminResourcesAPI.getLichSuCapPhat({ per_page: 50 });
-        const data = res.data?.data?.data ?? res.data?.data ?? res.data ?? [];
-        this.allocationHistory = Array.isArray(data) ? data : [];
+        const res = await adminResourcesAPI.layDanhSachYeuCauCapPhat({
+          trang_thai: 'CHO_DUYET',
+          per_page: 50,
+        });
+        const payload = res.data?.data ?? {};
+        this.danhSachYeuCauCapPhat = Array.isArray(payload.data) ? payload.data : [];
       } catch (e) {
-        console.error('loadAllocationHistory', e);
+        console.error('taiDanhSachYeuCauCapPhat', e);
+        this.showToast('Không tải được danh sách yêu cầu', 'error');
       } finally {
-        this.loadingAllocation = false;
+        this.dangTaiDanhSachYeuCau = false;
       }
     },
+    async taiLichSuCapPhatCoBoLoc() {
+      this.dangTaiLichSuCapPhat = true;
+      try {
+        const params = { per_page: 80 };
+        if (this.boLocLichSu.id_doi_cuu_ho) params.id_doi_cuu_ho = this.boLocLichSu.id_doi_cuu_ho;
+        if (this.boLocLichSu.tu_ngay) params.tu_ngay = this.boLocLichSu.tu_ngay;
+        if (this.boLocLichSu.den_ngay) params.den_ngay = this.boLocLichSu.den_ngay;
+        if (this.boLocLichSu.trang_thai) params.trang_thai = this.boLocLichSu.trang_thai;
+        const res = await adminResourcesAPI.getLichSuCapPhat(params);
+        const payload = res.data?.data ?? {};
+        this.lichSuCapPhat = Array.isArray(payload.data) ? payload.data : [];
+      } catch (e) {
+        console.error('taiLichSuCapPhatCoBoLoc', e);
+        this.showToast('Không tải được lịch sử cấp phát', 'error');
+      } finally {
+        this.dangTaiLichSuCapPhat = false;
+      }
+    },
+    async taiLaiToanBoCapPhat() {
+      await Promise.all([this.taiDanhSachYeuCauCapPhat(), this.taiLichSuCapPhatCoBoLoc()]);
+    },
+    async xuLyCapPhatTheoYeuCau(id) {
+      this.dangXuLyCapPhat = id;
+      try {
+        await adminResourcesAPI.capPhatTheoYeuCau(id);
+        this.showToast('Cấp phát thành công', 'success');
+        await this.taiLaiToanBoCapPhat();
+        await this.loadResources();
+        await this.loadWarehouse();
+      } catch (e) {
+        const msg = e.response?.data?.message || 'Không cấp phát được';
+        this.showToast(msg, 'error');
+      } finally {
+        this.dangXuLyCapPhat = null;
+      }
+    },
+    async xuLyTuChoiYeuCau(id) {
+      if (!window.confirm('Từ chối yêu cầu này?')) return;
+      this.dangXuLyTuChoi = id;
+      try {
+        await adminResourcesAPI.tuChoiYeuCauCapPhat(id, {});
+        this.showToast('Đã từ chối yêu cầu', 'success');
+        await this.taiLaiToanBoCapPhat();
+      } catch (e) {
+        const msg = e.response?.data?.message || 'Thao tác thất bại';
+        this.showToast(msg, 'error');
+      } finally {
+        this.dangXuLyTuChoi = null;
+      }
+    },
+    ketNoiEchoYeuCauCapPhat() {
+      if (typeof window === 'undefined' || !window.Echo) return;
+      this.ngatEchoYeuCauCapPhat();
+      try {
+        this.kenhEchoYeuCau = window.Echo.channel('admin-yeu-cau-cap-phat');
+        this.kenhEchoYeuCau.listen('.yeu-cau-cap-phat', () => {
+          if (this.activeTab === 'allocation') {
+            this.taiLaiToanBoCapPhat();
+          }
+        });
+        const conn = window.Echo.connector?.pusher?.connection;
+        if (conn && conn.state !== 'connected') {
+          conn.bind('connected', () => {
+            if (this.activeTab === 'allocation') this.taiLaiToanBoCapPhat();
+          });
+        }
+      } catch (e) {
+        console.warn('[TaiNguyen] Echo yeu cau cap phat:', e);
+      }
+    },
+    ngatEchoYeuCauCapPhat() {
+      try {
+        if (this.kenhEchoYeuCau && window.Echo) {
+          window.Echo.leave('admin-yeu-cau-cap-phat');
+        }
+      } catch (_) { /* noop */ }
+      this.kenhEchoYeuCau = null;
+    },
+
 
     // ============ TEAM MODAL ============
     async openAddTeamModal() {
@@ -1034,31 +1228,6 @@ export default {
         this.showToast(msg, 'error');
       } finally {
         this.submittingWarehouse = false;
-      }
-    },
-
-    // ============ ALLOCATION ============
-    async submitAllocation() {
-      if (!this.canSubmitAllocation) return;
-      this.submittingAllocation = true;
-      try {
-        await adminResourcesAPI.capPhat({
-          id_doi_cuu_ho: this.allocationForm.id_doi_cuu_ho,
-          slug_tai_nguyen: this.allocationForm.slug_tai_nguyen,
-          so_luong_cap: this.allocationForm.so_luong_cap,
-          ghi_chu: this.allocationForm.ghi_chu,
-        });
-        this.showToast('Cấp phát tài nguyên thành công!', 'success');
-        this.allocationForm = { id_doi_cuu_ho: '', slug_tai_nguyen: '', so_luong_cap: null, ghi_chu: '' };
-        await this.loadAllocationHistory();
-        await this.loadResources();
-        await this.loadWarehouse();
-      } catch (e) {
-        console.error('submitAllocation', e);
-        const msg = e.response?.data?.message || 'Có lỗi xảy ra';
-        this.showToast(msg, 'error');
-      } finally {
-        this.submittingAllocation = false;
       }
     },
 
@@ -1464,4 +1633,10 @@ export default {
 /* ===== BADGE VARIANTS ===== */
 /* Subtle colors are defined globally in badge-utils.css */
 /* Only component-specific overrides here */
+
+/* ===== TAB CẤP PHÁT (yêu cầu) ===== */
+.allocation-tab-root .cap-request-card.ring-insufficient {
+  box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.35);
+}
+.allocation-tab-root .shrink-0 { flex-shrink: 0; }
 </style>
