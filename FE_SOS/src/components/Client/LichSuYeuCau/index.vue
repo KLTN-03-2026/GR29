@@ -588,6 +588,21 @@ function normalizeValue(value, fallback = "") {
   return String(value);
 }
 
+function normalizeStatus(value) {
+  if (value === null || value === undefined) return "";
+  const v = String(value).trim().toUpperCase();
+  const map = {
+    DA_HOAN_THANH: "HOAN_THANH",
+    DONE: "HOAN_THANH",
+    DA_HUY: "HUY_BO",
+    HUY: "HUY_BO",
+    DA_PHAN_CONG: "DA_PHAN_CONG",
+    DA_DEN_HIEN_TRUONG: "DA_DEN_HIEN_TRUONG",
+    MOI: "CHO_XU_LY",
+  };
+  return map[v] || v;
+}
+
 function extractUserId(parsed) {
   if (!parsed || typeof parsed !== "object") return null;
   const keys = ["id_nguoi_dung", "id", "user_id", "ma_nguoi_dung", "nguoi_dung_id"];
@@ -808,12 +823,15 @@ export default {
       const requestId = data.id || data.id_yeu_cau;
       if (!requestId) return;
 
-      const status = (data.trang_thai || "").toUpperCase();
-      const isTerminal = status === "HOAN_THANH" || status === "DA_HOAN_THANH" || status === "THAT_BAI";
+      const status = normalizeStatus(
+        data.trang_thai || data.trang_thai_goc || data.status || data.trangThai
+      );
+      const isTerminal = status === "HOAN_THANH" || status === "THAT_BAI";
       const userId = this.realtimeUserId;
+      const eventUserId = extractUserId(data) || extractUserId(data.nguoi_dung);
 
       // Case 1: Yêu cầu của user vừa hoàn thành/thất bại -> thêm vào danh sách
-      if (isTerminal && data.id_nguoi_dung === userId) {
+      if (isTerminal && eventUserId === userId) {
         const exists = this.danhsach.some((item) => item.id === requestId);
         if (!exists) {
           this.hienToast("success", `Yêu cầu SOS-${String(requestId).padStart(4, "0")} đã được xử lý.`);
@@ -848,7 +866,8 @@ export default {
         const response = await rescueRequestAPI.getDetail(requestId);
         const raw = response?.data?.data || response?.data || response;
         const userId = this.realtimeUserId;
-        if (raw.id_nguoi_dung !== userId && raw.nguoi_dung?.id !== userId) return;
+        const eventUserId = extractUserId(raw) || extractUserId(raw.nguoi_dung);
+        if (eventUserId !== userId) return;
         const normalized = this.normalizeResults([raw]);
         if (normalized.length > 0) {
           this.danhsach.unshift(normalized[0]);
@@ -889,7 +908,9 @@ export default {
       if (!Array.isArray(items)) return [];
       return items.map((item) => {
         const id = item.id_yeu_cau || item.id || item.ma_ket_qua || item.result_id || "";
-        const trangThaiGoc = (item.trang_thai || "").toUpperCase();
+        const trangThaiGoc = normalizeStatus(
+          item.trang_thai || item.trang_thai_goc || item.status || item.trangThai
+        );
 
         let typeLabel = "Không rõ";
         if (item.loaiSuCo) {
@@ -1032,14 +1053,15 @@ export default {
           ? rawData.data.data
           : [];
 
-        const completedItems = items.filter((item) => {
-          const trangThai = (item.trang_thai || "").toUpperCase();
-          const isCompleted = trangThai === "HOAN_THANH" || trangThai === "DA_HOAN_THANH" || trangThai === "THAT_BAI";
-          const itemUserId = extractUserId(item) || extractUserId(item?.nguoi_dung);
+        const normalizedItems = this.normalizeResults(items);
+        const completedItems = normalizedItems.filter((item) => {
+          const status = normalizeStatus(item.trang_thai_goc);
+          const isCompleted = status === "HOAN_THANH" || status === "THAT_BAI";
+          const itemUserId = extractUserId(item.raw) || extractUserId(item.raw?.nguoi_dung);
           return isCompleted && itemUserId === currentUserId;
         });
 
-        this.danhsach = this.normalizeResults(completedItems);
+        this.danhsach = completedItems;
       } catch (error) {
         console.error("Không tải được lịch sử yêu cầu:", error);
         this.error = "Không tải được yêu cầu. Vui lòng thử lại.";

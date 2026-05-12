@@ -20,7 +20,7 @@ use App\Http\Controllers\BaoCaoCuuHoController;
 use App\Http\Controllers\GuestSessionController;
 use App\Http\Controllers\AutoDispatchController;
 use App\Http\Controllers\YeuCauCapPhatController;
-
+use App\Http\Controllers\SupportContactController;
 // =========================================
 // PUBLIC ROUTES
 // =========================================
@@ -53,6 +53,7 @@ Route::middleware(['auth:nguoi-dung'])->group(function () {
     Route::get('/nguoi-dung/check-client', [NguoiDungController::class, 'checkClient']);
     Route::get('/client/profile/data', [NguoiDungController::class, 'getProfile']);
     Route::post('/client/profile/update', [NguoiDungController::class, 'updateProfile']);
+    Route::post('/client/contact', [SupportContactController::class, 'store']);
 });
 
 // =========================================
@@ -142,6 +143,7 @@ Route::middleware(['auth:admin', 'check.admin'])->group(function () {
     Route::post('admin/profile/update', [AdminController::class, 'updateProfile']);
     Route::post('admin/logout', [AdminController::class, 'logout']);
     Route::get('admin/list', [AdminController::class, 'index']);
+    Route::get('admin/support-contacts', [SupportContactController::class, 'index']);
     Route::get('admin/chi-tiet/{id}', [AdminController::class, 'show']);
     Route::post('admin/create', [AdminController::class, 'store']);
     Route::put('admin/update/{id}', [AdminController::class, 'update']);

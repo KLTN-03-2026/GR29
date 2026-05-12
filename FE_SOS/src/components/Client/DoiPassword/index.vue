@@ -60,14 +60,16 @@
                   <button type="submit" class="btn btn-primary btn-lg fw-bold shadow-sm hover-lift" :disabled="form.new_password !== form.confirm_password || !isPasswordStrong">
                     Cập nhật mật khẩu
                   </button>
-                  <button type="button" class="btn btn-link btn-sm text-decoration-none text-secondary hover-underline mt-2" @click="forgotPassword">
+                  <a href="/client/forgot-password" class="text-center">
+                    <button type="button" class="btn btn-link btn-sm text-decoration-none text-secondary hover-underline mt-2">
                     Quên mật khẩu?
                   </button>
+                  </a>
                 </div>
               </form>
 
               <div class="text-center mt-4 pt-3 border-top border-light">
-                <a href="#" class="text-secondary text-decoration-none small hover-underline d-inline-flex align-items-center">
+                <a href="/client/profile" class="text-secondary text-decoration-none small hover-underline d-inline-flex align-items-center">
                   <i class="bi bi-arrow-left me-2"></i> Quay lại trang cá nhân
                 </a>
               </div>
