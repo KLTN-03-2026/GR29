@@ -8,8 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('yeu_cau_cap_phat')) {
-            Schema::create('yeu_cau_cap_phat', function (Blueprint $table) {
+        Schema::create('yeu_cau_cap_phat', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('id_doi_cuu_ho');
             $table->unsignedBigInteger('id_nguoi_yeu_cau');
@@ -26,8 +25,7 @@ return new class extends Migration
             $table->foreign('id_nguoi_duyet')->references('id_admin')->on('admin')->nullOnDelete();
             $table->index(['trang_thai', 'created_at']);
             $table->index(['id_doi_cuu_ho', 'trang_thai']);
-            });
-        }
+        });
     }
 
     public function down(): void
