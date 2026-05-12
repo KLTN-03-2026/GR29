@@ -52,9 +52,17 @@ return new class extends Migration
                 $table->dropColumn('id_tai_nguyen');
             }
 
-            // Add indexes
-            $table->index(['trang_thai', 'created_at']);
-            $table->index(['id_doi_cuu_ho', 'trang_thai']);
+            // Add indexes only if they don't exist
+            $indexes = collect(DB::select("SHOW INDEX FROM yeu_cau_cap_phat"));
+            $indexNames = $indexes->pluck('Key_name')->toArray();
+
+            if (!in_array('yeu_cau_cap_phat_trang_thai_created_at_index', $indexNames)) {
+                $table->index(['trang_thai', 'created_at']);
+            }
+
+            if (!in_array('yeu_cau_cap_phat_id_doi_cuu_ho_trang_thai_index', $indexNames)) {
+                $table->index(['id_doi_cuu_ho', 'trang_thai']);
+            }
         });
     }
 
