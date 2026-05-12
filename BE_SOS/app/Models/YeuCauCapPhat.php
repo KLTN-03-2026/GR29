@@ -15,6 +15,8 @@ class YeuCauCapPhat extends Model
 
     protected $table = 'yeu_cau_cap_phat';
 
+    protected $primaryKey = 'id_cap_phat';
+
     protected $fillable = [
         'id_doi_cuu_ho',
         'id_nguoi_yeu_cau',

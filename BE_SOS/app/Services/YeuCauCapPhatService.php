@@ -219,7 +219,7 @@ class YeuCauCapPhatService
                 YeuCauCapPhat::TRANG_THAI_TU_CHOI,
             ])
             ->orderByDesc('thoi_gian_duyet')
-            ->orderByDesc('id');
+            ->orderByDesc('id_cap_phat');
 
         if ($idDoi) {
             $q->where('id_doi_cuu_ho', (int) $idDoi);
@@ -255,7 +255,7 @@ class YeuCauCapPhatService
         $ton = $this->laySoTonKho($yc->slug_tai_nguyen);
 
         return [
-            'id' => $yc->id,
+            'id' => $yc->id_cap_phat,
             'id_doi_cuu_ho' => $yc->id_doi_cuu_ho,
             'ten_doi' => $yc->doiCuuHo?->ten_doi,
             'id_nguoi_yeu_cau' => $yc->id_nguoi_yeu_cau,
