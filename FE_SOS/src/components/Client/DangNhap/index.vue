@@ -29,7 +29,7 @@
 
         <div class="form-actions">
           <label class="remember-me">
-            <input type="checkbox"> Ghi nhớ đăng nhập
+            
           </label>
           <a href="#" class="forgot-password" @click.prevent="$router.push('/client/forgot-password')">Quên mật khẩu?</a>
         </div>

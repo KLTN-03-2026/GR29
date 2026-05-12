@@ -7,66 +7,72 @@
         <p class="text-secondary text-uppercase small fw-bold tracking-wider">THEO DÕI CÁC TÍN HIỆU KHẨN CẤP CỦA BẠN</p>
       </div>
 
-      <!-- Filter Bar - All in one row -->
-      <div class="d-flex flex-wrap align-items-end gap-3 mb-4 p-3 rounded-4" 
+      <!-- Filter Bar - Responsive layout -->
+      <div class="filter-bar p-3 rounded-4" 
            style="background: #f1f4f6;">
         <!-- Thanh tìm kiếm -->
-        <div class="position-relative flex-grow-1" style="min-width: 250px; max-width: 350px;">
-          <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3" 
-             style="color: #737687; font-size: 1rem;"></i>
-          <input 
-            type="text" 
-            class="form-control ps-5 py-2.5 rounded-3 border-0" 
-            style="font-size: 0.875rem; background: #ffffff;"
-            placeholder="Tìm ID hoặc tiêu đề..."
-            v-model="searchQuery"
-            @input="onSearchInput"
-          >
-        </div>
-
-        <!-- Lọc theo loại sự cố -->
-        <div style="min-width: 180px;">
-          <select class="form-select py-2.5 px-4 rounded-3 border-0" 
-                  style="font-size: 0.875rem; background: #ffffff; color: #434655;"
-                  v-model="selectedType" @change="onFilterChange">
-            <option value=""> Tất cả loại sự cố</option>
-            <option v-for="type in uniqueTypes" :key="type" :value="type">{{ type }}</option>
-          </select>
-        </div>
-
-        <!-- Tìm kiếm theo ngày tháng -->
-        <div class="d-flex align-items-center gap-2" style="min-width: 280px;">
-          <div class="position-relative flex-grow-1">
-            <i class="bi bi-calendar3 position-absolute top-50 start-0 translate-middle-y ms-3" 
-               style="color: #737687; font-size: 0.875rem;"></i>
+        <div class="search-box mb-3">
+          <div class="position-relative" style="max-width: 100%;">
+            <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3" 
+               style="color: #737687; font-size: 1rem;"></i>
             <input 
-              type="date" 
-              class="form-control ps-5 py-2.5 rounded-3 border-0"
-              style="font-size: 0.875rem; background: #ffffff; color: #434655;"
-              v-model="startDate"
-              @change="onFilterChange"
-            >
-          </div>
-          <span class="text-secondary fw-bold">-</span>
-          <div class="position-relative flex-grow-1">
-            <i class="bi bi-calendar3 position-absolute top-50 start-0 translate-middle-y ms-3" 
-               style="color: #737687; font-size: 0.875rem;"></i>
-            <input 
-              type="date" 
-              class="form-control ps-5 py-2.5 rounded-3 border-0"
-              style="font-size: 0.875rem; background: #ffffff; color: #434655;"
-              v-model="endDate"
-              @change="onFilterChange"
+              type="text" 
+              class="form-control ps-5 py-2.5 rounded-3 border-0 w-100" 
+              style="font-size: 0.875rem; background: #ffffff;"
+              placeholder="Tìm ID hoặc tiêu đề..."
+              v-model="searchQuery"
+              @input="onSearchInput"
             >
           </div>
         </div>
 
-        <!-- Nút xem tất cả -->
-        <button class="btn rounded-pill px-4 py-2.5 fw-bold shadow-sm" 
-                style="background: #feb700; color: #6b4b00; font-size: 0.875rem; white-space: nowrap;"
-                @click="viewAll">
-          Xem tất cả
-        </button>
+        <!-- Filter controls row -->
+        <div class="d-flex flex-wrap align-items-center gap-3">
+          <!-- Lọc theo loại sự cố -->
+          <div class="flex-shrink-0" style="min-width: 150px;">
+            <select class="form-select py-2.5 px-3 rounded-3 border-0 w-100" 
+                    style="font-size: 0.875rem; background: #ffffff; color: #434655;"
+                    v-model="selectedType" @change="onFilterChange">
+              <option value=""> Tất cả loại</option>
+              <option v-for="type in uniqueTypes" :key="type" :value="type">{{ type }}</option>
+            </select>
+          </div>
+
+          <!-- Tìm kiếm theo ngày tháng -->
+          <div class="date-filter d-flex align-items-center gap-2 flex-grow-1" style="min-width: 200px;">
+            <div class="position-relative flex-grow-1">
+              <i class="bi bi-calendar3 position-absolute top-50 start-0 translate-middle-y ms-2" 
+                 style="color: #737687; font-size: 0.75rem;"></i>
+              <input 
+                type="date" 
+                class="form-control ps-4 py-2 rounded-3 border-0 w-100"
+                style="font-size: 0.8rem; background: #ffffff; color: #434655;"
+                v-model="startDate"
+                @change="onFilterChange"
+              >
+            </div>
+            <span class="text-secondary fw-bold d-none d-sm-block">-</span>
+            <div class="position-relative flex-grow-1">
+              <i class="bi bi-calendar3 position-absolute top-50 start-0 translate-middle-y ms-2" 
+                 style="color: #737687; font-size: 0.75rem;"></i>
+              <input 
+                type="date" 
+                class="form-control ps-4 py-2 rounded-3 border-0 w-100"
+                style="font-size: 0.8rem; background: #ffffff; color: #434655;"
+                v-model="endDate"
+                @change="onFilterChange"
+              >
+            </div>
+          </div>
+
+          <!-- Nút xem tất cả -->
+          <button class="btn rounded-pill px-3 py-2.5 fw-bold shadow-sm flex-shrink-0" 
+                  style="background: #feb700; color: #6b4b00; font-size: 0.875rem; white-space: nowrap;"
+                  @click="viewAll">
+            <i class="bi bi-arrow-clockwise me-1 d-none d-sm-inline"></i>
+            <span>Xem tất cả</span>
+          </button>
+        </div>
       </div> 
 
       <!-- Hiển thị số kết quả -->
@@ -85,84 +91,99 @@
         <p class="text-secondary mt-3">Đang tải danh sách yêu cầu...</p>
       </div>
 
-      <!-- 2x2 Bento Grid of Request Cards -->
-      <div v-else-if="filteredList.length > 0" class="row g-4">
-        <div v-for="item in filteredList" :key="item.id" class="col-12 col-md-6">
-          <div class="glass-card rounded-4 p-4 d-flex flex-column flex-sm-row gap-4 hover-card">
-            <!-- Hình ảnh -->
-            <div class="rounded-3 overflow-hidden shrink-0 position-relative" 
-                 style="width: 100%; height: 180px; max-width: 180px;">
-              <img v-if="item.anh_hien_truong" 
-                   :src="item.anh_hien_truong" 
-                   class="w-100 h-100 object-fit-cover hover-image"
-                   alt="Ảnh hiện trường">
-              <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center" style="background: #e0e3e5;">
-                <i :class="['bi fs-1', item.icon, item.iconColor]"></i>
+      <!-- Request Cards - Responsive Grid -->
+      <div v-else-if="filteredList.length > 0" class="row g-3 g-md-4">
+        <div v-for="item in filteredList" :key="item.id" class="col-12">
+          <div class="glass-card rounded-4 p-3 p-md-4 hover-card">
+            <!-- Mobile Layout: Stack vertical -->
+            <div class="d-flex flex-column flex-md-row gap-3 gap-md-4">
+              <!-- Hình ảnh -->
+              <div class="rounded-3 overflow-hidden position-relative mx-auto mx-md-0" 
+                   style="width: 100%; height: 200px; max-width: 180px;">
+                <img v-if="item.anh_hien_truong" 
+                     :src="item.anh_hien_truong" 
+                     class="w-100 h-100 object-fit-cover hover-image"
+                     alt="Ảnh hiện trường">
+                <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center" style="background: #e0e3e5;">
+                  <i :class="['bi fs-1', item.icon, item.iconColor]"></i>
+                </div>
+                <div class="position-absolute top-2 start-2 bg-dark bg-opacity-50 backdrop-blur-md text-white px-2 py-1 rounded" 
+                     style="font-size: 0.625rem; font-weight: 700;">
+                  ẢNH HIỆN TRƯỜNG
+                </div>
               </div>
-              <div class="position-absolute top-2 start-2 bg-dark bg-opacity-50 backdrop-blur-md text-white px-2 py-1 rounded" 
-                   style="font-size: 0.625rem; font-weight: 700;">
-                ẢNH HIỆN TRƯỜNG
-              </div>
-            </div>
 
-            <!-- Nội dung -->
-            <div class="d-flex flex-column justify-content-between flex-grow py-1">
-              <div>
+              <!-- Nội dung -->
+              <div class="d-flex flex-column flex-grow-1">
+                <!-- Header với ID và Status -->
                 <div class="d-flex justify-content-between align-items-start mb-2">
-                  <span class="px-2.5 py-1 rounded" 
+                  <span class="px-2 py-1 rounded" 
                         style="font-size: 0.75rem; font-weight: 700; background: #e0e3e5; color: #434655;">
                     SOS-{{ item.id }}
                   </span>
-                <!-- Trạng thái với icon -->
-                  <span :class="['status-badge px-3 py-2 rounded-3 fw-bold d-inline-flex align-items-center gap-2', item.statusBadgeClass]">
-                    <i :class="['bi', item.statusIcon]" style="font-size: 0.875rem;"></i>
+                  <span :class="['status-badge px-2 py-1 rounded-3 fw-bold d-inline-flex align-items-center gap-1', item.statusBadgeClass]" 
+                        style="font-size: 0.7rem;">
+                    <i :class="['bi', item.statusIcon]" style="font-size: 0.75rem;"></i>
                     <span>{{ item.statusText }}</span>
                   </span>
                 </div>
 
-                <h3 class="fw-bold mb-1" style="font-size: 1.25rem; font-family: 'Manrope', sans-serif; color: #181c1e;">
+                <!-- Tiêu đề -->
+                <h3 class="fw-bold mb-2" style="font-size: 1.1rem; font-family: 'Manrope', sans-serif; color: #181c1e;">
                   {{ item.loai }}
                 </h3>
 
+                <!-- Thông tin thời gian và địa chỉ -->
                 <div class="d-flex align-items-center gap-2 text-secondary mb-3" style="font-size: 0.75rem;">
-                  <i class="bi bi-clock" style="font-size: 0.875rem;"></i>
+                  <i class="bi bi-clock" style="font-size: 0.8rem;"></i>
                   <span>{{ item.time }}</span>
-                  <span class="mx-1">•</span>
-                  <i class="bi bi-geo-alt text-danger" style="font-size: 0.875rem;"></i>
+                  <span class="mx-1 d-none d-md-inline">•</span>
+                  <i class="bi bi-geo-alt text-danger d-none d-md-inline" style="font-size: 0.8rem;"></i>
+                  <span class="d-none d-md-inline">{{ item.address }}</span>
+                </div>
+
+                <!-- Mô tả -->
+                <p class="text-secondary line-clamp-2 mb-3 flex-grow-1" style="font-size: 0.85rem; line-height: 1.4;">
+                  {{ item.moTa }}
+                </p>
+
+                <!-- Địa chỉ (mobile only) -->
+                <div class="d-flex align-items-center gap-2 text-secondary mb-3 d-md-none" style="font-size: 0.75rem;">
+                  <i class="bi bi-geo-alt text-danger" style="font-size: 0.8rem;"></i>
                   <span>{{ item.address }}</span>
                 </div>
 
-                <p class="text-secondary line-clamp-2 mb-0" style="font-size: 0.875rem; line-height: 1.5;">
-                  {{ item.moTa }}
-                </p>
-              </div>
-
-              <!-- Nút hành động -->
-              <div class="d-flex gap-3 mt-3">
-                <button class="btn text-white rounded-pill fw-bold flex-fill" 
-                        style="background: #0042b3; font-size: 0.875rem; padding: 0.6rem 1rem; min-width: 140px;"
-                        @click="showDetailModal(item)">
-                  Chi tiết
-                </button>
-                <button v-if="item.statusKey !== 'HOAN_THANH' && item.statusKey !== 'huy_bo' && item.statusKey !== 'DA_PHAN_CONG' && item.statusKey !== 'DANG_XU_LY'"
-                        class="btn text-danger border rounded-pill fw-bold flex-fill"
-                        style="font-size: 0.875rem; border-color: rgba(195, 198, 216, 0.2); padding: 0.6rem 1rem; min-width: 140px;"
-                        @click="huyYeuCau(item)">
-                  Hủy Yêu Cầu
-                </button>
-                <button v-else-if="item.statusKey === 'DA_PHAN_CONG' || item.statusKey === 'DANG_XU_LY'"
-                        class="btn text-secondary border rounded-pill fw-bold flex-fill"
-                        style="font-size: 0.875rem; border-color: rgba(195, 198, 216, 0.2); padding: 0.6rem 1rem; min-width: 140px; cursor: not-allowed;"
-                        disabled
-                        title="Yêu cầu đang được xử lý, không thể hủy">
-                  Đang xử lý
-                </button>
-                <button v-else
-                        class="btn text-secondary border rounded-pill fw-bold flex-fill opacity-50"
-                        style="font-size: 0.875rem; border-color: rgba(195, 198, 216, 0.2); padding: 0.6rem 1rem; min-width: 140px; cursor: not-allowed;"
-                        disabled>
-                  Đã kết thúc
-                </button>
+                <!-- Nút hành động -->
+                <div class="d-flex flex-column flex-sm-row gap-2 gap-sm-3 mt-auto">
+                  <button class="btn text-white rounded-pill fw-bold flex-fill flex-sm-grow-0" 
+                          style="background: #0042b3; font-size: 0.8rem; padding: 0.5rem 1rem; min-width: 120px;"
+                          @click="showDetailModal(item)">
+                    <i class="bi bi-eye me-1"></i>
+                    Chi tiết
+                  </button>
+                  <button v-if="item.statusKey !== 'HOAN_THANH' && item.statusKey !== 'huy_bo' && item.statusKey !== 'DA_PHAN_CONG' && item.statusKey !== 'DANG_XU_LY'"
+                          class="btn text-danger border rounded-pill fw-bold flex-fill flex-sm-grow-0"
+                          style="font-size: 0.8rem; border-color: rgba(195, 198, 216, 0.2); padding: 0.5rem 1rem; min-width: 120px;"
+                          @click="huyYeuCau(item)">
+                    <i class="bi bi-x-circle me-1"></i>
+                    Hủy
+                  </button>
+                  <button v-else-if="item.statusKey === 'DA_PHAN_CONG' || item.statusKey === 'DANG_XU_LY'"
+                          class="btn text-secondary border rounded-pill fw-bold flex-fill flex-sm-grow-0"
+                          style="font-size: 0.8rem; border-color: rgba(195, 198, 216, 0.2); padding: 0.5rem 1rem; min-width: 120px; cursor: not-allowed;"
+                          disabled
+                          title="Yêu cầu đang được xử lý, không thể hủy">
+                    <i class="bi bi-clock me-1"></i>
+                    Đang xử lý
+                  </button>
+                  <button v-else
+                          class="btn text-secondary border rounded-pill fw-bold flex-fill flex-sm-grow-0 opacity-50"
+                          style="font-size: 0.8rem; border-color: rgba(195, 198, 216, 0.2); padding: 0.5rem 1rem; min-width: 120px; cursor: not-allowed;"
+                          disabled>
+                    <i class="bi bi-check-circle me-1"></i>
+                    Đã kết thúc
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -186,55 +207,57 @@
 
     <!-- Modal Chi tiết -->
     <div v-if="isModalOpen" class="modal-overlay" @click.self="closeModal">
-      <div class="modal-content rounded-4 p-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-          <h4 class="fw-bold mb-0" style="font-family: 'Manrope', sans-serif; color: #181c1e;">
+      <div class="modal-content rounded-4 p-3 p-md-4">
+        <div class="d-flex justify-content-between align-items-center mb-3 mb-md-4">
+          <h4 class="fw-bold mb-0 flex-grow-1" style="font-family: 'Manrope', sans-serif; color: #181c1e; font-size: 1.2rem;">
             Chi tiết yêu cầu #{{ selectedItem?.id }}
           </h4>
-          <button class="btn-close" @click="closeModal"></button>
+          <button class="btn-close flex-shrink-0" @click="closeModal"></button>
         </div>
         
         <div class="mb-3">
-          <span :class="['px-3 py-2 rounded fw-bold', selectedItem?.statusBadgeClass]" 
-                style="font-size: 0.875rem;">
+          <span :class="['px-3 py-2 rounded fw-bold d-inline-flex align-items-center gap-1', selectedItem?.statusBadgeClass]" 
+                style="font-size: 0.8rem;">
+            <i :class="['bi', selectedItem?.statusIcon]" style="font-size: 0.75rem;"></i>
             {{ selectedItem?.statusText }}
           </span>
         </div>
 
         <div class="mb-3">
-          <label class="fw-bold text-secondary small text-uppercase mb-2">Loại sự cố</label>
-          <p class="mb-0" style="font-size: 1rem;">{{ selectedItem?.loai }}</p>
+          <label class="fw-bold text-secondary small text-uppercase mb-2" style="font-size: 0.75rem;">Loại sự cố</label>
+          <p class="mb-0 fw-medium" style="font-size: 0.95rem;">{{ selectedItem?.loai }}</p>
         </div>
 
         <div class="mb-3">
-          <label class="fw-bold text-secondary small text-uppercase mb-2">Địa chỉ</label>
-          <p class="mb-0" style="font-size: 1rem;">
+          <label class="fw-bold text-secondary small text-uppercase mb-2" style="font-size: 0.75rem;">Địa chỉ</label>
+          <p class="mb-0" style="font-size: 0.9rem; line-height: 1.4;">
             <i class="bi bi-geo-alt text-danger me-2"></i>{{ selectedItem?.address }}
           </p>
         </div>
 
         <div class="mb-3">
-          <label class="fw-bold text-secondary small text-uppercase mb-2">Thời gian</label>
-          <p class="mb-0" style="font-size: 1rem;">
+          <label class="fw-bold text-secondary small text-uppercase mb-2" style="font-size: 0.75rem;">Thời gian</label>
+          <p class="mb-0" style="font-size: 0.9rem;">
             <i class="bi bi-clock me-2"></i>{{ selectedItem?.time }}
           </p>
         </div>
 
         <div class="mb-3">
-          <label class="fw-bold text-secondary small text-uppercase mb-2">Mô tả</label>
+          <label class="fw-bold text-secondary small text-uppercase mb-2" style="font-size: 0.75rem;">Mô tả</label>
           <div class="p-3 rounded-3" style="background: #f1f4f6;">
-            <p class="mb-0" style="font-size: 1rem; line-height: 1.6;">{{ selectedItem?.moTa || 'Không có mô tả' }}</p>
+            <p class="mb-0" style="font-size: 0.9rem; line-height: 1.5;">{{ selectedItem?.moTa || 'Không có mô tả' }}</p>
           </div>
         </div>
 
         <div v-if="selectedItem?.chiTiet" class="mb-3">
-          <label class="fw-bold text-secondary small text-uppercase mb-2">Chi tiết</label>
-          <p class="mb-0" style="font-size: 1rem;">{{ selectedItem.chiTiet }}</p>
+          <label class="fw-bold text-secondary small text-uppercase mb-2" style="font-size: 0.75rem;">Chi tiết</label>
+          <p class="mb-0" style="font-size: 0.9rem; line-height: 1.4;">{{ selectedItem.chiTiet }}</p>
         </div>
 
-        <div class="d-flex justify-content-end gap-3 mt-4 pt-3 border-top">
-          <button class="btn btn-secondary rounded-pill px-4" @click="closeModal">
-            Đóng
+        <div class="d-flex justify-content-end gap-2 gap-md-3 mt-3 pt-3 border-top">
+          <button class="btn btn-secondary rounded-pill px-3 px-md-4 py-2" @click="closeModal">
+            <i class="bi bi-x-lg me-1 me-md-2"></i>
+            <span>Đóng</span>
           </button>
         </div>
       </div>
@@ -242,27 +265,30 @@
 
     <!-- Modal Xác nhận Hủy Yêu Cầu -->
     <div v-if="isCancelModalOpen" class="modal-overlay" @click.self="closeCancelModal">
-      <div class="cancel-modal-content rounded-4 p-4 text-center">
-        <div class="mb-4">
+      <div class="cancel-modal-content rounded-4 p-3 p-md-4 text-center">
+        <div class="mb-3 mb-md-4">
           <div class="warning-icon-wrapper mb-3">
             <i class="bi bi-exclamation-triangle-fill text-warning"></i>
           </div>
-          <h4 class="fw-bold mb-2" style="color: #181c1e;">Xác nhận hủy yêu cầu</h4>
-          <p class="text-secondary mb-0" style="font-size: 0.9rem;">
+          <h4 class="fw-bold mb-2" style="color: #181c1e; font-size: 1.1rem;">Xác nhận hủy yêu cầu</h4>
+          <p class="text-secondary mb-0" style="font-size: 0.85rem; line-height: 1.4;">
             Bạn có chắc muốn hủy yêu cầu <strong>#{{ cancelItem?.id }}</strong> không?
           </p>
         </div>
-        <div class="d-flex gap-3">
+        <div class="d-flex gap-2 gap-md-3">
           <button class="btn flex-fill rounded-pill py-2.5 fw-bold" 
-                  style="background: #f1f4f6; color: #434655;"
+                  style="background: #f1f4f6; color: #434655; font-size: 0.85rem;"
                   @click="closeCancelModal">
-            Không, giữ lại
+            <i class="bi bi-x-lg me-1 me-md-2"></i>
+            <span class="d-none d-sm-inline">Không, giữ lại</span>
+            <span class="d-sm-none">Giữ lại</span>
           </button>
           <button class="btn flex-fill rounded-pill py-2.5 fw-bold text-white" 
-                  style="background: #dc2626;"
+                  style="background: #dc2626; font-size: 0.85rem;"
                   @click="confirmHuyYeuCau">
-            <i class="bi bi-trash3 me-1"></i>
-            Hủy yêu cầu
+            <i class="bi bi-trash3 me-1 me-md-2"></i>
+            <span class="d-none d-sm-inline">Hủy yêu cầu</span>
+            <span class="d-sm-none">Hủy</span>
           </button>
         </div>
       </div>
@@ -829,6 +855,66 @@ export default {
 .container-fluid {
   max-width: 1400px;
   margin: 0 auto;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .filter-bar {
+    padding: 1rem !important;
+  }
+  
+  .glass-card {
+    padding: 1rem !important;
+  }
+  
+  .modal-content {
+    margin: 0.5rem !important;
+    max-height: 95vh !important;
+  }
+  
+  .cancel-modal-content {
+    padding: 1.5rem !important;
+    margin: 0.5rem !important;
+  }
+  
+  .warning-icon-wrapper {
+    width: 60px !important;
+    height: 60px !important;
+  }
+  
+  .warning-icon-wrapper i {
+    font-size: 2rem !important;
+  }
+  
+  /* Reduce font sizes on mobile */
+  h1 {
+    font-size: 1.75rem !important;
+  }
+  
+  .status-badge {
+    font-size: 0.65rem !important;
+  }
+}
+
+/* Small mobile optimizations */
+@media (max-width: 480px) {
+  .date-filter {
+    flex-direction: column;
+    gap: 0.5rem !important;
+  }
+  
+  .date-filter span {
+    display: none !important;
+  }
+  
+  .glass-card {
+    padding: 0.75rem !important;
+  }
+  
+  .modal-content {
+    margin: 0.25rem !important;
+    padding: 0.75rem !important;
+  }
 }
 
 /* Cancel Modal Styles */

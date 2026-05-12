@@ -47,7 +47,7 @@
           </button>
 
           <p class="switch-page">
-            <router-link to="/client/login">← Quay lại đăng nhập</router-link>
+            <router-link to="/client/login">← Quay lại</router-link>
           </p>
         </form>
       </div>
@@ -105,7 +105,7 @@
           </div>
 
           <p class="switch-page">
-            <router-link to="/client/login">← Quay lại đăng nhập</router-link>
+            <router-link to="/client/login">← Quay lại</router-link>
           </p>
         </form>
       </div>
@@ -207,7 +207,7 @@
           </button>
 
           <p class="switch-page">
-            <router-link to="/client/login">← Quay lại đăng nhập</router-link>
+            <router-link to="/client/login">← Quay lại</router-link>
           </p>
         </form>
       </div>

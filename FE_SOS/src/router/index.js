@@ -99,7 +99,6 @@ const routes = [
     {
         path: "/client/register",
         component: () => import("../components/Client/DangKy/index.vue"),
-        meta: { layout: "client" },
     },
     {
         path: "/client/login",
