@@ -312,6 +312,30 @@ router.beforeEach((to, from, next) => {
     if (clientProtected.some(p => to.path === p)) {
         return checkClient(to, from, next);
     }
+    // Prevent logged-in admin from accessing admin login page
+    if (to.path === "/admin/login") {
+        const token = localStorage.getItem("admin_token");
+        if (token) {
+            next("/admin/");
+            return;
+        }
+    }
+    // Prevent logged-in users from accessing login page
+    if (to.path === "/client/login") {
+        const token = localStorage.getItem("token") || localStorage.getItem("user_token");
+        if (token) {
+            next("/");
+            return;
+        }
+    }
+    // Prevent logged-in rescuer from accessing rescuer login page
+    if (to.path === "/rescuer/login") {
+        const token = localStorage.getItem("rescuer_token");
+        if (token) {
+            next("/rescuer/home");
+            return;
+        }
+    }
     next();
 });
 

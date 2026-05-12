@@ -76,8 +76,9 @@
               <button class="btn btn-outline-secondary rounded-3" type="button" @click="reset">
                 <i class="fa-solid fa-rotate-left me-2"></i>Nhập lại
               </button>
-              <button class="btn btn-warning rounded-3 fw-semibold" type="submit">
-                <i class="fa-solid fa-paper-plane me-2"></i>Gửi
+              <button class="btn btn-warning rounded-3 fw-semibold" type="submit" :disabled="isSubmitting">
+                <i class="fa-solid fa-paper-plane me-2"></i>
+                {{ isSubmitting ? 'Đang gửi...' : 'Gửi' }}
               </button>
             </div>
           </form>
@@ -88,6 +89,8 @@
 </template>
 
 <script>
+import { clientAPI } from '../../../services/api';
+
 export default {
   name: "ContactClient",
   data() {
@@ -98,15 +101,30 @@ export default {
         subject: "",
         message: "",
       },
+      isSubmitting: false,
     };
   },
   methods: {
     reset() {
       this.form = { name: "", phone: "", subject: "", message: "" };
     },
-    submit() {
-      // demo UI: không gọi API
-      this.reset();
+    async submit() {
+      if (!this.form.name || !this.form.phone || !this.form.subject || !this.form.message) {
+        alert('Vui lòng điền đầy đủ thông tin để gửi yêu cầu hỗ trợ.');
+        return;
+      }
+
+      this.isSubmitting = true;
+      try {
+        await clientAPI.sendContact(this.form);
+        alert('Gửi hỗ trợ thành công. Cảm ơn bạn đã phản hồi.');
+        this.reset();
+      } catch (error) {
+        const message = error?.response?.data?.message || 'Gửi hỗ trợ thất bại, vui lòng thử lại.';
+        alert(message);
+      } finally {
+        this.isSubmitting = false;
+      }
     },
   },
 };

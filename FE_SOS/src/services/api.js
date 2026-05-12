@@ -119,6 +119,7 @@ export const guestAPI = {
 export const clientAPI = {
   getProfile: () => api.get('/nguoi-dung/check-client'),
   updateProfile: (data) => api.post('/client/profile/update', data),
+  sendContact: (data) => api.post('/client/contact', data),
 };
 
 // Password Reset
@@ -138,6 +139,7 @@ export const adminAPI = {
   update: (id, data) => api.put(`/admin/update/${id}`, data),
   updateProfile: (data) => api.post('/admin/profile/update', data),
   changeStatus: (id) => api.put(`/admin/change-status/${id}`),
+  getSupportContacts: () => api.get('/admin/support-contacts'),
   activate: (id) => api.put(`/admin/active/${id}`),
   search: (query) => api.get('/admin/search', { params: { noi_dung_tim: query } }),
   delete: (id) => api.delete(`/admin/delete/${id}`),
