@@ -8,7 +8,7 @@
           <p class="text-muted mb-0 fs-6">Hệ thống phân công và giám sát lực lượng hiện trường</p>
         </div>
         <div class="col-xl-6">
-          <div class="d-flex justify-content-xl-end gap-3 stats-wrapper">
+          <div class="d-flex justify-content-xl-end justify-content-center gap-3 stats-wrapper">
             <div class="stat-card shadow-sm border-0 cursor-pointer" @click="toggleAutoDispatch" :class="{ 'stat-active': dispatchEnabled }" :title="dispatchEnabled ? 'Nhấn để tắt' : 'Nhấn để bật'">
               <div class="stat-icon" :class="dispatchEnabled ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'"><i :class="dispatchEnabled ? 'fa-solid fa-power-off' : 'fa-solid fa-clock'"></i></div>
               <div class="stat-info">
@@ -56,7 +56,7 @@
       <!-- Main Layout -->
       <div class="row g-4" v-if="!loadingRequests && !loadingTeams">
         <!-- Cột Left: Queue -->
-        <div class="col-xl-4 col-lg-5">
+        <div class="col-xl-4 col-lg-5 col-md-6 col-12">
           <div class="card panel-card panel-left d-flex flex-column">
             <div class="card-header bg-white border-bottom-0 pt-4 pb-2 px-4 shadow-sm z-1">
               <div class="d-flex justify-content-between align-items-center mb-3">
@@ -109,7 +109,7 @@
         </div>
 
         <!-- Cột Right: Info & Action -->
-        <div class="col-xl-8 col-lg-7">
+        <div class="col-xl-8 col-lg-7 col-md-6 col-12">
           <div class="card panel-card panel-right h-100 d-flex flex-column panel-right-full">
             <template v-if="selectedReq">
               <div class="card-header bg-white border-bottom pt-4 pb-3 px-4">
@@ -125,7 +125,7 @@
               <div class="card-body p-4 custom-scrollbar overflow-auto">
                 <!-- Info Box -->
                 <div class="row g-4 mb-4">
-                  <div class="col-md-7">
+                  <div class="col-md-7 col-sm-12">
                     <div class="info-box bg-light h-100 p-4 rounded-4 list-item-left position-relative overflow-hidden"
                       :class="getBorderSeverity(selectedReq.mucDoKhanCap)">
                       <div class="box-label text-muted small fw-bolder text-uppercase tracking-wider mb-3"><i
@@ -178,7 +178,7 @@
                     </div>
                   </div>
 
-                  <div class="col-md-5">
+                  <div class="col-md-5 col-sm-12">
                     <div
                       class="info-box bg-white border border-light h-100 p-4 rounded-4 d-flex flex-column justify-content-center align-items-center text-center shadow-sm">
                       <div
@@ -221,7 +221,7 @@
                   </div>
 
                   <div class="d-flex gap-2 align-items-end" v-if="availableTeams.length > 0">
-                    <div class="search-box" style="margin-bottom: 0; min-width: 240px;">
+                    <div class="search-box" style="margin-bottom: 0;">
                       <i class="fa-solid fa-search search-icon"></i>
                       <input type="text" class="form-control shadow-none" placeholder="Tìm kiếm đội cứu hộ..."
                         v-model="searchTeamQuery" style="padding: 8px 16px 8px 36px;">
@@ -241,7 +241,7 @@
                 </div>
 
                 <div class="row g-3" v-else>
-                  <div class="col-md-6 col-lg-6 col-xl-6" v-for="(team, index) in sortedAvailableTeams" :key="team.id">
+                  <div class="col-md-6 col-lg-6 col-xl-6 col-sm-12" v-for="(team, index) in sortedAvailableTeams" :key="team.id">
                     <div class="team-card h-100"
                       :class="{ 'selected': isTeamSelected(team.id), 'busy': isTeamBusy(team.id) }"
                       @click="selectTeam(team)">
@@ -344,7 +344,7 @@
                     <i class="fa-solid fa-circle-exclamation"></i> Vui lòng lựa chọn lực lượng tham gia
                   </span>
                 </div>
-                <div class="d-flex gap-2">
+                <div class="d-flex gap-2 flex-wrap">
                   <button class="btn btn-outline-secondary fw-bolder px-4 py-2 rounded-3"
                     @click="selectedReq = null">Hủy bỏ</button>
                   <button
@@ -1029,34 +1029,6 @@ export default {
     },
     isTeamBusy(id) {
       return this.busyTeams.some(t => Number(t.id) === Number(id));
-    },
-    async fetchNearestTeams(req) {
-      if (!req) {
-        this.suggestedTeamIds = [];
-        return;
-      }
-      try {
-        const payload = {
-          id_yeu_cau: req.id,
-          id_loai_su_co: req.idLoaiSuCo || null,
-        };
-        const res = await rescueRequestAPI.findNearestTeams(payload);
-        const nearestTeams = res?.data?.teams || [];
-        this.suggestedTeamIds = nearestTeams.map(t => Number(t.id || t.id_doi_cuu_ho));
-
-        nearestTeams.forEach(nearby => {
-          const teamId = Number(nearby.id || nearby.id_doi_cuu_ho);
-          const idx = this.teams.findIndex(t => Number(t.id) === teamId);
-          if (idx !== -1) {
-            this.teams[idx].khoang_cach_km = nearby.khoang_cach_km !== undefined ? nearby.khoang_cach_km : null;
-            this.teams[idx].cung_quan = nearby.cung_quan === true || nearby.cung_quan === 1 || nearby.cung_quan === '1';
-            this.teams[idx].cung_loai_su_co = nearby.cung_loai_su_co === true || nearby.cung_loai_su_co === 1 || nearby.cung_loai_su_co === '1';
-          }
-        });
-      } catch (error) {
-        console.error('Lỗi tìm đội gần nhất:', error);
-        this.suggestedTeamIds = [];
-      }
     },
     async initData() {
       this.error = '';
@@ -1957,5 +1929,29 @@ export default {
   outline: 2px solid #2563eb;
   outline-offset: -2px;
   cursor: pointer;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .stats-wrapper {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .search-box input {
+    font-size: 14px;
+  }
+
+  .team-card {
+    padding: 12px;
+  }
+
+  .capacity-wrapper {
+    padding: 6px 8px;
+  }
+
+  .btn-dispatch {
+    width: 100%;
+  }
 }
 </style>

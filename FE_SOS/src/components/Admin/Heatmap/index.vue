@@ -1301,56 +1301,214 @@ export default {
 /* Responsive */
 @media (max-width: 768px) {
   .heatmap-page {
-    padding: 0.75rem;
+    padding: 0.5rem;
   }
 
   .page-header {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
+    align-items: stretch;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 12px;
+  }
+
+  .page-header .d-flex {
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .page-header .d-flex:first-child {
+    flex: 1;
+  }
+
+  .page-header .d-flex:last-child {
+    flex-shrink: 0;
+    gap: 0.5rem;
+  }
+
+  .page-header .btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .page-header .btn span {
+    display: none;
+  }
+
+  .page-header .btn i {
+    font-size: 1rem;
   }
 
   .heatmap-layout {
     flex-direction: column;
+    gap: 1rem;
   }
 
   .heatmap-sidebar {
     width: 100%;
-    max-height: 200px;
+    max-height: 250px;
+    padding: 1rem;
+    border-radius: 12px;
   }
 
   .heatmap-sidebar.sidebar-collapsed {
     width: 100%;
-    max-height: 40px;
+    max-height: 50px;
+    padding: 0.5rem;
   }
 
   .sidebar-toggle {
     right: auto;
-    bottom: -14px;
+    bottom: -16px;
     top: auto;
-    transform: none;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+
+  .stats-section,
+  .type-breakdown-section,
+  .legend-section {
+    margin-bottom: 1rem;
+  }
+
+  .stat-card {
+    padding: 0.75rem;
+    gap: 0.75rem;
+  }
+
+  .stat-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+  }
+
+  .type-item {
+    padding: 0.5rem;
+    gap: 4px 6px;
+  }
+
+  .type-name {
+    font-size: 0.8125rem;
+    max-width: 120px;
+  }
+
+  .type-count {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+  }
+
+  .legend-item {
+    font-size: 0.8125rem;
+    gap: 0.5rem;
   }
 
   .map-controls-overlay {
-    top: 8px;
-    left: 8px;
+    top: 10px;
+    left: 10px;
+    gap: 6px;
   }
 
   .map-search-box {
-    width: 200px;
+    width: calc(100vw - 120px);
+    max-width: 250px;
+  }
+
+  .map-search-box .input-group {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  .map-zoom-controls {
+    width: 40px;
+  }
+
+  .map-zoom-controls .btn {
+    padding: 8px;
+    font-size: 16px;
   }
 
   .layer-panel {
-    top: 80px;
-    right: 8px;
-    width: 180px;
+    top: 60px;
+    right: 10px;
+    width: 200px;
+    max-width: calc(100vw - 20px);
+  }
+
+  .layer-panel .form-check-label {
+    font-size: 0.875rem;
   }
 
   .hotspot-detail-panel {
-    bottom: 12px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: calc(100% - 24px);
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    width: auto;
+    transform: none;
+    max-width: none;
+  }
+
+  .hotspot-detail-panel .badge {
+    font-size: 0.75rem;
+  }
+
+  .hotspot-detail-panel .btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  /* Modal responsive */
+  .modal-dialog {
+    margin: 0.5rem;
+  }
+
+  .modal-content {
+    border-radius: 12px;
+  }
+
+  .info-group {
+    margin-bottom: 1rem;
+  }
+
+  .incident-image-thumb img {
+    max-height: 150px;
+  }
+
+  /* Hide some elements on very small screens */
+  @media (max-width: 480px) {
+    .heatmap-page {
+      padding: 0.25rem;
+    }
+
+    .page-header {
+      padding: 0.75rem;
+    }
+
+    .heatmap-sidebar {
+      max-height: 200px;
+    }
+
+    .map-search-box {
+      width: calc(100vw - 80px);
+      max-width: 200px;
+    }
+
+    .layer-panel {
+      width: 180px;
+    }
+
+    .hotspot-detail-panel {
+      padding: 0.75rem;
+    }
   }
 }
 </style>
