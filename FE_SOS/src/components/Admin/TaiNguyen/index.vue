@@ -403,23 +403,26 @@
             <table class="table table-hover align-middle mb-0">
               <thead class="table-light">
                 <tr>
+                  <th class="fw-bolder text-muted text-uppercase small">ID CẤP PHÁT</th>
                   <th class="fw-bolder text-muted text-uppercase small ps-3">Đội nhận</th>
-                  <th class="fw-bolder text-muted text-uppercase small">Người YC</th>
+                  <th class="fw-bolder text-muted text-uppercase small">Người GỬI</th>
                   <th class="fw-bolder text-muted text-uppercase small">Tài nguyên</th>
-                  <th class="fw-bolder text-muted text-uppercase small">SL</th>
+                  <th class="fw-bolder text-muted text-uppercase small">SỐ LƯỢNG</th>
                   <th class="fw-bolder text-muted text-uppercase small">Admin</th>
-                  <th class="fw-bolder text-muted text-uppercase small">id duyệt</th>
+                  
                   <th class="fw-bolder text-muted text-uppercase small pe-3">Thời gian duyệt</th>
                 </tr>
               </thead>
               <tbody>
+                
                 <tr v-for="row in lichSuCapPhat" :key="'lsr-' + row.id" class="table-row-hover">
+                  <td class="small text-muted">{{ row.id ?? '—' }}</td>
                   <td class="ps-3 fw-medium">{{ row.ten_doi || '—' }}</td>
                   <td>{{ row.ten_nguoi_yeu_cau || '—' }}</td>
                   <td>{{ layNhanLoaiTaiNguyen(row.slug_tai_nguyen) }}</td>
                   <td><span class="badge bg-dark-subtle text-dark-emphasis">{{ row.so_luong_yeu_cau }}</span></td>
                   <td>{{ row.ten_nguoi_duyet || '—' }}</td>
-                  <td class="small text-muted">{{ row.id_nguoi_duyet ?? '—' }}</td>
+                  
                   <td class="pe-3 small">{{ formatDate(row.thoi_gian_duyet) }} {{ formatTime(row.thoi_gian_duyet) }}</td>
                 </tr>
               </tbody>
