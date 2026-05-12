@@ -15,7 +15,7 @@
       </button>
     </div>
 
-    <div class="stats-row px-4 py-3 border-bottom bg-white">
+    <!-- <div class="stats-row px-4 py-3 border-bottom bg-white">
       <div class="row g-3">
         <div class="col-6 col-md-3">
           <div class="stat-card bg-light rounded-4 p-3 text-center border border-light shadow-sm">
@@ -54,10 +54,10 @@
           </div>
         </div>
       </div>
-    </div>
+    </div> -->
 
     <div class="resources-body px-4 py-3 flex-grow-1 overflow-auto">
-      <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-warehouse me-2 text-primary"></i>Tồn kho (tham khảo)</h6>
+      <!-- <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-warehouse me-2 text-primary"></i>Tồn kho (tham khảo)</h6>
       <div v-if="dangTaiTonKho" class="text-center py-3">
         <div class="spinner-border spinner-border-sm text-danger" role="status"></div>
       </div>
@@ -68,7 +68,7 @@
             <div class="fw-bold fs-5 text-dark">{{ dong.tong_so_luong }}</div>
           </div>
         </div>
-      </div>
+      </div> -->
 
       <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-list me-2 text-danger"></i>Tài nguyên hiện có của đội</h6>
       <div v-if="dangTaiTaiNguyen" class="text-center py-5">
@@ -93,7 +93,7 @@
                   </div>
                   <div>
                     <h6 class="fw-bold text-dark mb-1">{{ item.ten_tai_nguyen }}</h6>
-                    <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2 py-1 small">{{ item.slug_tai_nguyen }}</span>
+                    <!-- <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2 py-1 small">{{ item.slug_tai_nguyen }}</span> -->
                   </div>
                 </div>
                 <span class="badge rounded-pill px-3 py-2 fw-bold" :class="layLopTrangThai(item.trang_thai)">

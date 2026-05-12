@@ -432,6 +432,8 @@ export default {
             const urgencyOrder = { 'CRITICAL': 4, 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1 };
             const teamId = this.teamId;
 
+            console.log('[TrangChu] radarAssignments - Total assignments:', this.assignments.length, 'TeamId:', teamId);
+
             const processingYeuCauIds = new Set();
             this.assignments.forEach(a => {
                 const st = (a.trang_thai_nhiem_vu || '').toUpperCase().replace(/\s+/g, '_');
@@ -443,17 +445,30 @@ export default {
             });
 
             const filtered = this.assignments.filter(a => {
-                if (teamId && Number(a.id_doi_cuu_ho) !== Number(teamId)) return false;
+                if (teamId && Number(a.id_doi_cuu_ho) !== Number(teamId)) {
+                    console.log('[TrangChu] Filtered out - wrong team:', a.id_doi_cuu_ho, 'vs', teamId);
+                    return false;
+                }
                 const st = (a.trang_thai_nhiem_vu || '').toUpperCase().replace(/\s+/g, '_');
                 const pendingStatuses = new Set([
                     'DA_PHAN_CONG', 'MOI', 'CHO_NHAN', 'PENDING', 'ASSIGNED',
-                    'WAITING', 'CHO_XU_LY', 'DA_DUOC_PHAN_CONG',
+                    'WAITING', 'CHO_XU_LY', 'DA_DUOC_PHAN_CONG', 'CHUA_TIEP_NHAN',
+                    'NEW', 'ASSIGNED', 'PENDING_ASSIGNMENT',
                 ]);
-                if (!pendingStatuses.has(st)) return false;
+                if (!pendingStatuses.has(st)) {
+                    console.log('[TrangChu] Filtered out - invalid status:', st, 'for assignment:', a.id_phan_cong);
+                    return false;
+                }
                 const ycId = a.yeu_cau?.id_yeu_cau;
-                if (ycId && processingYeuCauIds.has(ycId)) return false;
+                if (ycId && processingYeuCauIds.has(ycId)) {
+                    console.log('[TrangChu] Filtered out - already processing:', ycId);
+                    return false;
+                }
+                console.log('[TrangChu] Assignment passed filters:', a.id_phan_cong, 'status:', st);
                 return true;
             });
+
+            console.log('[TrangChu] After filtering:', filtered.length, 'assignments remain');
 
             const latestByYeuCau = new Map();
             filtered.forEach(a => {
@@ -622,8 +637,12 @@ export default {
             }
         },
         async xuLyCapNhatCuuHo(event) {
+            console.log('[TrangChu] WebSocket event received:', event);
+            
             const eventTeamId = event.id_doi_cuu_ho ?? event.teamId;
             const isMyTeam = String(eventTeamId) === String(this.teamId);
+            console.log('[TrangChu] Team check - EventTeamId:', eventTeamId, 'MyTeamId:', this.teamId, 'IsMyTeam:', isMyTeam);
+            
             if (!isMyTeam) return;
 
             const closed = new Set(["HOAN_THANH", "DA_HOAN_THANH", "HUY_BO", "DA_HUY", "TU_CHOI", "THAT_BAI", "DONE"]);
@@ -698,12 +717,20 @@ export default {
 
         // Merge new assignment data from WebSocket into local state
         capNhatDanhSachTuWebSocket(event) {
+            console.log('[TrangChu] capNhatDanhSachTuWebSocket called with:', event);
+            
             const idPhanCong = event.id_phan_cong;
-            if (!idPhanCong) return;
+            if (!idPhanCong) {
+                console.log('[TrangChu] No id_phan_cong in event, skipping');
+                return;
+            }
 
             // Check for duplicate
             const existingIndex = this.assignments.findIndex(a => String(a.id_phan_cong) === String(idPhanCong));
-            if (existingIndex >= 0) return; // Already exists, skip
+            if (existingIndex >= 0) {
+                console.log('[TrangChu] Assignment already exists, skipping:', idPhanCong);
+                return; // Already exists, skip
+            }
 
             // Build yeu_cau object from WebSocket event data
             const yeuCauData = {
@@ -729,7 +756,9 @@ export default {
                 yeu_cau: yeuCauData,
             };
 
+            console.log('[TrangChu] Adding new assignment to list:', newItem);
             this.assignments.push(newItem);
+            console.log('[TrangChu] Total assignments after adding:', this.assignments.length);
         },
 
         // Update existing assignment status from WebSocket data (no API)
@@ -762,30 +791,45 @@ export default {
             }
         },
         async fetchAssignments() {
+            console.log('[TrangChu] fetchAssignments called, teamId:', this.teamId);
             this.loading = true;
             this.assignments = [];
             try {
                 let all = [];
                 if (this.teamId) {
+                    console.log('[TrangChu] Fetching assignments for team:', this.teamId);
                     const res = await rescuerAPI.getAssignmentByTeam(this.teamId, { per_page: 100 });
+                    console.log('[TrangChu] API response:', res.data);
                     if (res.data) {
                         const rawItems = res.data.data ?? res.data;
                         if (Array.isArray(rawItems)) all = rawItems;
                         else if (Array.isArray(rawItems?.data)) all = rawItems.data;
                     }
                 } else {
+                    console.log('[TrangChu] No teamId, fetching all assignments');
                     const res = await rescuerAPI.getAssignments({ per_page: 100 });
+                    console.log('[TrangChu] API response (all):', res.data);
                     if (res.data) {
                         const rawItems = res.data.data ?? res.data;
                         if (Array.isArray(rawItems)) all = rawItems;
                         else if (Array.isArray(rawItems?.data)) all = rawItems.data;
                     }
                 }
+                console.log('[TrangChu] Raw items before filtering:', all.length);
                 const seen = new Set();
                 this.assignments = all.filter(item => {
                     if (!item || seen.has(item.id_phan_cong)) return false;
                     seen.add(item.id_phan_cong);
                     return true;
+                });
+                console.log('[TrangChu] Final assignments after deduplication:', this.assignments.length);
+                this.assignments.forEach((a, i) => {
+                    console.log(`[TrangChu] Assignment ${i}:`, {
+                        id_phan_cong: a.id_phan_cong,
+                        id_doi_cuu_ho: a.id_doi_cuu_ho,
+                        trang_thai_nhiem_vu: a.trang_thai_nhiem_vu,
+                        yeu_cau_id: a.yeu_cau?.id_yeu_cau
+                    });
                 });
                 if (this.assignments.length === 0) {
                     console.warn('[TrangChu] Không có phân công nào. teamId:', this.teamId);
