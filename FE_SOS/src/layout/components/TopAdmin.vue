@@ -16,114 +16,112 @@
         </div>
       </div>
 
-    <div class="d-flex align-items-center gap-2">
-      <div class="d-none d-md-flex align-items-center gap-2 topbar-duty-tag">
-        <span class="duty-dot"></span>
-        <span>Trực 24/7</span>
-      </div>
+      <div class="d-flex align-items-center gap-2">
+        <div class="d-none d-md-flex align-items-center gap-2 topbar-duty-tag">
+          <span class="duty-dot"></span>
+          <span>Trực 24/7</span>
+        </div>
 
-      <div class="dropdown notification-dropdown">
-        <button
-          class="btn btn-icon-light position-relative"
-          type="button"
-          title="Thông báo"
-          data-bs-toggle="dropdown"
-          aria-expanded="false"
-          @click="markAllAsRead"
-        >
-          <i class="bi bi-bell"></i>
-          <span v-if="unreadCount > 0" class="notification-badge">{{ unreadCount }}</span>
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end shadow-sm topbar-dropdown notifications-menu">
-          <li class="dropdown-label">
-            <i class="fa-solid fa-bell me-2 text-primary"></i>
-            Thông báo mới
-          </li>
-          <li><hr class="dropdown-divider my-1" /></li>
-          <li v-if="notifications.length === 0" class="px-3 py-3 text-center text-muted small">
-            Không có thông báo mới
-          </li>
-          <li v-for="notification in notifications" :key="notification.key" :class="['notification-item', 'px-2', 'py-2', getNotificationClass(notification.type)]">
-            <div class="d-flex gap-2 justify-content-between align-items-start">
-              <div class="notification-content flex-grow-1">
-                <div class="notification-message">
-                  <span v-if="notification.senderName" class="notification-sender"><strong>{{ notification.senderName }}</strong></span>
-                  <span class="notification-text">{{ notification.message }}</span>
+        <div class="dropdown notification-dropdown">
+          <button class="btn btn-icon-light position-relative" type="button" title="Thông báo" data-bs-toggle="dropdown"
+            aria-expanded="false" @click="markAllAsRead">
+            <i class="bi bi-bell"></i>
+            <span v-if="unreadCount > 0" class="notification-badge">{{ unreadCount }}</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow-sm topbar-dropdown notifications-menu">
+            <li class="dropdown-label">
+              <i class="fa-solid fa-bell me-2 text-primary"></i>
+              Thông báo mới
+            </li>
+            <li>
+              <hr class="dropdown-divider my-1" />
+            </li>
+            <li v-if="notifications.length === 0" class="px-3 py-3 text-center text-muted small">
+              Không có thông báo mới
+            </li>
+            <li v-for="notification in notifications" :key="notification.key"
+              :class="['notification-item', 'px-2', 'py-2', getNotificationClass(notification.type)]">
+              <div class="d-flex gap-2 justify-content-between align-items-start">
+                <div class="notification-content flex-grow-1">
+                  <div class="notification-message">
+                    <span v-if="notification.senderName" class="notification-sender"><strong>{{ notification.senderName
+                        }}</strong></span>
+                    <span class="notification-text">{{ notification.message }}</span>
+                  </div>
+                  <div class="notification-meta small">{{ notification.time }}</div>
                 </div>
-                <div class="notification-meta small">{{ notification.time }}</div>
+                <button class="btn btn-notification-delete" type="button" @click="deleteNotification(notification.key)"
+                  title="Xóa">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
               </div>
-              <button class="btn btn-notification-delete" type="button" @click="deleteNotification(notification.key)" title="Xóa">
-                <i class="fa-solid fa-xmark"></i>
+            </li>
+
+          </ul>
+        </div>
+
+        <div class="dropdown">
+          <button class="btn user-pill d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
+            <span class="avatar-initial">AD</span>
+            <span class="user-name d-none d-sm-inline">{{ adminName }}</span>
+            <i class="fa-solid fa-chevron-down chevron-icon d-none d-sm-inline"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow-sm topbar-dropdown">
+            <li class="dropdown-label">
+              <i class="fa-solid fa-circle-user me-2 text-primary"></i>
+              Khu vực quản trị
+            </li>
+            <li>
+              <hr class="dropdown-divider my-1" />
+            </li>
+            <li>
+              <router-link to="/admin/change-password" class="dropdown-item dropdown-item-custom">
+                <i class="fa-solid fa-key me-2"></i>Đổi mật khẩu
+              </router-link>
+            </li>
+            <li>
+              <button class="dropdown-item dropdown-item-danger" type="button" @click="showLogoutModal">
+                <i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <!-- Modal xác nhận đăng xuất -->
+    <div class="modal fade" id="adminLogoutModal" tabindex="-1" aria-labelledby="adminLogoutModalLabel"
+      aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg logout-modal-content">
+          <div class="modal-header border-0 logout-modal-header">
+            <h5 class="modal-title w-100 text-center fw-bold" id="adminLogoutModalLabel">
+              <i class="fa-solid fa-circle-question text-warning me-2"></i>
+              Xác nhận đăng xuất
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+          </div>
+          <div class="modal-body text-center py-4">
+            <div class="logout-icon-wrap mb-3">
+              <i class="fa-solid fa-right-from-bracket fa-2x text-danger"></i>
+            </div>
+            <h6 class="fw-semibold text-dark mb-2">Bạn muốn đăng xuất?</h6>
+            <p class="text-muted mb-0 small">Bạn sẽ cần đăng nhập lại để tiếp tục quản trị hệ thống.</p>
+          </div>
+          <div class="modal-footer border-0 logout-modal-footer">
+            <div class="d-flex w-100 gap-2">
+              <button type="button" class="btn btn-light w-100 fw-medium" data-bs-dismiss="modal">
+                <i class="fa-solid fa-xmark me-1"></i> Hủy
+              </button>
+              <button type="button" class="btn btn-danger w-100 fw-medium" @click="logout">
+                <i class="fa-solid fa-right-from-bracket me-1"></i> Đăng xuất
               </button>
             </div>
-          </li>
-          
-        </ul>
-      </div>
-
-      <div class="dropdown">
-        <button
-          class="btn user-pill d-flex align-items-center gap-2"
-          type="button"
-          data-bs-toggle="dropdown"
-        >
-          <span class="avatar-initial">AD</span>
-          <span class="user-name d-none d-sm-inline">{{ adminName }}</span>
-          <i class="fa-solid fa-chevron-down chevron-icon d-none d-sm-inline"></i>
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end shadow-sm topbar-dropdown">
-          <li class="dropdown-label">
-            <i class="fa-solid fa-circle-user me-2 text-primary"></i>
-            Khu vực quản trị
-          </li>
-          <li><hr class="dropdown-divider my-1" /></li>
-          <li>
-            <router-link to="/admin/change-password" class="dropdown-item dropdown-item-custom">
-              <i class="fa-solid fa-key me-2"></i>Đổi mật khẩu
-            </router-link>
-          </li>
-          <li>
-            <button class="dropdown-item dropdown-item-danger" type="button" @click="showLogoutModal">
-              <i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất
-            </button>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </header>
-
-  <!-- Modal xác nhận đăng xuất -->
-  <div class="modal fade" id="adminLogoutModal" tabindex="-1" aria-labelledby="adminLogoutModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content border-0 shadow-lg logout-modal-content">
-        <div class="modal-header border-0 logout-modal-header">
-          <h5 class="modal-title w-100 text-center fw-bold" id="adminLogoutModalLabel">
-            <i class="fa-solid fa-circle-question text-warning me-2"></i>
-            Xác nhận đăng xuất
-          </h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
-        </div>
-        <div class="modal-body text-center py-4">
-          <div class="logout-icon-wrap mb-3">
-            <i class="fa-solid fa-right-from-bracket fa-2x text-danger"></i>
-          </div>
-          <h6 class="fw-semibold text-dark mb-2">Bạn muốn đăng xuất?</h6>
-          <p class="text-muted mb-0 small">Bạn sẽ cần đăng nhập lại để tiếp tục quản trị hệ thống.</p>
-        </div>
-        <div class="modal-footer border-0 logout-modal-footer">
-          <div class="d-flex w-100 gap-2">
-            <button type="button" class="btn btn-light w-100 fw-medium" data-bs-dismiss="modal">
-              <i class="fa-solid fa-xmark me-1"></i> Hủy
-            </button>
-            <button type="button" class="btn btn-danger w-100 fw-medium" @click="logout">
-              <i class="fa-solid fa-right-from-bracket me-1"></i> Đăng xuất
-            </button>
           </div>
         </div>
       </div>
     </div>
   </div>
-</div>
 </template>
 
 <script>
@@ -361,8 +359,15 @@ export default {
 }
 
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
 }
 
 /* ─── Icon-only button ─────────────────────────────────── */
@@ -621,8 +626,15 @@ export default {
 }
 
 @keyframes pulse-icon {
-  0%, 100% { transform: scale(1); }
-  50%       { transform: scale(1.06); }
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.06);
+  }
 }
 
 #adminLogoutModal .btn {
@@ -671,8 +683,16 @@ export default {
 }
 
 @keyframes pulse {
-  0%   { transform: scale(1); }
-  50%  { transform: scale(1.05); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 </style>

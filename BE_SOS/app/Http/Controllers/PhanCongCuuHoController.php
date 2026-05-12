@@ -163,6 +163,8 @@ class PhanCongCuuHoController extends Controller
      */
     public function updateStatus(Request $request, $id)
     {
+        Log::channel('daily')->info('[UPDATE STATUS START] Assignment ID: ' . $id);
+
         $item = PhanCongCuuHo::with('yeuCau')->findOrFail($id);
         $validated = $request->validate([
             'trang_thai_nhiem_vu' => 'required|string|max:20',
@@ -170,6 +172,7 @@ class PhanCongCuuHoController extends Controller
         ]);
 
         $newStatus = strtoupper(trim($validated['trang_thai_nhiem_vu']));
+        Log::channel('daily')->info('[UPDATE STATUS] New status: ' . $newStatus . ' for assignment ID: ' . $id);
 
         // BUSINESS RULE: prevent rescuer from accepting a second active request
         // Only allow if transitioning from MOI/CHUA_TIEP_NHAN to DANG_XU_LY
@@ -205,6 +208,22 @@ class PhanCongCuuHoController extends Controller
             if ($thanhVienId) {
                 $updateData['id_thanh_vien_tiep_nhan'] = $thanhVienId;
             }
+
+            // Cập nhật trạng thái đội từ SẴN SÀNG thành ĐANG XỬ LÝ
+
+            // Lấy trạng thái hiện tại của đội để debug
+            $currentTeam = DoiCuuHo::find($item->id_doi_cuu_ho);
+            Log::channel('daily')->info('[TEAM STATUS UPDATE] Team ID: ' . $item->id_doi_cuu_ho . ' current status: ' . ($currentTeam ? $currentTeam->trang_thai : 'NOT FOUND'));
+            Log::channel('daily')->info('[TEAM STATUS UPDATE] Changing status from SAN_SANG to DANG_XU_LY');
+
+            $updateResult = DoiCuuHo::where('id_doi_cuu_ho', $item->id_doi_cuu_ho)
+                ->update(['trang_thai' => 'DANG_XU_LY']);
+
+            Log::channel('daily')->info('[TEAM STATUS UPDATE] Update result: ' . ($updateResult ? 'SUCCESS' : 'FAILED'));
+
+            // Kiểm tra lại trạng thái sau khi cập nhật
+            $updatedTeam = DoiCuuHo::find($item->id_doi_cuu_ho);
+            Log::channel('daily')->info('[TEAM STATUS UPDATE] Team ID: ' . $item->id_doi_cuu_ho . ' new status: ' . ($updatedTeam ? $updatedTeam->trang_thai : 'NOT FOUND'));
         }
 
         $item->update($updateData);

@@ -70,8 +70,9 @@ class DoiCuuHoController extends Controller
             $query = DoiCuuHo::with(['thanhViens', 'taiNguyens', 'viTris', 'nangLuc', 'loaiSuCos', 'phanCongs'])
                 ->orderBy($sortBy, $sortOrder);
 
-            // Nếu yêu cầu lấy tất cả (get_all=true hoặc per_page >= 100)
-            if ($getAll || $perPage >= 100) {
+            // Luôn trả về tất cả đội cho dashboard (không pagination)
+            // Chỉ sử dụng pagination khi được yêu cầu rõ ràng (per_page < 100 và get_all=false)
+            if ($getAll || $perPage >= 100 || !$request->has('per_page')) {
                 $items = $query->get()->map(function ($team) {
                     return $this->appendCapacityFields($team);
                 });
@@ -82,6 +83,7 @@ class DoiCuuHoController extends Controller
                 ], 200);
             }
 
+            // Chỉ paginate khi được yêu cầu rõ ràng
             $items = $query->paginate($perPage);
 
             return Response::json([

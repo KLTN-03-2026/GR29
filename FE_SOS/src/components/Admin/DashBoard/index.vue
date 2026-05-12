@@ -73,7 +73,7 @@
                 <div class="text-muted small fw-semibold text-uppercase">Đang xử lý</div>
                 <div class="h3 mb-0 fw-bold text-dark">{{ stats.processing }}</div>
                 <div class="small text-muted mt-1">
-                  <span class="text-warning fw-semibold">{{ stats.teamsBusy }}</span> đội đang nhiệm vụ
+                  <span class="text-warning fw-semibold"></span> tổng <span class="text-warning"><b>{{ stats.totalTeams }}</b></span> đội
                 </div>
               </div>
             </div>
@@ -196,8 +196,8 @@
                   />
                 </svg>
                 <div class="donut-center position-absolute top-50 start-50 translate-middle text-center">
-                  <div class="h4 mb-0 fw-bold text-dark">{{ stats.total }}</div>
-                  <div class="small text-muted">Tổng</div>
+                  <div class="h4 mb-0 fw-bold text-dark">{{ stats.totalTeams }}</div>
+                  <div class="small text-muted">Tổng đội</div>
                 </div>
               </div>
               <div class="w-100">
@@ -416,7 +416,52 @@ function formatTime(value) {
 
 function normalizeStatus(status) {
   if (!status) return "CHO_XU_LY";
-  return String(status).trim().toUpperCase().replace(/\s+/g, "_");
+  
+  const normalized = String(status).trim().toUpperCase().replace(/\s+/g, "_");
+  
+  // Map các giá trị status phổ biến từ backend
+  const statusMap = {
+    // Status cho yêu cầu cứu hộ
+    'MOI': 'CHO_XU_LY',
+    'MỚI': 'CHO_XU_LY',
+    'WAITING': 'CHO_XU_LY',
+    'PENDING': 'CHO_XU_LY',
+    'CHỜ_XỬ_LÝ': 'CHO_XU_LY',
+    
+    'PROCESSING': 'DANG_XU_LY',
+    'ĐANG_XỬ_LÝ': 'DANG_XU_LY',
+    'DANG_XU_LY': 'DANG_XU_LY',
+    
+    'DONE': 'HOAN_THANH',
+    'COMPLETED': 'HOAN_THANH',
+    'HOÀN_THÀNH': 'HOAN_THANH',
+    'HOAN_THANH': 'HOAN_THANH',
+    
+    'CANCELLED': 'HUY_BO',
+    'CANCELED': 'HUY_BO',
+    'HỦY_BỎ': 'HUY_BO',
+    'HUY_BO': 'HUY_BO',
+    
+    // Status cho đội cứu hộ
+    'SAN_SANG': 'SAN_SANG',
+    'SẴN_SÀNG': 'SAN_SANG',
+    'SẴN SÀNG': 'SAN_SANG',
+    'READY': 'SAN_SANG',
+    'AVAILABLE': 'SAN_SANG',
+    
+    'DANG_BAN': 'DANG_BAN',
+    'ĐANG_BẬN': 'DANG_BAN',
+    'BUSY': 'DANG_BAN',
+    'OCCUPIED': 'DANG_BAN',
+    
+    'BAN_CHI_DINH': 'DANG_BAN',
+    'BAN_CHI_DINH': 'DANG_BAN',
+    
+    'OFFLINE': 'OFFLINE',
+    'UNAVAILABLE': 'OFFLINE'
+  };
+  
+  return statusMap[normalized] || normalized;
 }
 
 function getSeverityBadge(sev) {
@@ -520,23 +565,32 @@ export default {
       return items;
     },
     stats() {
-      const pending = this.allRequests.filter(r => normalizeStatus(r.status) === "CHO_XU_LY" || normalizeStatus(r.status) === "MOI" || normalizeStatus(r.status) === "WAITING");
-      const processing = this.allRequests.filter(r => normalizeStatus(r.status) === "DANG_XU_LY" || normalizeStatus(r.status) === "PROCESSING");
-      const completed = this.allRequests.filter(r => normalizeStatus(r.status) === "HOAN_THANH" || normalizeStatus(r.status) === "DONE");
-      const cancelled = this.allRequests.filter(r => normalizeStatus(r.status) === "HUY_BO");
+      const pending = this.allRequests.filter(r => {
+        const status = normalizeStatus(r.status);
+        return status === "CHO_XU_LY";
+      });
+      const processing = this.allRequests.filter(r => {
+        const status = normalizeStatus(r.status);
+        return status === "DANG_XU_LY";
+      });
+      const completed = this.allRequests.filter(r => {
+        const status = normalizeStatus(r.status);
+        return status === "HOAN_THANH";
+      });
+      const cancelled = this.allRequests.filter(r => {
+        const status = normalizeStatus(r.status);
+        return status === "HUY_BO";
+      });
       const criticalPending = pending.filter(r => {
         const upper = String(r.mucDoKhanCap || "").toUpperCase();
         return upper === "CRITICAL" || upper === "KHẨN CẤP" || upper === "CAO" || r.mucDoKhanCap == 4 || r.mucDoKhanCap == 3;
       }).length;
 
       const teamsReady = this.teams.filter(t => {
-        const st = normalizeStatus(t.trangThai);
-        return st === "SAN_SANG" || st === "SẴN_SÀNG" || t.trangThai === "Sẵn sàng";
+        const status = normalizeStatus(t.trangThai);
+        return status === "SAN_SANG";
       }).length;
-      const teamsBusy = this.teams.filter(t => {
-        const st = normalizeStatus(t.trangThai);
-        return st === "DANG_BAN" || st === "ĐANG_BẬN" || st === "DANG_XU_LY" || st === "ĐANG_XỬ_LÝ" || t.trangThai === "Đang bận" || t.trangThai === "Đang xử lý";
-      }).length;
+      
 
       const total = this.allRequests.length || 1;
       return {
@@ -547,7 +601,6 @@ export default {
         cancelled: cancelled.length,
         criticalPending,
         teamsAvailable: teamsReady,
-        teamsBusy,
         totalTeams: this.teams.length,
       };
     },
@@ -570,16 +623,47 @@ export default {
       return Object.values(map).sort((a, b) => b.count - a.count).slice(0, 8);
     },
     donutSegments() {
-      const { pending, processing, completed, cancelled } = this.stats;
-      const total = pending + processing + completed + cancelled || 1;
+      // Tính toán trạng thái đội cứu hộ
+      console.log("=== DONUT SEGMENTS DEBUG ===");
+      console.log("All teams:", this.teams.map(t => ({ 
+        id: t.id, 
+        name: t.name, 
+        trangThai: t.trangThai,
+        normalizedStatus: normalizeStatus(t.trangThai)
+      })));
+      
+      const teamsReady = this.teams.filter(t => {
+        const status = normalizeStatus(t.trangThai);
+        return status === "SAN_SANG";
+      });
+      const teamsBusy = this.teams.filter(t => {
+        const status = normalizeStatus(t.trangThai);
+        return status === "DANG_BAN";
+      });
+      const teamsProcessing = this.teams.filter(t => {
+        const status = normalizeStatus(t.trangThai);
+        return status === "DANG_XU_LY";
+      });
+      const teamsOffline = this.teams.filter(t => {
+        const status = normalizeStatus(t.trangThai);
+        return status === "OFFLINE";
+      });
+      
+      console.log("Teams breakdown:");
+      console.log("- Sẵn sàng:", teamsReady.length, teamsReady.map(t => ({ id: t.id, name: t.name, trangThai: t.trangThai })));
+      console.log("- Đang bận:", teamsBusy.length, teamsBusy.map(t => ({ id: t.id, name: t.name, trangThai: t.trangThai })));
+      console.log("- Đang xử lý:", teamsProcessing.length, teamsProcessing.map(t => ({ id: t.id, name: t.name, trangThai: t.trangThai })));
+      console.log("- Offline:", teamsOffline.length, teamsOffline.map(t => ({ id: t.id, name: t.name, trangThai: t.trangThai })));
+      
+      const total = teamsReady.length + teamsBusy.length + teamsProcessing.length + teamsOffline.length || 1;
       const circumference = 2 * Math.PI * 40;
       let offset = 0;
       const segments = [];
       const parts = [
-        { count: pending, label: "Chờ xử lý", color: "#0ea5e9" },
-        { count: processing, label: "Đang xử lý", color: "#f59e0b" },
-        { count: completed, label: "Hoàn thành", color: "#22c55e" },
-        { count: cancelled, label: "Đã huỷ", color: "#94a3b8" },
+        { count: teamsReady.length, label: "Sẵn sàng", color: "#22c55e" },
+        { count: teamsBusy.length, label: "Đang bận", color: "#f59e0b" },
+        { count: teamsProcessing.length, label: "Đang xử lý", color: "#0ea5e9" },
+        { count: teamsOffline.length, label: "Offline", color: "#94a3b8" },
       ];
       for (const p of parts) {
         const pct = p.count / total;
@@ -590,13 +674,15 @@ export default {
         });
         offset += pct * circumference;
       }
+      console.log("Final segments:", segments);
+      console.log("=== END DONUT DEBUG ===");
       return segments;
     },
     pendingRequests() {
       return this.allRequests
         .filter(r => {
-          const st = normalizeStatus(r.status);
-          return st === "CHO_XU_LY" || st === "MOI" || st === "WAITING";
+          const status = normalizeStatus(r.status);
+          return status === "CHO_XU_LY";
         })
         .sort((a, b) => {
           const aSev = a.mucDoKhanCap || 0;
@@ -722,9 +808,38 @@ export default {
           incidentTypeAPI.getList().catch(() => ({ data: [] })),
         ]);
 
+        // Debug log để kiểm tra dữ liệu thô từ backend
+        console.log("Raw requests data:", reqRes?.data);
+        console.log("Raw teams data:", teamRes?.data);
+
         this.allRequests = this.parseRequests(reqRes?.data);
         this.teams = this.parseTeams(teamRes?.data);
         this.incidentTypes = typeRes?.data?.data || typeRes?.data || [];
+
+        // Debug log để kiểm tra dữ liệu sau khi parse
+        console.log("Parsed requests:", this.allRequests);
+        console.log("Parsed teams:", this.teams);
+        console.log("Total teams loaded:", this.teams.length);
+
+        // Debug log để kiểm tra chi tiết trạng thái đội
+        const teamStatuses = {};
+        this.teams.forEach(team => {
+          const status = normalizeStatus(team.trangThai);
+          teamStatuses[status] = (teamStatuses[status] || 0) + 1;
+        });
+        console.log("Team status breakdown:", teamStatuses);
+        
+        // Debug log để kiểm tra trạng thái gốc từ database
+        console.log("Original team statuses from database:");
+        this.teams.forEach(team => {
+          console.log(`Team ${team.name} (ID: ${team.id}): trangThai="${team.trangThai}" -> normalized="${normalizeStatus(team.trangThai)}"`);
+        });
+
+        // Debug log để kiểm tra stats
+        console.log("Stats:", this.stats);
+        console.log("Completion rate:", this.completionRate);
+        console.log("Team availability rate:", this.teamAvailabilityRate);
+
         this.mapRefreshKey++; // Refresh map after data load
       } catch (err) {
         console.error("Dashboard load error:", err);
@@ -801,22 +916,29 @@ export default {
         const area = normalizeText(item.khu_vuc_quan_ly || item.area || "");
         const st = item.trang_thai || "SanSang";
         const stNorm = normalizeStatus(st);
+        
         let statusBadge = "bg-secondary";
         let statusLabel = "Không rõ";
         let statusColor = "bg-secondary-subtle text-secondary";
-        if (stNorm === "SAN_SANG" || stNorm === "SẴN_SÀNG" || st === "Sẵn sàng") {
+        
+        if (stNorm === "SAN_SANG") {
           statusBadge = "bg-success-subtle text-success";
           statusLabel = "Sẵn sàng";
           statusColor = "bg-success-subtle text-success";
-        } else if (stNorm === "DANG_BAN" || st === "Đang bận") {
+        } else if (stNorm === "DANG_BAN") {
           statusBadge = "bg-secondary-subtle text-secondary";
           statusLabel = "Đang bận";
           statusColor = "bg-secondary-subtle text-secondary";
-        } else if (stNorm === "DANG_XU_LY" || stNorm === "ĐANG_XỬ_LÝ" || st === "Đang xử lý") {
+        } else if (stNorm === "DANG_XU_LY") {
           statusBadge = "bg-warning-subtle text-warning";
           statusLabel = "Đang xử lý";
           statusColor = "bg-warning-subtle text-warning";
+        } else if (stNorm === "OFFLINE") {
+          statusBadge = "bg-danger-subtle text-danger";
+          statusLabel = "Offline";
+          statusColor = "bg-danger-subtle text-danger";
         }
+        
         return {
           id: item.id_doi_cuu_ho || item.id,
           name, area, trangThai: st,
