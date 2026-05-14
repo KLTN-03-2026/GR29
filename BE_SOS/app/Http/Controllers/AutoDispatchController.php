@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\AutoDispatchStatusChanged;
 use App\Jobs\AutoDispatchJob;
 use App\Models\YeuCauCuuHo;
 use App\Services\AutoDispatchService;
@@ -64,6 +65,12 @@ class AutoDispatchController extends Controller
             'trang_thai_moi' => $trangThaiMoi ? 'BẬT' : 'TẮT',
         ]);
 
+        try {
+            event(new AutoDispatchStatusChanged($trangThaiMoi));
+        } catch (\Throwable $e) {
+            Log::warning('[AutoDispatchController] Broadcast toggle thất bại', ['error' => $e->getMessage()]);
+        }
+
         return response()->json([
             'thanh_cong' => true,
             'du_lieu' => [
@@ -88,10 +95,17 @@ class AutoDispatchController extends Controller
 
         Log::info('[AutoDispatchController] Bật điều phối tự động');
 
+        try {
+            event(new AutoDispatchStatusChanged(true));
+        } catch (\Throwable $e) {
+            Log::warning('[AutoDispatchController] Broadcast enable thất bại', ['error' => $e->getMessage()]);
+        }
+
         return response()->json([
             'thanh_cong' => true,
             'thong_diep' => 'Đã bật điều phối tự động',
             'dieu_phoi_tu_dong' => true,
+            'du_lieu' => ['dieu_phoi_tu_dong' => true],
         ]);
     }
 
@@ -108,10 +122,17 @@ class AutoDispatchController extends Controller
 
         Log::info('[AutoDispatchController] Tắt điều phối tự động');
 
+        try {
+            event(new AutoDispatchStatusChanged(false));
+        } catch (\Throwable $e) {
+            Log::warning('[AutoDispatchController] Broadcast disable thất bại', ['error' => $e->getMessage()]);
+        }
+
         return response()->json([
             'thanh_cong' => true,
             'thong_diep' => 'Đã tắt điều phối tự động',
             'dieu_phoi_tu_dong' => false,
+            'du_lieu' => ['dieu_phoi_tu_dong' => false],
         ]);
     }
 
