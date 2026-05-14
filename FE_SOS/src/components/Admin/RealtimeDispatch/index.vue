@@ -551,12 +551,14 @@ export default {
   data() {
     return {
       dispatchEnabled: false,
+      togglingDispatch: false,
       dispatchMode: "normal",
       loading: false,
       saving: false,
       uptimeSeconds: 0,
       uptimeInterval: null,
       realtimeChannel: null,
+      dispatchChannel: null,
       showRuleModal: false,
       editingRule: null,
       customRules: [],
@@ -840,16 +842,6 @@ export default {
     async saveConfig() {
       this.saving = true;
       try {
-        localStorage.setItem(
-          "realtimeDispatchConfig",
-          JSON.stringify({
-            dispatchMode: this.dispatchMode,
-            customRules: this.customRules,
-            generalConfig: this.generalConfig,
-            scoringWeights: this.scoringWeights.map((w) => ({ key: w.key, value: w.value })),
-          })
-        );
-
         if (this.dispatchEnabled) {
           await autoDispatchAPI.enable();
         } else {
@@ -860,7 +852,18 @@ export default {
           so_doi_toi_da: this.generalConfig.maxTeamsPerIncident,
         });
 
-        await new Promise((r) => setTimeout(r, 600));
+        // Persist to localStorage AFTER server confirms — include dispatchEnabled
+        localStorage.setItem(
+          "realtimeDispatchConfig",
+          JSON.stringify({
+            dispatchEnabled: this.dispatchEnabled,
+            dispatchMode: this.dispatchMode,
+            customRules: this.customRules,
+            generalConfig: this.generalConfig,
+            scoringWeights: this.scoringWeights.map((w) => ({ key: w.key, value: w.value })),
+          })
+        );
+
         this.$toaster?.success?.("Đã lưu cấu hình thành công!");
       } catch (err) {
         console.error("Save config error:", err);
@@ -870,35 +873,48 @@ export default {
       }
     },
 
-    toggleDispatch() {
-      this.dispatchEnabled = !this.dispatchEnabled;
-      if (this.dispatchEnabled) {
-        this.startUptimeTimer();
-        this.subscribeRealtime();
-      } else {
-        if (this.uptimeInterval) {
-          clearInterval(this.uptimeInterval);
-          this.uptimeInterval = null;
+    async toggleDispatch() {
+      if (this.togglingDispatch) return;
+      this.togglingDispatch = true;
+      const previous = this.dispatchEnabled;
+      try {
+        const res = await autoDispatchAPI.toggle();
+        // Trust server response as source of truth
+        const confirmed = res?.data?.du_lieu?.dieu_phoi_tu_dong ?? !previous;
+        this.dispatchEnabled = confirmed;
+
+        if (this.dispatchEnabled) {
+          this.startUptimeTimer();
+          this.subscribeRealtime();
+        } else {
+          if (this.uptimeInterval) {
+            clearInterval(this.uptimeInterval);
+            this.uptimeInterval = null;
+          }
+          this.uptimeSeconds = 0;
+          this.unsubscribeRealtime();
         }
-        this.uptimeSeconds = 0;
-        this.unsubscribeRealtime();
-      }
 
-      const saved = localStorage.getItem("realtimeDispatchConfig");
-      const config = saved ? JSON.parse(saved) : {};
-      config.dispatchEnabled = this.dispatchEnabled;
-      localStorage.setItem("realtimeDispatchConfig", JSON.stringify(config));
+        // Persist confirmed state to localStorage
+        const saved = localStorage.getItem("realtimeDispatchConfig");
+        const config = saved ? JSON.parse(saved) : {};
+        config.dispatchEnabled = this.dispatchEnabled;
+        localStorage.setItem("realtimeDispatchConfig", JSON.stringify(config));
 
-      window.dispatchEvent(
-        new CustomEvent("dispatch-status-changed", {
-          detail: { enabled: this.dispatchEnabled },
-        })
-      );
-
-      autoDispatchAPI.toggle().catch((err) => {
+        // Notify other tabs / pages
+        window.dispatchEvent(
+          new CustomEvent("dispatch-status-changed", {
+            detail: { enabled: this.dispatchEnabled },
+          })
+        );
+      } catch (err) {
         console.error("Toggle dispatch error:", err);
+        // Rollback local state on API failure
+        this.dispatchEnabled = previous;
         this.$toaster?.error?.("Không thể toggle auto-dispatch!");
-      });
+      } finally {
+        this.togglingDispatch = false;
+      }
     },
 
     handleDispatchStatusChange(e) {
@@ -1249,12 +1265,38 @@ export default {
         if (!this.dispatchEnabled) return;
         this.handleRealtimeUpdate(event);
       });
+
+      // Listen for dispatch toggle from other tabs / server
+      this.dispatchChannel = window.Echo.channel("admin.dispatch");
+      this.dispatchChannel.listen(".auto_dispatch_status_changed", (event) => {
+        if (event?.enabled !== undefined) {
+          this.dispatchEnabled = event.enabled;
+          if (this.dispatchEnabled) {
+            this.startUptimeTimer();
+          } else {
+            if (this.uptimeInterval) {
+              clearInterval(this.uptimeInterval);
+              this.uptimeInterval = null;
+            }
+            this.uptimeSeconds = 0;
+          }
+          // Keep localStorage in sync
+          const saved = localStorage.getItem("realtimeDispatchConfig");
+          const config = saved ? JSON.parse(saved) : {};
+          config.dispatchEnabled = this.dispatchEnabled;
+          localStorage.setItem("realtimeDispatchConfig", JSON.stringify(config));
+        }
+      });
     },
 
     unsubscribeRealtime() {
       if (this.realtimeChannel) {
         window.Echo?.leave("rescue-requests");
         this.realtimeChannel = null;
+      }
+      if (this.dispatchChannel) {
+        window.Echo?.leave("admin.dispatch");
+        this.dispatchChannel = null;
       }
     },
 
