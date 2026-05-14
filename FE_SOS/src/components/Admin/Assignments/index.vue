@@ -53,6 +53,15 @@
         <button class="btn btn-sm btn-outline-danger ms-3 float-end" @click="initData">Thử lại</button>
       </div>
 
+      <!-- Overloaded Warning -->
+      <div v-if="overloadedIncidentTypes && overloadedIncidentTypes.length > 0" class="alert alert-danger custom-alert-warning mb-4 d-flex align-items-center shadow-sm">
+        <i class="fa-solid fa-triangle-exclamation fs-3 me-3 text-danger"></i>
+        <div>
+          <h6 class="fw-bolder mb-1 text-danger">CẢNH BÁO: QUÁ TẢI LỰC LƯỢNG</h6>
+          <p class="mb-0 fw-medium">Tất cả đơn vị chuyên môn <strong class="text-dark">{{ overloadedIncidentTypes.join(', ') }}</strong> hiện đang hết công suất. Đề nghị theo dõi hoặc huy động dự phòng!</p>
+        </div>
+      </div>
+
       <!-- Main Layout -->
       <div class="row g-4" v-if="!loadingRequests && !loadingTeams">
         <!-- Cột Left: Queue -->
@@ -616,6 +625,7 @@ export default {
       error: '',
       realtimeChannel: null,
       teamChannel: null,
+      dispatchChannel: null,
       dispatchEnabled: false,
       togglingDispatch: false,
 
@@ -657,6 +667,25 @@ export default {
       // Teams with full capacity will be marked as disabled (busy) in the template.
       // Issue #1+2 fix: teams must ALWAYS remain visible in the list.
       return this.teams;
+    },
+    overloadedIncidentTypes() {
+      const typeCapacity = {};
+      this.teams.forEach(team => {
+        if (!team.loai_su_co || team.loai_su_co.length === 0) return;
+        const capacity = this.getMaxCapacity(team);
+        if (capacity === 0) return; // skip teams with no members
+
+        const isBusy = this.getTotalAssignments(team) >= capacity;
+        team.loai_su_co.forEach(type => {
+          if (!typeCapacity[type]) typeCapacity[type] = { total: 0, busy: 0 };
+          typeCapacity[type].total++;
+          if (isBusy) typeCapacity[type].busy++;
+        });
+      });
+
+      return Object.entries(typeCapacity)
+        .filter(([, data]) => data.total > 0 && data.total === data.busy)
+        .map(([type]) => type);
     },
     busyTeams() {
       // Capacity = members * 1 (dong nhat voi backend AutoDispatchService)
@@ -807,6 +836,21 @@ export default {
           this.handleTeamCapacityUpdate(event);
         });
       }
+
+      // Subscribe to dispatch status changes from server (sync all tabs)
+      if (!this.dispatchChannel) {
+        this.dispatchChannel = window.Echo.channel('admin.dispatch');
+        this.dispatchChannel.listen('.auto_dispatch_status_changed', (event) => {
+          if (event?.enabled !== undefined) {
+            this.dispatchEnabled = event.enabled;
+            // Keep localStorage in sync
+            const saved = localStorage.getItem('realtimeDispatchConfig');
+            const config = saved ? JSON.parse(saved) : {};
+            config.dispatchEnabled = this.dispatchEnabled;
+            localStorage.setItem('realtimeDispatchConfig', JSON.stringify(config));
+          }
+        });
+      }
     },
     unsubscribeFromRescueUpdates() {
       if (this.realtimeChannel) {
@@ -819,6 +863,10 @@ export default {
         this.teamChannel.stopListening('TeamCapacityUpdated');
         window.Echo?.leave('team-updates');
         this.teamChannel = null;
+      }
+      if (this.dispatchChannel) {
+        window.Echo?.leave('admin.dispatch');
+        this.dispatchChannel = null;
       }
     },
     extractRequestIdFromEvent(event) {
@@ -911,9 +959,6 @@ export default {
 
       this.pendingRequests.unshift(updatedRequest);
       this.syncSelectedRequestAfterRefresh();
-      
-      // Fallback: Refresh team data when requests are updated to ensure capacity is current
-      this.refreshTeamDataSilently();
     },
     handleTeamCapacityUpdate(event) {
       console.log('[AdminAssignments] Team capacity update received:', event);
@@ -1074,31 +1119,6 @@ export default {
         this.loadingTeams = false;
       }
     },
-    async refreshTeamDataSilently() {
-      try {
-        const response = await rescueTeamAPI.getList({ get_all: true });
-        const rawData = response?.data || response;
-        const updatedTeams = parseTeams(rawData);
-        
-        // Update existing teams with new capacity data
-        updatedTeams.forEach(updatedTeam => {
-          const teamIndex = this.teams.findIndex(t => Number(t.id) === Number(updatedTeam.id));
-          if (teamIndex !== -1) {
-            this.teams.splice(teamIndex, 1, {
-              ...this.teams[teamIndex],
-              active_count: updatedTeam.active_count,
-              pending_count: updatedTeam.pending_count,
-              trang_thai: updatedTeam.trang_thai,
-              trang_thai_theo_nang_luc: updatedTeam.trang_thai_theo_nang_luc,
-            });
-          }
-        });
-        
-        console.log('[AdminAssignments] Team data refreshed silently');
-      } catch (error) {
-        console.error('Lỗi làm mới dữ liệu đội cứu hộ:', error);
-      }
-    },
     selectRequest(req) {
       this.selectedReq = req;
     },
@@ -1134,15 +1154,15 @@ export default {
       return members * 1;
     },
     getTotalAssignments(team) {
-      // Override backend calculation with actual count from phan_congs data
-      // Backend may return incorrect counts, so we count actual assignments
       const phanCongs = team.phan_congs || [];
-      const validStatuses = ['MOI', 'DA_PHAN_CONG', 'DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'];
-      const actualCount = phanCongs.filter(pc => 
-        validStatuses.includes(pc.trang_thai || pc.trang_thai_nhiem_vu)
-      ).length;
-      
-      return actualCount;
+      if (phanCongs.length > 0) {
+        const validStatuses = ['MOI', 'DA_PHAN_CONG', 'DANG_XU_LY', 'DA_DEN_HIEN_TRUONG'];
+        return phanCongs.filter(pc =>
+          validStatuses.includes(pc.trang_thai || pc.trang_thai_nhiem_vu)
+        ).length;
+      }
+      // Fallback to backend-provided counts when phan_congs not loaded
+      return (team.active_count ?? 0) + (team.pending_count ?? 0);
     },
     getCapacityBarWidth(team) {
       // Use actual count from phan_congs data instead of backend counts
@@ -1265,17 +1285,20 @@ export default {
     async toggleAutoDispatch() {
       if (this.togglingDispatch) return;
       this.togglingDispatch = true;
+      const previous = this.dispatchEnabled;
       try {
-        await autoDispatchAPI.toggle();
-        this.dispatchEnabled = !this.dispatchEnabled;
+        const res = await autoDispatchAPI.toggle();
+        // Trust server response as source of truth
+        const confirmed = res?.data?.du_lieu?.dieu_phoi_tu_dong ?? !previous;
+        this.dispatchEnabled = confirmed;
 
-        // Sync localStorage để RealtimeDispatch page đọc được
+        // Sync localStorage so RealtimeDispatch page reads correct value
         const saved = localStorage.getItem('realtimeDispatchConfig');
         const config = saved ? JSON.parse(saved) : {};
         config.dispatchEnabled = this.dispatchEnabled;
         localStorage.setItem('realtimeDispatchConfig', JSON.stringify(config));
 
-        // Notify RealtimeDispatch nếu đang mở cùng lúc
+        // Notify other tabs / pages
         window.dispatchEvent(new CustomEvent('dispatch-status-changed', {
           detail: { enabled: this.dispatchEnabled }
         }));
@@ -1286,6 +1309,8 @@ export default {
           duration: 2000,
         });
       } catch (error) {
+        // Rollback on failure
+        this.dispatchEnabled = previous;
         console.error('Lỗi toggle auto-dispatch:', error);
         this.$toast?.error?.('Lỗi cập nhật trạng thái!', {
           position: 'top-right',
