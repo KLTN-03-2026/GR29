@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\UserStatusChanged;
 use App\Models\NguoiDung;
 use App\Models\GuestSession;
 use App\Models\YeuCauCuuHo;
@@ -40,6 +41,14 @@ class NguoiDungController extends Controller
                 'status' => false,
                 'message' => 'Tai khoan sai email hoac password',
             ], 401);
+        }
+
+        if ((int) $user->trang_thai === 0) {
+            return response()->json([
+                'status' => false,
+                'account_locked' => true,
+                'message' => 'Tài khoản của bạn đã bị khóa.',
+            ], 403);
         }
 
         $token = $user->createToken('nguoi-dung-token')->plainTextToken;
@@ -350,6 +359,8 @@ class NguoiDungController extends Controller
 
         $user->trang_thai = $user->trang_thai == 1 ? 0 : 1;
         $user->save();
+
+        broadcast(new UserStatusChanged((int) $user->id_nguoi_dung, (int) $user->trang_thai));
 
         return response()->json([
             'status' => true,
