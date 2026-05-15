@@ -12,10 +12,17 @@
                 </span>
             </router-link>
 
-            <!-- Toggler -->
-            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#nowSosNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+            <!-- Right wrapper: luôn nằm cùng hàng với brand, nội dung ẩn/hiện theo breakpoint -->
+            <div class="d-flex align-items-center ms-auto gap-2">
+                <div v-if="isLoggedIn" class="d-flex d-lg-none align-items-center now-mobile-topbar-user">
+                    <img class="now-mobile-topbar-avatar" :src="avatarSrc" alt="avatar" />
+                    <span class="now-mobile-topbar-name ms-2">{{ displayName }}</span>
+                </div>
+                <!-- Bootstrap tự ẩn toggler trên lg+ nhờ .navbar-expand-lg CSS -->
+                <button class="navbar-toggler border-0 p-1" type="button" data-bs-toggle="collapse" data-bs-target="#nowSosNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
 
             <div class="collapse navbar-collapse" id="nowSosNav">
                 <!-- Nav links -->
@@ -52,24 +59,20 @@
                     </li>
                 </ul>
 
-                <!-- Right side -->
-                <div class="d-flex align-items-center gap-2">
+                <!-- Right side: chỉ hiện trên desktop (lg+) -->
+                <div class="d-none d-lg-flex align-items-center gap-2">
                     <template v-if="!isLoggedIn">
-                        <div class="d-none d-md-flex align-items-center me-2">
-                            <span class="now-status-pill">
-                                <i class="fa-solid fa-circle now-dot me-1"></i>ĐANG HOẠT ĐỘNG
-                            </span>
-                        </div>
                         <router-link to="/client/login"
                             class="btn now-btn-login btn-sm rounded-pill px-3 fw-semibold">Đăng nhập</router-link>
                         <router-link to="/client/register"
                             class="btn now-btn-register btn-sm rounded-pill px-3 fw-semibold">Đăng ký</router-link>
                     </template>
                     <template v-else>
+                        <!-- Desktop dropdown -->
                         <div class="dropdown" ref="dropdownRef">
                             <button class="btn now-avatar-btn d-flex align-items-center gap-2" type="button"
                                 @click="toggleDropdown">
-                                <span class="now-username d-none d-md-inline-block">{{ displayName }}</span>
+                                <span class="now-username">{{ displayName }}</span>
                                 <img class="now-avatar" :src="avatarSrc" alt="User avatar" />
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end now-user-menu shadow-lg"
@@ -94,16 +97,6 @@
                                         <i class="fa-solid fa-key me-2"></i>Đổi mật khẩu
                                     </router-link>
                                 </li>
-                                <!-- <li>
-                                    <router-link class="dropdown-item" to="/client/profile" @click="closeDropdown">
-                                        <i class="fa-solid fa-pen-to-square me-2"></i>Cập nhật thông tin
-                                    </router-link>
-                                </li> -->
-                                <!-- <li>
-                                    <router-link class="dropdown-item" to="/client/history" @click="closeDropdown">
-                                        <i class="fa-solid fa-clock-rotate-left me-2"></i>Lịch sử yêu cầu
-                                    </router-link>
-                                </li> -->
                                 <li><hr class="dropdown-divider my-1" /></li>
                                 <li>
                                     <button class="dropdown-item now-menu-item now-menu-item--danger" type="button"
@@ -114,6 +107,41 @@
                             </ul>
                         </div>
                     </template>
+                </div>
+
+                <!-- Mobile: nút đăng nhập / đăng ký (khi chưa đăng nhập) -->
+                <div v-if="!isLoggedIn" class="d-flex d-lg-none flex-column gap-2 py-3 now-mobile-auth-btns">
+                    <router-link to="/client/login"
+                        class="btn now-btn-login btn-sm rounded-pill px-3 fw-semibold w-100 text-center">Đăng nhập</router-link>
+                    <router-link to="/client/register"
+                        class="btn now-btn-register btn-sm rounded-pill px-3 fw-semibold w-100 text-center">Đăng ký</router-link>
+                </div>
+
+                <!-- Mobile: User panel (khi đã đăng nhập) -->
+                <div v-if="isLoggedIn" class="d-lg-none now-mobile-user-panel">
+                    <div class="now-mobile-panel-divider"></div>
+                    <div class="now-mobile-user-card">
+                        <img class="now-mobile-user-avatar" :src="avatarSrc" alt="avatar" />
+                        <div class="now-mobile-user-info">
+                            <div class="now-mobile-user-name">{{ displayName }}</div>
+                            <div class="now-mobile-user-role">Tài khoản khách</div>
+                        </div>
+                    </div>
+                    <div class="now-mobile-user-actions">
+                        <router-link class="now-mobile-action-item" to="/client/profile" @click="closeMobileMenu">
+                            <span class="now-mobile-action-icon"><i class="fa-solid fa-user"></i></span>
+                            <span>Hồ sơ cá nhân</span>
+                        </router-link>
+                        <router-link class="now-mobile-action-item" to="/client/change-password" @click="closeMobileMenu">
+                            <span class="now-mobile-action-icon"><i class="fa-solid fa-key"></i></span>
+                            <span>Đổi mật khẩu</span>
+                        </router-link>
+                        <button class="now-mobile-action-item now-mobile-action-danger" type="button"
+                            data-bs-toggle="modal" data-bs-target="#logoutModal" @click="closeMobileMenu">
+                            <span class="now-mobile-action-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
+                            <span>Đăng xuất</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -190,6 +218,15 @@ function toggleDropdown() {
 
 function closeDropdown() {
     isDropdownOpen.value = false;
+}
+
+// Đóng mobile collapse menu
+function closeMobileMenu() {
+    const collapse = document.getElementById("nowSosNav");
+    if (collapse && collapse.classList.contains("show")) {
+        const bsCollapse = bootstrap.Collapse.getInstance(collapse);
+        if (bsCollapse) bsCollapse.hide();
+    }
 }
 
 function handleClickOutside(event) {
@@ -320,6 +357,25 @@ function logout() {
     transform: scaleX(1);
 }
 
+/* Mobile nav links - dễ tap hơn */
+@media (max-width: 991.98px) {
+    .now-nav__link {
+        padding: 12px 16px;
+        font-size: 0.82rem;
+        border-radius: 8px;
+        margin: 2px 0;
+    }
+    .now-nav__link::after {
+        display: none;
+    }
+    .now-nav__link.router-link-active,
+    .now-nav__link.router-link-exact-active {
+        background: rgba(255, 255, 255, 0.15);
+        border-left: 3px solid #ffca28;
+        padding-left: 13px;
+    }
+}
+
 /* ─── Status pill ──────────────────────────────────────── */
 .now-status-pill {
     display: inline-flex;
@@ -368,7 +424,44 @@ function logout() {
     transform: translateY(-1px);
 }
 
-/* ─── Avatar button ────────────────────────────────────── */
+/* ─── Mobile Auth Buttons ──────────────────────────────── */
+.now-mobile-auth-btns {
+    padding: 12px 0 8px;
+    border-top: 1px solid rgba(255,255,255,0.12);
+    margin-top: 4px;
+}
+
+.now-mobile-status-row {
+    margin-bottom: 4px;
+}
+
+/* ─── Mobile Topbar User (bên cạnh toggler) ────────────── */
+.now-mobile-topbar-user {
+    gap: 0;
+    max-width: calc(100vw - 160px);
+    overflow: hidden;
+}
+
+.now-mobile-topbar-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    border: 2px solid rgba(255,255,255,0.45);
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.now-mobile-topbar-name {
+    color: #ffffff;
+    font-size: 0.78rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 120px;
+}
+
+/* ─── Avatar button (desktop) ──────────────────────────── */
 .now-avatar-btn {
     background: rgba(255, 255, 255, 0.13);
     border: 1.5px solid rgba(255, 255, 255, 0.30);
@@ -406,7 +499,7 @@ function logout() {
     object-fit: cover;
 }
 
-/* ─── Dropdown menu ────────────────────────────────────── */
+/* ─── Dropdown menu (desktop) ──────────────────────────── */
 .now-user-menu {
     min-width: 230px;
     border-radius: 14px;
@@ -446,6 +539,113 @@ function logout() {
 .now-menu-item--danger:hover {
     background: #fff5f5 !important;
     color: #b91c1c !important;
+}
+
+/* ─── Mobile User Panel ────────────────────────────────── */
+.now-mobile-user-panel {
+    padding-bottom: 12px;
+}
+
+.now-mobile-panel-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.15);
+    margin: 8px 0 12px;
+}
+
+.now-mobile-user-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.now-mobile-user-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 999px;
+    border: 2px solid rgba(255, 255, 255, 0.45);
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.now-mobile-user-info {
+    overflow: hidden;
+}
+
+.now-mobile-user-name {
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.now-mobile-user-role {
+    color: rgba(255, 255, 255, 0.60);
+    font-size: 0.72rem;
+    margin-top: 1px;
+}
+
+.now-mobile-user-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.now-mobile-action-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 140ms ease, color 140ms ease;
+    background: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+}
+
+.now-mobile-action-item:hover,
+.now-mobile-action-item:active {
+    background: rgba(255, 255, 255, 0.10);
+    color: #ffffff;
+}
+
+.now-mobile-action-icon {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.12);
+    font-size: 0.82rem;
+    flex-shrink: 0;
+}
+
+.now-mobile-action-danger {
+    color: #fca5a5 !important;
+}
+
+.now-mobile-action-danger:hover,
+.now-mobile-action-danger:active {
+    background: rgba(220, 38, 38, 0.15) !important;
+    color: #fca5a5 !important;
+}
+
+.now-mobile-action-danger .now-mobile-action-icon {
+    background: rgba(220, 38, 38, 0.18);
+    color: #fca5a5;
 }
 
 /* ─── Logout modal ─────────────────────────────────────── */
@@ -489,5 +689,34 @@ function logout() {
     50%  { transform: scale(1.05); }
     100% { transform: scale(1); }
 }
-</style>
 
+/* ─── MOBILE NAVBAR FIX: giữ brand + right wrapper trên cùng 1 hàng ────── */
+@media (max-width: 991.98px) {
+    /* Ngăn không cho flex wrap xuống dòng */
+    .now-navbar > .container-fluid {
+        flex-wrap: nowrap !important;
+        align-items: center;
+    }
+
+    /* Collapse menu nằm dưới navbar theo kiểu absolute — không làm xáo trộn flex */
+    .now-navbar .navbar-collapse {
+        position: absolute !important;
+        top: 56px;
+        left: 0;
+        right: 0;
+        z-index: 1049;
+        background: linear-gradient(180deg, #1a4e72 0%, #205a84 100%);
+        padding: 8px 16px 16px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+        border-top: 1px solid rgba(255, 255, 255, 0.10);
+        max-height: calc(100vh - 56px);
+        overflow-y: auto;
+    }
+
+    /* Brand không giãn ra toàn bộ độ rộng */
+    .now-navbar .navbar-brand {
+        flex-shrink: 0;
+    }
+}
+
+</style>
