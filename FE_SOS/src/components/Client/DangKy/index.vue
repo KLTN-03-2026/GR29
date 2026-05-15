@@ -162,7 +162,7 @@ export default {
         });
 
         const body = res.data;
-        this.$toast.success(body.message || "Dang ky thanh cong");
+        this.$toast.success(body.message || "Đăng ký thành công");
         if (body.linked_requests_count > 0) {
           this.linkedRequestsCount = body.linked_requests_count;
         }
