@@ -52,6 +52,7 @@
 <script>
 import { authAPI } from "../../../services/api.js";
 import { getSafeClientRedirect } from "../../../utils/safeClientRedirect.js";
+import { emitAccountLocked } from "../../../utils/accountLockedEvent.js";
 
 export default {
   data() {
@@ -80,6 +81,10 @@ export default {
           this.$toast.error(body.message || "Đăng nhập thất bại");
         }
       } catch (err) {
+        if (err.response?.data?.account_locked) {
+          emitAccountLocked();
+          return;
+        }
         const msg =
           err.response?.data?.message ||
           "Không kết nối được máy chủ. Kiểm tra Laravel (php artisan serve) và CORS.";
