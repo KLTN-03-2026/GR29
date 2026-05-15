@@ -174,6 +174,52 @@
           </div>
         </div>
       </div>
+
+      <!-- Client Reviews Table -->
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden mt-4">
+        <div class="card-header bg-transparent border-bottom pb-3">
+          <h6 class="fw-bold mb-0">Đánh giá của client</h6>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead class="bg-light">
+                <tr>
+                  <th class="ps-4 py-3 fw-bold text-secondary">Thời gian</th>
+                  <th class="py-3 fw-bold text-secondary">Khách hàng</th>
+                  <th class="py-3 fw-bold text-secondary">Điểm</th>
+                  <th class="py-3 fw-bold text-secondary">Nội dung</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="review in teamReviews" :key="review.id_danh_gia">
+                  <td class="ps-4">
+                    <div class="fw-medium">{{ formatDate(review.created_at) }}</div>
+                  </td>
+                  <td>
+                    <span class="fw-medium">{{ review.nguoi_dung?.ho_ten || '-' }}</span>
+                  </td>
+                  <td>
+                    <div class="text-warning">
+                      <i v-for="n in review.diem_danh_gia" :key="n" class="fa-solid fa-star"></i>
+                      <i v-for="n in (5 - review.diem_danh_gia)" :key="'empty-'+n" class="fa-regular fa-star text-muted"></i>
+                    </div>
+                  </td>
+                  <td class="text-secondary">
+                    {{ review.noi_dung_danh_gia || '-' }}
+                  </td>
+                </tr>
+                <tr v-if="teamReviews.length === 0">
+                  <td colspan="4" class="text-center py-4 text-muted">
+                    Chưa có đánh giá nào
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </template>
@@ -187,6 +233,7 @@ export default {
     return {
       loading: false,
       allMissions: [],
+      teamReviews: [],
       teamId: null,
       stats: {
         total: 0,
@@ -264,12 +311,20 @@ export default {
       return Math.round((completed / this.totalMissions) * 100);
     },
     avgRating() {
-      return '4.8'; // Placeholder - có thể tính từ data đánh giá
+      if (this.teamReviews.length === 0) return '0.0';
+      const sum = this.teamReviews.reduce((acc, curr) => acc + Number(curr.diem_danh_gia), 0);
+      return (sum / this.teamReviews.length).toFixed(1);
     },
   },
   async mounted() {
     this.loadTeamData();
-    await this.fetchReportData();
+    await Promise.all([this.fetchReportData(), this.fetchReviews()]);
+    this.setupReverb();
+  },
+  beforeUnmount() {
+    if (this.teamId && window.Echo) {
+      window.Echo.leave(`team.reviews.${this.teamId}`);
+    }
   },
   methods: {
     loadTeamData() {
@@ -306,6 +361,33 @@ export default {
       } finally {
         this.loading = false;
       }
+    },
+    async fetchReviews() {
+      if (!this.teamId) return;
+      try {
+        const res = await rescuerAPI.getTeamReviews(this.teamId);
+        if (res.data?.data) {
+           this.teamReviews = res.data.data;
+        } else if (Array.isArray(res.data)) {
+           this.teamReviews = res.data;
+        }
+      } catch (e) {
+        console.error("Lỗi tải đánh giá:", e);
+      }
+    },
+    setupReverb() {
+      if (!this.teamId || !window.Echo) return;
+      window.Echo.channel(`team.reviews.${this.teamId}`)
+        .listen('.ReviewCreated', (e) => {
+          if (e.danhGia) {
+            const existingIdx = this.teamReviews.findIndex(r => r.id_danh_gia === e.danhGia.id_danh_gia);
+            if (existingIdx !== -1) {
+              this.teamReviews.splice(existingIdx, 1, e.danhGia);
+            } else {
+              this.teamReviews.unshift(e.danhGia);
+            }
+          }
+        });
     },
     viewDetail(mission) {
       console.log("View mission detail:", mission);
