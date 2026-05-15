@@ -213,7 +213,7 @@
                                     <line x1="12" y1="3" x2="12" y2="15" />
                                 </svg>
                             </div>
-                            <p class="sos-upload-zone__text">Tải lên ảnh/video</p>
+                            <p class="sos-upload-zone__text">Tải lên ảnh hiện trường</p>
                             <p class="sos-upload-zone__hint">Click hoặc kéo thả file vào đây</p>
                         </div>
                     </label>
