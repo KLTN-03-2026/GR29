@@ -193,6 +193,7 @@ Route::middleware(['auth:admin', 'check.admin'])->group(function () {
     // Kho tài nguyên tổng & Cấp phát
     Route::get('admin/tai-nguyen/kho', [DoiCuuHoController::class, 'getKhoTaiNguyen']);
     Route::post('admin/tai-nguyen/kho/nhap', [DoiCuuHoController::class, 'nhapKho']);
+    Route::post('admin/tai-nguyen/kho/them-loai', [DoiCuuHoController::class, 'themLoaiKho']);
     Route::post('admin/tai-nguyen/kho/cap-nhat', [DoiCuuHoController::class, 'capNhatKhoTaiNguyen']);
     Route::get('admin/tai-nguyen/lich-su-cap', [YeuCauCapPhatController::class, 'lichSu']);
     Route::get('admin/tai-nguyen/yeu-cau-cap-phat', [YeuCauCapPhatController::class, 'danhSachAdmin']);

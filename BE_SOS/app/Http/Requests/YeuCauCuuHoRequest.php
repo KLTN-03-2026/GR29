@@ -39,7 +39,7 @@ class YeuCauCuuHoRequest extends FormRequest
             'vi_tri_lng' => 'required|numeric',
             'vi_tri_dia_chi' => 'nullable|string|max:500',
             'chi_tiet' => 'nullable|string',
-            'mo_ta' => 'required|string',
+            'mo_ta' => 'nullable|string',
             'hinh_anh' => 'nullable|file|image|max:10240', // max 10MB
             'so_nguoi_bi_anh_huong' => 'nullable|integer|min:0',
             'muc_do_khan_cap' => 'nullable|string|max:20',
@@ -60,7 +60,6 @@ class YeuCauCuuHoRequest extends FormRequest
             'vi_tri_lng.required' => 'Vị trí longitude không được để trống',
             'vi_tri_lng.numeric' => 'Vị trí longitude phải là số',
             'vi_tri_dia_chi.max' => 'Địa chỉ không được quá 500 ký tự',
-            'mo_ta.required' => 'Mô tả tình huống là bắt buộc',
             'so_nguoi_bi_anh_huong.integer' => 'Số người phải là số nguyên',
             'so_nguoi_bi_anh_huong.min' => 'Số người phải lớn hơn hoặc bằng 0',
             'diem_uu_tien.numeric' => 'Điểm ưu tiên phải là số',

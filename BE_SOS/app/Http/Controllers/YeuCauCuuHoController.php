@@ -525,7 +525,7 @@ class YeuCauCuuHoController extends Controller
                 'vi_tri_lng' => 'required|numeric',
                 'vi_tri_dia_chi' => 'nullable|string|max:500',
                 'chi_tiet' => 'nullable|string',
-                'mo_ta' => 'required|string',
+                'mo_ta' => 'nullable|string',
                 'hinh_anh' => 'nullable|file|image|max:10240',
                 'so_nguoi_bi_anh_huong' => 'nullable|integer|min:0',
                 'muc_do_khan_cap' => 'nullable|string|max:20',
