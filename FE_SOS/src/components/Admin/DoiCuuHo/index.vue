@@ -370,10 +370,14 @@ export default {
     },
     filteredTeams() {
       if (!this.searchTeams) return this.teams;
-      const q = this.searchTeams.toLowerCase();
+      const removeDiacritics = (str) => {
+        if (!str) return '';
+        return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
+      };
+      const q = removeDiacritics(this.searchTeams).toLowerCase();
       return this.teams.filter(t =>
-        (t.ten_doi || '').toLowerCase().includes(q) ||
-        (t.khu_vuc_quan_ly || '').toLowerCase().includes(q)
+        removeDiacritics(t.ten_doi || '').toLowerCase().includes(q) ||
+        removeDiacritics(t.khu_vuc_quan_ly || '').toLowerCase().includes(q)
       );
     },
     filteredResources() {

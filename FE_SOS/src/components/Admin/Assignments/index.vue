@@ -670,12 +670,28 @@ export default {
     },
     overloadedIncidentTypes() {
       const typeCapacity = {};
+      const debugInfo = [];
       this.teams.forEach(team => {
-        if (!team.loai_su_co || team.loai_su_co.length === 0) return;
+        if (!team.loai_su_co || team.loai_su_co.length === 0) {
+          debugInfo.push({ team: team.ten_doi, skip: 'no loai_su_co', loai_su_co: team.loai_su_co });
+          return;
+        }
         const capacity = this.getMaxCapacity(team);
-        if (capacity === 0) return; // skip teams with no members
+        if (capacity === 0) {
+          debugInfo.push({ team: team.ten_doi, skip: 'capacity=0', members: team.thanh_viens?.length });
+          return;
+        }
 
-        const isBusy = this.getTotalAssignments(team) >= capacity;
+        const total = this.getTotalAssignments(team);
+        const isBusy = total >= capacity;
+        debugInfo.push({
+          team: team.ten_doi,
+          loai_su_co: team.loai_su_co,
+          total, capacity, isBusy,
+          active_count: team.active_count,
+          pending_count: team.pending_count,
+          phan_congs_len: team.phan_congs?.length ?? 0,
+        });
         team.loai_su_co.forEach(type => {
           if (!typeCapacity[type]) typeCapacity[type] = { total: 0, busy: 0 };
           typeCapacity[type].total++;
@@ -683,9 +699,14 @@ export default {
         });
       });
 
-      return Object.entries(typeCapacity)
+      console.log('[overloadedIncidentTypes] teams debug:', debugInfo);
+      console.log('[overloadedIncidentTypes] typeCapacity:', typeCapacity);
+
+      const result = Object.entries(typeCapacity)
         .filter(([, data]) => data.total > 0 && data.total === data.busy)
         .map(([type]) => type);
+      console.log('[overloadedIncidentTypes] result:', result);
+      return result;
     },
     busyTeams() {
       // Capacity = members * 1 (dong nhat voi backend AutoDispatchService)
