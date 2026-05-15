@@ -1,6 +1,7 @@
 import axios from "axios";
 import { createToaster } from "@meforma/vue-toaster";
 import { emitClientAuthRequired } from "../utils/clientAuthPrompt";
+import { emitAccountLocked } from "../utils/accountLockedEvent";
 
 const toaster = createToaster({ position: "top-right" });
 export default function (to, from, next) {
@@ -19,19 +20,27 @@ export default function (to, from, next) {
         })
         .then((res) => {
             if (res.data?.status) {
-                // Update stored user data with fresh data from server
                 if (res.data.data) {
                     localStorage.setItem("user", JSON.stringify(res.data.data));
                 }
                 next();
             } else {
-                if (res.data?.message) {
-                    toaster.error(res.data.message);
+                const isLocked = res.data?.data?.trang_thai === 0
+                    || res.data?.data?.trang_thai === "0"
+                    || res.data?.locked === true;
+
+                if (isLocked) {
+                    next(false);
+                    emitAccountLocked();
+                } else {
+                    if (res.data?.message) {
+                        toaster.error(res.data.message);
+                    }
+                    localStorage.removeItem("token");
+                    localStorage.removeItem("user_token");
+                    localStorage.removeItem("user");
+                    next("/client/login");
                 }
-                localStorage.removeItem("token");
-                localStorage.removeItem("user_token");
-                localStorage.removeItem("user");
-                next("/client/login");
             }
         })
         .catch((error) => {
