@@ -33,8 +33,10 @@ import { ACCOUNT_LOCKED_EVENT } from "../../utils/accountLockedEvent";
 
 const router = useRouter();
 const open = ref(false);
+const role = ref("client");
 
-function onLocked() {
+function onLocked(e) {
+    role.value = e?.detail?.role || "client";
     open.value = true;
 }
 
@@ -48,10 +50,21 @@ onUnmounted(() => {
 
 function confirm() {
     open.value = false;
-    localStorage.removeItem("token");
-    localStorage.removeItem("user_token");
-    localStorage.removeItem("user");
-    router.push("/client/login");
+    if (role.value === "admin") {
+        localStorage.removeItem("admin_token");
+        localStorage.removeItem("admin_user");
+        router.push("/admin/login");
+    } else if (role.value === "rescuer") {
+        localStorage.removeItem("rescuer_token");
+        localStorage.removeItem("rescuer_user");
+        localStorage.removeItem("rescuer_team");
+        router.push("/rescuer/login");
+    } else {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user_token");
+        localStorage.removeItem("user");
+        router.push("/client/login");
+    }
 }
 </script>
 

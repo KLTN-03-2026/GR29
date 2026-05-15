@@ -18,8 +18,10 @@ import "../../assets/css/bootstrap.min.css";
 import "../../assets/css/bootstrap-extended.css";
 import "../../assets/css/app.css";
 import "../../assets/css/icons.css";
+import "../../bootstrap-echo.js";
 import TopRescuer from "../components/TopRescuer.vue";
 import MenuRescuer from "../components/MenuRescuer.vue";
+import { emitAccountLocked } from "../../utils/accountLockedEvent";
 
 export default {
   name: "RescuerLayout",
@@ -30,7 +32,27 @@ export default {
   data() {
     return {
       isSidebarOpen: false,
+      _lockedChannel: null,
     };
+  },
+  mounted() {
+    const rescuer = JSON.parse(localStorage.getItem("rescuer_user") || "null");
+    const rescuerId = rescuer?.id_thanh_vien_doi;
+    if (!rescuerId || !window.Echo) return;
+
+    this._lockedChannel = `thanh-vien-doi.${rescuerId}`;
+    window.Echo.channel(this._lockedChannel)
+      .listen(".thanh_vien_doi_status_changed", (e) => {
+        if (e.trang_thai === 0 || e.trang_thai === "0") {
+          window.Echo.leaveChannel(this._lockedChannel);
+          emitAccountLocked("rescuer");
+        }
+      });
+  },
+  beforeUnmount() {
+    if (this._lockedChannel && window.Echo) {
+      window.Echo.leaveChannel(this._lockedChannel);
+    }
   },
   methods: {
     toggleSidebar() {

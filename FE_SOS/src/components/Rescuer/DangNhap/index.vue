@@ -58,6 +58,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { authAPI } from '../../../services/api.js';
+import { emitAccountLocked } from '../../../utils/accountLockedEvent.js';
 
 const router = useRouter();
 
@@ -88,6 +89,10 @@ const handleTeamLogin = async () => {
       router.push('/rescuer/home');
     }
   } catch (error) {
+    if (error.response?.data?.account_locked) {
+      emitAccountLocked("rescuer");
+      return;
+    }
     if (error.response) {
       if (error.response.status === 422) {
         errorMessage.value = 'Email hoặc mật khẩu không hợp lệ';

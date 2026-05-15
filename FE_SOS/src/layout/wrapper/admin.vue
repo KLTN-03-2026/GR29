@@ -22,8 +22,10 @@ import "../../assets/css/app.css";
 import "../../assets/css/icons.css";
 import "../../assets/plugins/apexcharts-bundle/js/apexcharts.js";
 import "../../assets/plugins/apexcharts-bundle/css/apexcharts.css";
+import "../../bootstrap-echo.js";
 import TopAdmin from "../components/TopAdmin.vue";
 import MenuAdmin from "../components/MenuAdmin.vue";
+import { emitAccountLocked } from "../../utils/accountLockedEvent";
 
 export default {
   name: "AdminLayout",
@@ -34,7 +36,27 @@ export default {
   data() {
     return {
       isSidebarOpen: false,
+      _lockedChannel: null,
     };
+  },
+  mounted() {
+    const admin = JSON.parse(localStorage.getItem("admin_user") || "null");
+    const adminId = admin?.id_admin;
+    if (!adminId || !window.Echo) return;
+
+    this._lockedChannel = `admin.${adminId}`;
+    window.Echo.channel(this._lockedChannel)
+      .listen(".admin_status_changed", (e) => {
+        if (e.trang_thai === 0 || e.trang_thai === "0") {
+          window.Echo.leaveChannel(this._lockedChannel);
+          emitAccountLocked("admin");
+        }
+      });
+  },
+  beforeUnmount() {
+    if (this._lockedChannel && window.Echo) {
+      window.Echo.leaveChannel(this._lockedChannel);
+    }
   },
   methods: {
     toggleSidebar() {
