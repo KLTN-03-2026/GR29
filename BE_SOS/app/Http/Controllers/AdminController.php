@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\AdminStatusChanged;
 use App\Models\Admin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,10 +18,26 @@ class AdminController extends Controller
             'password' => 'nullable|string',
         ]);
 
-        $password = $request->input('mat_khau', $request->input('password'));
         $admin = Admin::where('email', $request->email)->first();
 
-        if (!$admin || !$password) {
+        if (!$admin) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Tai khoan sai email hoac password',
+            ], 401);
+        }
+
+        if ((int) $admin->trang_thai === 0) {
+            return response()->json([
+                'status' => false,
+                'account_locked' => true,
+                'message' => 'Tài khoản của bạn đã bị khóa.',
+            ], 403);
+        }
+
+        $password = $request->input('mat_khau', $request->input('password'));
+
+        if (!$password) {
             return response()->json([
                 'status' => false,
                 'message' => 'Tai khoan sai email hoac password',
@@ -230,6 +247,8 @@ class AdminController extends Controller
 
         $admin->trang_thai = $admin->trang_thai == 1 ? 0 : 1;
         $admin->save();
+
+        broadcast(new AdminStatusChanged((int) $admin->id_admin, (int) $admin->trang_thai));
 
         return response()->json([
             'status' => true,
