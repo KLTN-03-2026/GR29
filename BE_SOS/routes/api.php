@@ -241,6 +241,10 @@ Route::middleware(['auth:thanh-vien-doi', 'check.rescuer'])->group(function () {
     Route::get('rescuer/bao-cao/theo-doi/{id}', [BaoCaoCuuHoController::class, 'getByDoi']);
     Route::get('rescuer/bao-cao/{id}', [BaoCaoCuuHoController::class, 'show']);
 
+    // Đánh giá của đội (Client reviews)
+    Route::get('rescuer/danh-gia/theo-doi/{id_doi_cuu_ho}', [DanhGiaCuuHoController::class, 'getByTeam']);
+
+
     // Quản lý thành viên (role-based filtering)
     // MANAGER_TEAM(0): see all members
     // TEAMLEAD(1): see only members of the same team
