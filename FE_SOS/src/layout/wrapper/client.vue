@@ -73,6 +73,5 @@ export default {
     flex: 1 1 auto;
     min-height: 0;
     padding-top: 56px;
-    padding-bottom: 60px;
 }
 </style>

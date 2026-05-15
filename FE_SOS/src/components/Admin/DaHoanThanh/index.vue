@@ -30,7 +30,7 @@
           <label class="form-label text-muted small fw-bold mb-1">Loại sự cố</label>
           <select v-model="searchType" class="form-select bg-light">
             <option value="">Tất cả loại sự cố</option>
-            <option v-for="type in incidentTypes" :key="type.id" :value="type.id">{{ type.ten_danh_muc || type.ten_loai }}</option>
+            <option v-for="type in incidentTypes" :key="type.id_loai_su_co || type.id" :value="type.id_loai_su_co || type.id">{{ type.ten_danh_muc || type.ten_loai }}</option>
           </select>
         </div>
         <div class="col-md-4">
@@ -38,12 +38,12 @@
           <input v-model="searchDate" type="date" class="form-control bg-light">
         </div>
         <div class="col-md-2 d-flex align-items-end gap-2">
-          <button type="submit" class="btn btn-primary w-100 action-btn hover-elevate border-0">
+          <!-- <button type="submit" class="btn btn-primary w-100 action-btn hover-elevate border-0">
             <i class="bi bi-funnel-fill me-1"></i> Lọc
-          </button>
-          <button type="button" class="btn btn-outline-secondary px-3" title="Xóa bộ lọc" @click="resetFilters">
+          </button> -->
+          <!-- <button type="button" class="btn btn-outline-secondary px-3" title="Xóa bộ lọc" @click="resetFilters">
             <i class="bi bi-x-lg"></i>
-          </button>
+          </button> -->
         </div>
       </div>
     </form>
@@ -218,18 +218,18 @@
                     </div>
                     <div class="detail-card-body">
                       <div class="info-row">
-                        <div class="info-row-icon bg-primary bg-opacity-10"><i class="bi bi-person-fill text-primary"></i></div>
+                        <div class="info-row-icon icon-gradient-blue"><i class="bi bi-person-circle"></i></div>
                         <div><div class="info-row-label">Họ tên</div><div class="info-row-value">{{ getReporterName(detailItem.raw) }}</div></div>
                       </div>
                       <div class="info-row">
-                        <div class="info-row-icon bg-success bg-opacity-10"><i class="bi bi-telephone-fill text-success"></i></div>
+                        <div class="info-row-icon icon-gradient-green"><i class="bi bi-telephone-outbound-fill"></i></div>
                         <div>
                           <div class="info-row-label">Số điện thoại</div>
                           <div class="info-row-value">{{ getReporterPhone(detailItem.raw) || 'Chưa cập nhật' }}</div>
                         </div>
                       </div>
                       <div class="info-row">
-                        <div class="info-row-icon bg-danger bg-opacity-10"><i class="bi bi-geo-alt-fill text-danger"></i></div>
+                        <div class="info-row-icon icon-gradient-red"><i class="bi bi-pin-map-fill"></i></div>
                         <div><div class="info-row-label">Địa điểm</div><div class="info-row-value">{{ detailItem.address }}</div></div>
                       </div>
                     </div>
@@ -314,7 +314,7 @@
                           <div class="failure-title mb-2"><i class="bi bi-exclamation-circle-fill me-1"></i>LÝ DO THẤT BẠI</div>
                           <div class="failure-box">{{ detailAssignment.bao_cao.ly_do_that_bai }}</div>
                         </div>
-                        <div>
+                        <div class="mb-3">
                           <div class="detail-label mb-2">HÌNH ẢNH MINH CHỨNG</div>
                           <div v-if="detailAssignment.bao_cao.hinh_anh" class="evidence-image-wrapper">
                             <img :src="getFullImageUrl(detailAssignment.bao_cao.hinh_anh)" class="evidence-image" @click="openImageModal(detailAssignment.bao_cao.hinh_anh)">
@@ -323,6 +323,17 @@
                           <div v-else class="no-image-box">
                             <i class="bi bi-image text-muted opacity-25 fs-3"></i>
                             <span class="text-muted small">Không có hình ảnh</span>
+                          </div>
+                        </div>
+                        <div>
+                          <div class="detail-label mb-2">ẢNH HIỆN TRƯỜNG (KHÁCH HÀNG GỬI)</div>
+                          <div v-if="detailItem.imageUrl" class="evidence-image-wrapper">
+                            <img :src="detailItem.imageUrl" class="evidence-image" @click="openImageModal(detailItem.imageUrl)">
+                            <div class="evidence-overlay"><i class="bi bi-zoom-in fs-4"></i></div>
+                          </div>
+                          <div v-else class="no-image-box">
+                            <i class="bi bi-image text-muted opacity-25 fs-3"></i>
+                            <span class="text-muted small">Khách hàng chưa gửi hình ảnh</span>
                           </div>
                         </div>
                       </div>
@@ -404,6 +415,16 @@ function normalizeText(value, fallback = "") {
     return normalizeText(value.ten_danh_muc || value.ten_loai_su_co || value.title || value.name || fallback, fallback);
   }
   return String(value).trim();
+}
+
+function removeVietnameseTones(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase();
 }
 
 function formatTime(value) {
@@ -504,19 +525,56 @@ export default {
   computed: {
     filteredRequests() {
       let result = this.allRequests;
-      if (this.searchQuery) {
-        const q = this.searchQuery.toLowerCase();
-        result = result.filter(r =>
-          r.id?.toString().includes(q) ||
-          r.address?.toLowerCase().includes(q) ||
-          r.description?.toLowerCase().includes(q) ||
-          r.type?.toLowerCase().includes(q) ||
-          r.chiTiet?.toLowerCase().includes(q)
-        );
+      if (this.searchQuery && this.searchQuery.trim()) {
+        const rawQuery = this.searchQuery.trim();
+        const q = removeVietnameseTones(rawQuery).replace(/\s+/g, " ");
+        const qDigits = rawQuery.replace(/\D/g, "");
+        const qNoPrefix = removeVietnameseTones(rawQuery.replace(/^sos[-\s]*/i, "")).replace(/\s+/g, " ");
+
+        result = result.filter(r => {
+          const idStr = r.id?.toString() || "";
+          const idFull = `sos-${idStr}`;
+
+          const matchId =
+            idStr.includes(qDigits && qDigits.length > 0 ? qDigits : " __never__ ") ||
+            idFull.includes(q) ||
+            (qNoPrefix && idStr.includes(qNoPrefix));
+
+          return (
+            matchId ||
+            removeVietnameseTones(r.address).includes(q) ||
+            removeVietnameseTones(r.description).includes(q) ||
+            removeVietnameseTones(r.type).includes(q) ||
+            removeVietnameseTones(r.chiTiet).includes(q)
+          );
+        });
       }
       if (this.searchType) {
         const st = this.searchType.toString();
-        result = result.filter(r => r.raw?.id_loai_su_co?.toString() === st || r.raw?.loai_su_co?.id?.toString() === st);
+        const selectedType = this.incidentTypes.find(t => (t.id_loai_su_co ?? t.id)?.toString() === st);
+        const selectedName = selectedType ? removeVietnameseTones(selectedType.ten_danh_muc || selectedType.ten_loai || "") : "";
+        result = result.filter(r => {
+          const raw = r.raw || {};
+          const idCandidates = [
+            raw.id_loai_su_co,
+            raw.id_danh_muc,
+            raw.id_danh_muc_su_co,
+            raw.loai_su_co_id,
+            raw.loai_su_co?.id,
+            raw.loai_su_co?.id_danh_muc,
+            raw.loai_su_co?.id_loai_su_co,
+            raw.danh_muc_su_co?.id,
+            raw.danh_muc?.id,
+          ].filter(v => v !== null && v !== undefined);
+
+          if (idCandidates.length > 0) {
+            return idCandidates.some(v => v.toString() === st);
+          }
+          if (selectedName) {
+            return removeVietnameseTones(r.type) === selectedName;
+          }
+          return false;
+        });
       }
       if (this.searchDate) {
         const d = this.searchDate;
@@ -968,14 +1026,31 @@ export default {
 }
 
 .info-row-icon {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.95rem;
+  font-size: 1rem;
+  color: #fff;
+  box-shadow: 0 4px 10px -2px rgba(15, 23, 42, 0.18);
+}
+
+.icon-gradient-blue {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 4px 10px -2px rgba(37, 99, 235, 0.45);
+}
+
+.icon-gradient-green {
+  background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+  box-shadow: 0 4px 10px -2px rgba(5, 150, 105, 0.45);
+}
+
+.icon-gradient-red {
+  background: linear-gradient(135deg, #f87171 0%, #dc2626 100%);
+  box-shadow: 0 4px 10px -2px rgba(220, 38, 38, 0.45);
 }
 
 .info-row-label {

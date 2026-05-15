@@ -21,10 +21,7 @@ export default {
 
 <style scoped>
 .bot-client-footer {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 1040;
+  margin-top: auto;
+  width: 100%;
 }
 </style>

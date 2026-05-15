@@ -389,6 +389,7 @@ export const adminResourcesAPI = {
   capNhatKho: (data) => api.post('/admin/tai-nguyen/kho/cap-nhat', data),
   getLichSuKho: (params = {}) => api.get('/admin/tai-nguyen/kho/lich-su', { params }),
   nhapKho: (data) => api.post('/admin/tai-nguyen/kho/nhap', data),
+  themLoaiKho: (data) => api.post('/admin/tai-nguyen/kho/them-loai', data),
 
   // Yêu cầu cấp phát (TAB Cấp phát admin)
   layDanhSachYeuCauCapPhat: (params = {}) =>

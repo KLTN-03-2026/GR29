@@ -692,6 +692,8 @@ export default {
                     this.selectedCoords = { lng, lat };
                     this.coordsText = `GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
                     this.coordsSource = "GPS";
+                    this.addressSuggestions = [];
+                    await this.diaChiTuCoords(lat, lng);
                 }
             } catch (e) {
                 this.coordsText = "Không lấy được vị trí (cấp quyền trình duyệt hoặc dùng HTTPS).";
@@ -885,7 +887,7 @@ export default {
                 if (loggedIn) {
                     this.hienToast(
                         "success",
-                        `Gui yeu cau cuu ho thanh cong${newId ? `. Ma yeu cau: ${newId}` : "."}`
+                        `Gửi yêu cầu thành công${newId ? `. Mã yêu cầu: ${newId}` : "."}`
                     );
                     this.$router.push("/client/requests");
                 } else {
@@ -1731,12 +1733,14 @@ export default {
 .sos-map-panel {
     flex: 1;
     position: relative;
-    min-height: 360px;
+    min-height: 300px;
+    max-height: 340px;
 }
 
 @media (min-width: 992px) {
     .sos-map-panel {
         min-height: 0;
+        max-height: calc(100vh - 20px);
     }
 }
 
@@ -1744,7 +1748,7 @@ export default {
     position: relative;
     width: 100%;
     height: 100%;
-    min-height: 360px;
+    min-height: 350px;
 }
 
 .sos-map {
