@@ -440,6 +440,16 @@ function formatTime(value) {
   });
 }
 
+function normalizeLoaiSuCo(raw) {
+  if (!raw) return null;
+  if (typeof raw === 'string') return { ten: raw };
+  if (typeof raw === 'object') {
+    const ten = raw.ten ?? raw.ten_danh_muc ?? raw.ten_loai_su_co ?? raw.ten_loai ?? null;
+    return { ...raw, ten };
+  }
+  return null;
+}
+
 export default {
   name: "AdminTheoDoiYeuCau",
   data() {
@@ -579,7 +589,7 @@ export default {
           trang_thai: data.trang_thai,
           trang_thai_nhiem_vu: data.trang_thai_nhiem_vu,
           thoi_gian_cap_nhat: data.updated_at,
-          loai_su_co: data.loai_su_co,
+          loai_su_co: normalizeLoaiSuCo(data.loai_su_co),
           vi_tri_dia_chi: data.vi_tri_dia_chi,
           doi_cuu_ho: data.ten_doi ? { ten_co: data.ten_doi } : null,
           phan_congs: data.phan_congs || [],
@@ -658,7 +668,10 @@ export default {
           this.clearSelection();
         }
 
-        this.trackingList = newList;
+        this.trackingList = newList.map(item => ({
+          ...item,
+          loai_su_co: normalizeLoaiSuCo(item.loai_su_co),
+        }));
         this.prevStatusMap = {};
         newList.forEach(item => {
           this.prevStatusMap[Number(item.id)] = item.trang_thai;

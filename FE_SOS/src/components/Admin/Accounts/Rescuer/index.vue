@@ -11,6 +11,9 @@
         </div>
 
         <div class="card-body">
+            <div class="mb-3">
+                <input v-model="search" type="text" class="form-control" placeholder="Tìm kiếm theo tên, email, SĐT...">
+            </div>
             <table class="table table-bordered table-hover">
                 <thead class="table-light">
                     <tr>
@@ -26,7 +29,7 @@
                 </thead>
 
                 <tbody>
-                    <tr v-for="(item, index) in rescuers" :key="item.id_thanh_vien_doi">
+                    <tr v-for="(item, index) in filteredRescuers" :key="item.id_thanh_vien_doi">
                         <td>{{ index + 1 }}</td>
                         <td>{{ item.ho_ten }}</td>
                         <td>{{ item.email }}</td>
@@ -56,7 +59,7 @@
                             </button>
                         </td>
                     </tr>
-                    <tr v-if="!rescuers.length">
+                    <tr v-if="!filteredRescuers.length">
                         <td colspan="8" class="text-center text-muted py-3">Chưa có dữ liệu</td>
                     </tr>
                 </tbody>
@@ -204,6 +207,18 @@ import { rescuerAccountAPI, rescueTeamAPI } from "../../../../services/api";
 import { MANAGER_TEAM, TEAMLEAD, MEMBER } from "../../../../constants/roles.js";
 
 export default {
+    computed: {
+        filteredRescuers() {
+            const q = this.normalize(this.search);
+            if (!q) return this.rescuers;
+            return this.rescuers.filter(r =>
+                this.normalize(r.ho_ten).includes(q) ||
+                this.normalize(r.email).includes(q) ||
+                (r.so_dien_thoai || '').includes(q) ||
+                this.normalize(this.teamLabel(r)).includes(q)
+            );
+        }
+    },
     data() {
         return {
             MANAGER_TEAM,
@@ -213,6 +228,7 @@ export default {
             teams: [],
             selected: {},
             isSubmitting: false,
+            search: '',
             form: {
                 ho_ten: '',
                 email: '',
@@ -228,6 +244,14 @@ export default {
         this.fetchTeams();
     },
     methods: {
+        normalize(str) {
+            return (str || '').toLowerCase()
+                .normalize('NFD')
+                .replace(/[̀-ͯ]/g, '')
+                .replace(/đ/g, 'd')
+                .replace(/Đ/g, 'd');
+        },
+
         async fetchRescuers() {
             try {
                 const response = await rescuerAccountAPI.getList();

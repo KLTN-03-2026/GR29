@@ -857,7 +857,10 @@ export default {
                 if (this.selectedImageFile) {
                     payload.append('hinh_anh', this.selectedImageFile);
                 }
-                payload.append('so_nguoi_bi_anh_huong', Number(this.soNguoiBiAnhHuong) || 1);
+                // Khi co anh, de BE/YOLO tu dem so nan nhan. Khi khong co anh moi gui gia tri mac dinh.
+                if (!this.selectedImageFile) {
+                    payload.append('so_nguoi_bi_anh_huong', Number(this.soNguoiBiAnhHuong) || 1);
+                }
                 if (this.diemUuTien !== null) {
                     payload.append('diem_uu_tien', Number(this.diemUuTien));
                 }
