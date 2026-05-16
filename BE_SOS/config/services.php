@@ -40,4 +40,8 @@ return [
         'public_key' => env('VITE_GOOGLE_MAPS_API_KEY', env('GOOGLE_MAPS_API_KEY')),
     ],
 
+    'ai_service' => [
+        'url' => env('AI_SERVICE_URL', 'http://localhost:8001'),
+    ],
+
 ];
