@@ -176,11 +176,14 @@
                             <div class="fw-medium text-dark">{{ selectedReq.description || 'Không có mô tả chi tiết từ người dùng.' }}</div>
                           </div>
                         </div>
-                        <div class="d-flex align-items-start gap-2" v-if="selectedReq.soNguoiBiAnhHuong">
+                        <div class="d-flex align-items-start gap-2" v-if="selectedReq.soNguoiBiAnhHuong || selectedReq.hinhAnh">
                           <i class="fa-solid fa-users text-danger mt-1"></i>
                           <div>
-                            <div class="small text-muted fw-semibold">Số nạn nhân ước tính</div>
-                            <div class="fw-bold text-danger">{{ selectedReq.soNguoiBiAnhHuong }} người</div>
+                            <div class="small text-muted fw-semibold">Số nạn nhân ước tính (YOLO)</div>
+                            <div class="fw-bold text-danger" v-if="selectedReq.soNguoiBiAnhHuong">{{ selectedReq.soNguoiBiAnhHuong }} người</div>
+                            <div class="text-muted small fst-italic" v-else>
+                              <i class="fa-solid fa-spinner fa-spin me-1"></i>Đang phân tích ảnh…
+                            </div>
                           </div>
                         </div>
                       </div>

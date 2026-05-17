@@ -133,6 +133,28 @@
                             </div>
                         </div>
 
+                        <!-- Affected People Card (YOLO) -->
+                        <div class="info-card" v-if="currentMission.yeu_cau?.so_nguoi_bi_anh_huong || currentMission.yeu_cau?.hinh_anh">
+                            <div class="card-header-row">
+                                <div class="section-label" style="color:#dc2626;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="9" cy="7" r="4"/>
+                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                    </svg>
+                                    Số nạn nhân ước tính (YOLO)
+                                </div>
+                            </div>
+                            <div style="display:flex;align-items:baseline;gap:6px;padding:4px 0;" v-if="currentMission.yeu_cau.so_nguoi_bi_anh_huong">
+                                <span style="font-size:1.75rem;font-weight:700;color:#dc2626;line-height:1;">{{ currentMission.yeu_cau.so_nguoi_bi_anh_huong }}</span>
+                                <span style="color:#64748b;font-size:0.95rem;">người</span>
+                            </div>
+                            <div style="color:#64748b;font-style:italic;font-size:0.85rem;padding:4px 0;" v-else>
+                                Đang phân tích ảnh…
+                            </div>
+                        </div>
+
                         <!-- Location Card -->
                         <div class="info-card">
                             <div class="card-header-row">
@@ -230,7 +252,7 @@
                             <!-- Dang tai tai nguyen -->
                             <div v-if="dangTaiTaiNguyen" class="resource-loading">
                                 <div class="resource-spinner"></div>
-                                <span>Dang tai tai nguyen...</span>
+                                <span>Đang tải tài nguyên...</span>
                             </div>
 
                             <!-- Resource Stats -->
@@ -239,13 +261,13 @@
                                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                                         <polyline points="20 6 9 17 4 12"/>
                                     </svg>
-                                    <span>{{ taiNguyenSanSang.length }} san sang</span>
+                                    <span>{{ taiNguyenSanSang.length }} sẵn sàng</span>
                                 </div>
                                 <div class="resource-stat-chip in-use" @click="moModalTaiNguyen('dangdung')">
                                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                                         <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
                                     </svg>
-                                    <span>{{ taiNguyenDaLay.length }} dang dung</span>
+                                    <span>{{ taiNguyenDaLay.length }} đang dùng</span>
                                 </div>
                             </div>
 
@@ -259,8 +281,8 @@
                                     </svg>
                                 </div>
                                 <div class="resource-action-text">
-                                    <span class="resource-action-title">Lay thiet bi</span>
-                                    <span class="resource-action-sub">{{ taiNguyenSanSang.length }} thiet bi san sang</span>
+                                    <span class="resource-action-title">Lấy thiết bị</span>
+                                    <span class="resource-action-sub">{{ taiNguyenSanSang.length }} Thiết bị sẵn sàng</span>
                                 </div>
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="arrow-icon">
                                     <path d="M9 18l6-6-6-6"/>
@@ -269,7 +291,7 @@
 
                             <!-- Danh sach tai nguyen da lay -->
                             <div v-if="taiNguyenDaLay.length > 0" class="checked-out-section">
-                                <div class="checked-out-label">Da lay cho nhiem vu nay</div>
+                                <div class="checked-out-label">Đã lấy cho nhiệm vụ này</div>
                                 <div class="checked-out-list">
                                     <div v-for="item in taiNguyenDaLay" :key="item.id" class="checked-out-item">
                                         <div class="checked-out-icon" :style="{ background: layMauTaiNguyen(item.slug_tai_nguyen) }">
@@ -279,7 +301,7 @@
                                             <span class="checked-out-name">{{ item.ten_tai_nguyen }}</span>
                                             <span class="checked-out-meta">SL: {{ item.so_luong_dang_su_dung || 1 }} · {{ item.slug_tai_nguyen }}</span>
                                         </div>
-                                        <button class="return-btn" @click="traTaiNguyen(item)" title="Tra thiet bi">
+                                        <button class="return-btn" @click="traTaiNguyen(item)" title="Trả thiết bị">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                                                 <polyline points="9 14 4 9 9 4"/>
                                                 <path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
@@ -294,7 +316,7 @@
                                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
                                 </svg>
-                                <span>Khong co thiet bi nao</span>
+                                <span>Không có thiết bị nào</span>
                             </div>
                         </div>
 
