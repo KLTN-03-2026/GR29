@@ -10,7 +10,7 @@ export default function (to, from, next) {
     }
 
     axios
-        .get("http://127.0.0.1:8000/api/admin/check-token", {
+        .get("https://bekltn.nowsos.site/api/admin/check-token", {
             headers: {
                 Authorization: "Bearer " + token,
             },

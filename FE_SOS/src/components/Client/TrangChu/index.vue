@@ -201,7 +201,16 @@
                         <span class="sos-section__step">5</span>
                         <h2 class="sos-section__title" id="section-image">Ảnh Hiện Trường</h2>
                     </div>
-                    <label class="sos-upload-zone">
+                    <div v-if="selectedImagePreview" class="sos-preview-wrap">
+                        <img :src="selectedImagePreview" alt="Xem trước ảnh hiện trường" class="sos-preview-img" />
+                        <button type="button" class="sos-preview-remove" @click="clearSelectedImage" aria-label="Xóa ảnh">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                        </button>
+                        <p class="sos-preview-name">{{ selectedImageName }}</p>
+                    </div>
+                    <label v-else class="sos-upload-zone">
                         <input type="file" class="d-none" accept="image/*,video/*" @change="handleFileSelect"
                             aria-label="Tai len anh hoac video" />
                         <div class="sos-upload-zone__inner">
@@ -217,14 +226,6 @@
                             <p class="sos-upload-zone__hint">Click hoặc kéo thả file vào đây</p>
                         </div>
                     </label>
-                    <p v-if="selectedImageName" class="sos-file-name">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" aria-hidden="true">
-                            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-                            <polyline points="13 2 13 9 20 9" />
-                        </svg>
-                        {{ selectedImageName }}
-                    </p>
                 </section>
 
                 <!-- Section: Lien he (guest only) -->
@@ -483,6 +484,7 @@ export default {
             selectedCoords: null,
             selectedImageName: "",
             selectedImageFile: null,
+            selectedImagePreview: null,
             soNguoiBiAnhHuong: 1,
             diemUuTien: null,
             trangThai: null,
@@ -762,6 +764,10 @@ export default {
         },
         handleFileSelect(event) {
             const file = event.target.files?.[0];
+            if (this.selectedImagePreview) {
+                URL.revokeObjectURL(this.selectedImagePreview);
+                this.selectedImagePreview = null;
+            }
             if (!file) {
                 this.selectedImageName = "";
                 this.selectedImageFile = null;
@@ -769,6 +775,17 @@ export default {
             }
             this.selectedImageName = file.name;
             this.selectedImageFile = file;
+            if (file.type.startsWith('image/')) {
+                this.selectedImagePreview = URL.createObjectURL(file);
+            }
+        },
+        clearSelectedImage() {
+            if (this.selectedImagePreview) {
+                URL.revokeObjectURL(this.selectedImagePreview);
+                this.selectedImagePreview = null;
+            }
+            this.selectedImageName = "";
+            this.selectedImageFile = null;
         },
         layIdNguoiDungHienTai() {
             const sources = ["user", "client"];
@@ -1577,6 +1594,54 @@ export default {
     font-size: 13px;
     color: var(--sos-cta);
     font-weight: 500;
+}
+
+.sos-preview-wrap {
+    position: relative;
+    margin-top: 4px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--sos-border);
+}
+
+.sos-preview-img {
+    display: block;
+    width: 100%;
+    max-height: 220px;
+    object-fit: cover;
+}
+
+.sos-preview-remove {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    z-index: 2;
+}
+
+.sos-preview-remove:hover {
+    background: rgba(220, 38, 38, 0.85);
+}
+
+.sos-preview-name {
+    margin: 0;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: var(--sos-text-muted, #64748b);
+    background: #f8fafc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* --- GUEST SECTION --- */

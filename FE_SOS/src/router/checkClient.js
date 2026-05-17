@@ -13,7 +13,7 @@ export default function (to, from, next) {
     }
 
     axios
-        .get("http://127.0.0.1:8000/api/nguoi-dung/check-client", {
+        .get("https://bekltn.nowsos.site/api/nguoi-dung/check-client", {
             headers: {
                 Authorization: "Bearer " + token,
             },

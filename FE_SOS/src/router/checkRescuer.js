@@ -11,7 +11,7 @@ export default function (to, from, next) {
     }
 
     axios
-        .get("http://127.0.0.1:8000/api/rescuer/check-token", {
+        .get("https://bekltn.nowsos.site/api/rescuer/check-token", {
             headers: {
                 Authorization: "Bearer " + token,
             },

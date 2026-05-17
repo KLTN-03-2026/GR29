@@ -345,7 +345,8 @@ import RescueMap from "./components/RescueMap.vue";
 import ContactActions from "./components/ContactActions.vue";
 import RescuerInfoCard from "./components/RescuerInfoCard.vue";
 import { rescueRequestAPI, assignmentAPI } from "../../../services/api.js";
-import { loadOpenMap, createOpenMap, createOpenMapMarker, createOpenMapPopup } from "../../../utils/openMap.js";
+import { loadOpenMap, createOpenMap, createOpenMapMarker, createOpenMapPopup, fitBoundsToMap } from "../../../utils/openMap.js";
+import { veDuongDiTrenMap } from "../../../utils/realtimeRoute.js";
 import { createToaster } from "@meforma/vue-toaster";
 
 const toaster = createToaster({ position: "top-right" });
@@ -366,7 +367,7 @@ const STATUS_STEP = {
   DONE: 5,
 };
 
-const CLOSED_STATUS = new Set(["HOAN_THANH", "DA_HOAN_THANH", "HUY_BO", "DA_HUY", "TU_CHOI", "THAT_BAI", "DONE"]);
+const ACTIVE_STATUS = new Set(["DA_PHAN_CONG", "DANG_XU_LY", "DA_DEN_HIEN_TRUONG"]);
 
 // ─── Helper functions ───────────────────────────────────────────────────────────
 
@@ -595,9 +596,16 @@ export default {
       this.viewMode = "detail";
       // If assigned, load team info
       if (this.currentProgressStep >= 2) {
+        // Seed rescuer marker from cached team coordinates
+        const seedLat = item.team?.vi_tri_lat;
+        const seedLng = item.team?.vi_tri_lng;
+        if (seedLat && seedLng) {
+          this.rescuerMarkerData = { lat: Number(seedLat), lng: Number(seedLng) };
+        }
         this.loadRescuerInfo();
         this.subscribeToRescuerLocation();
       } else {
+        this.rescuerMarkerData = null;
         this.unsubscribeFromRescuerLocation();
       }
       // Update map if ready
@@ -634,20 +642,16 @@ export default {
           ? raw.data.data
           : [];
 
-        // Filter active (non-closed) requests for this user
+        // Filter only in-progress requests (DA_PHAN_CONG, DANG_XU_LY, DA_DEN_HIEN_TRUONG) for this user
         const activeItems = items.filter((item) => {
           const itemUserId =
             item.id_nguoi_dung ||
-            item.id ||
-            item.user_id ||
-            item.ma_nguoi_dung ||
             item.nguoi_dung_id ||
             item.nguoi_dung?.id_nguoi_dung ||
             item.nguoi_dung?.id;
           if (itemUserId && Number(itemUserId) !== Number(userId)) return false;
           const reqStatus = normalizeStatusCode(item.trang_thai || item.status);
-          if (CLOSED_STATUS.has(reqStatus)) return false;
-          return true;
+          return ACTIVE_STATUS.has(reqStatus);
         });
 
         // Store all active requests in the list
@@ -667,6 +671,14 @@ export default {
           if (this.currentProgressStep >= 2) {
             this.loadRescuerInfo();
             this.subscribeToRescuerLocation();
+          }
+
+          // Seed rescuer marker from API data if available
+          const norm = this.activeRequest || this.normalizeItem(item);
+          const seedLat = norm.team?.vi_tri_lat;
+          const seedLng = norm.team?.vi_tri_lng;
+          if (seedLat && seedLng && !this.rescuerMarkerData) {
+            this.rescuerMarkerData = { lat: Number(seedLat), lng: Number(seedLng) };
           }
 
           // Update map if ready
@@ -746,18 +758,17 @@ export default {
             },
           };
 
-          // Update rescuer location if available
-          const rescuerLat = phanCong.vi_tri_lat || phanCong.viTriLat || team.vi_tri_lat;
-          const rescuerLng = phanCong.vi_tri_lng || phanCong.viTriLng || team.vi_tri_lng;
-          if (rescuerLat && rescuerLng) {
-            this.rescuerMarkerData = {
-              lat: Number(rescuerLat),
-              lng: Number(rescuerLng),
-            };
-            if (this.mapReady) this.updateRescuerMarker();
+          // Seed rescuer marker from API if realtime hasn't provided a position yet
+          const apiLat = phanCong.vi_tri_lat || phanCong.viTriLat || team.vi_tri_lat || null;
+          const apiLng = phanCong.vi_tri_lng || phanCong.viTriLng || team.vi_tri_lng || null;
+          if (apiLat && apiLng && !this.rescuerMarkerData) {
+            this.rescuerMarkerData = { lat: Number(apiLat), lng: Number(apiLng) };
+            if (this.mapReady) {
+              this.updateRescuerMarker();
+            }
           }
 
-          // Calculate ETA from route API
+          // Chỉ tính ETA nếu đã có tọa độ rescuer từ realtime
           if (this.activeRequest.lat && this.activeRequest.lng && this.rescuerMarkerData) {
             this.calculateETA();
           }
@@ -792,18 +803,14 @@ export default {
         phanCongRaw.doi_cuu_ho ||
         {};
 
-      // Get team location from assignment or team object
+      // Get rescuer location from assignment only (not team HQ)
       const rescuerLat =
         phanCongRaw.vi_tri_lat ||
         phanCongRaw.viTriLat ||
-        teamRaw.vi_tri_lat ||
-        teamRaw.viTriLat ||
         null;
       const rescuerLng =
         phanCongRaw.vi_tri_lng ||
         phanCongRaw.viTriLng ||
-        teamRaw.vi_tri_lng ||
-        teamRaw.viTriLng ||
         null;
 
       // Get member info (thanhViens in camelCase)
@@ -948,7 +955,7 @@ export default {
           essential: true,
         });
 
-        // Draw route to incident if rescuer location known
+        // Draw route from rescuer to incident (when rescuer is en route)
         if (this.rescuerMarkerData && this.currentProgressStep >= 3) {
           this.drawRoute(
             this.rescuerMarkerData.lat,
@@ -981,31 +988,17 @@ export default {
     async drawRoute(lat1, lng1, lat2, lng2) {
       if (!this.map) return;
       this.cleanupRoute();
-      try {
-        const response = await fetch(
-          `https://router.project-osrm.org/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=full&geometries=geojson`
-        );
-        const data = await response.json();
-        if (data.routes?.length > 0) {
-          const coordinates = data.routes[0].geometry.coordinates.map((c) => [c[0], c[1]]);
-          const routeGeoJSON = {
-            type: "Feature",
-            geometry: { type: "LineString", coordinates },
-          };
-          this.map.addSource("rescue-route", { type: "geojson", data: routeGeoJSON });
-          this.map.addLayer({
-            id: "rescue-route-line",
-            type: "line",
-            source: "rescue-route",
-            layout: { "line-join": "round", "line-cap": "round" },
-            paint: { "line-color": "#10b981", "line-width": 5, "line-opacity": 0.8 },
-          });
-          this.routeSource = "rescue-route";
-          this.routeLayer = "rescue-route-line";
-        }
-      } catch {
-        // silent
+      const path = await veDuongDiTrenMap(
+        this.map,
+        { lat: lat1, lng: lng1 },
+        { lat: lat2, lng: lng2 },
+        'rescue-route'
+      );
+      if (path && path.length > 0) {
+        fitBoundsToMap(this.map, path);
       }
+      this.routeSource = 'rescue-route';
+      this.routeLayer = 'rescue-route-line';
     },
 
     cleanupRoute() {
@@ -1155,8 +1148,18 @@ export default {
       const closed = new Set(["HOAN_THANH", "DA_HOAN_THANH", "HUY_BO", "DA_HUY", "TU_CHOI", "THAT_BAI", "DONE"]);
 
       if (closed.has(data.trang_thai)) {
+        // Remove from requests list
+        this.requests = this.requests.filter((r) => String(r.id) !== requestId);
+        // Clear active request and go back to list
         this.activeRequest = null;
-        toaster.info("Yêu cầu đã hoàn thành hoặc bị hủy.");
+        this.viewMode = "list";
+        if (data.trang_thai === "HOAN_THANH" || data.trang_thai === "DA_HOAN_THANH" || data.trang_thai === "DONE") {
+          toaster.success("Yêu cầu cứu hộ đã hoàn thành!");
+        } else if (data.trang_thai === "THAT_BAI") {
+          toaster.error("Yêu cầu cứu hộ thất bại.");
+        } else {
+          toaster.info("Yêu cầu đã bị hủy.");
+        }
         return;
       }
 
@@ -1207,10 +1210,11 @@ export default {
 
     handleLocationEvent(data) {
       if (!this.activeRequest) return;
-      const teamId = data.id_doi_cuu_ho ?? data.teamId;
+      // Backend broadcasts as 'team_id' field
+      const teamId = data.team_id ?? data.id_doi_cuu_ho ?? data.teamId;
       const currentTeamId =
-        this.activeRequest.team?.id_doi_cuu_ho ||
         this.activeRequest.team?.id ||
+        this.activeRequest.team?.id_doi_cuu_ho ||
         this.activeRequest.assignment?.id_doi_cuu_ho;
       if (teamId && currentTeamId && String(teamId) !== String(currentTeamId)) return;
 

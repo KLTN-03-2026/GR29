@@ -141,7 +141,7 @@ export default {
 .contact-actions {
   position: fixed;
   bottom: 1.5rem;
-  right: 1.25rem;
+  right: 5.5rem;
   z-index: 100;
 }
 

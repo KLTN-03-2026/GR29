@@ -1363,7 +1363,7 @@ export default {
 
         await rescueRequestAPI.changeStatus(reqId, { trang_thai: 'DA_PHAN_CONG' });
 
-        this.$toast?.success?.(`Đã gửi lệnh xuất phát cho ${this.selectedTeams.length} đội tới hiện trường.`, {
+        this.$toast?.success?.(`Đã gửi lệnh xuất phát cho đội tới hiện trường.`, {
           position: 'top-right',
           duration: 3000,
         });

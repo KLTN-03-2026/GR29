@@ -846,6 +846,10 @@ export default {
             mapError: "",
             mapResizeObserver: null,
             locationBroadcastInterval: null,
+            locationWatchId: null,
+            lastSentLat: null,
+            lastSentLng: null,
+            lastSentTime: 0,
             locationChannel: null,
             viTriCu: null,
             lanCapNhatCuoi: 0,
@@ -1428,49 +1432,55 @@ export default {
             } catch { /* silent */ }
         },
         startLocationBroadcasting() {
-            this.stopLocationBroadcasting(); // Clear any existing interval
-            if (!this.currentMission) return;
+            this.stopLocationBroadcasting();
+            if (!this.currentMission || !navigator.geolocation) return;
 
-            this.locationBroadcastInterval = setInterval(async () => {
-                if (!this.currentMission || !navigator.geolocation) return;
+            this.locationWatchId = navigator.geolocation.watchPosition(
+                async (position) => {
+                    const now = Date.now();
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
 
-                try {
-                    const position = await this.getCurrentPosition();
-                    if (position && this.currentMission.id_phan_cong) {
-                        await assignmentAPI.updateLocation(this.currentMission.id_phan_cong, {
-                            lat: position.coords.latitude,
-                            lng: position.coords.longitude
-                        });
-                        console.log('[Location] Broadcasted:', position.coords.latitude, position.coords.longitude);
+                    // Throttle: không gửi nhanh hơn 3 giây
+                    if (now - this.lastSentTime < 3000) return;
+
+                    // Bỏ qua khi đứng im (di chuyển < 5m so với lần gửi trước)
+                    if (this.lastSentLat !== null && this.lastSentLng !== null) {
+                        const dist = this._haversineMeters(this.lastSentLat, this.lastSentLng, lat, lng);
+                        if (dist < 5) return;
                     }
-                } catch (error) {
-                    console.warn('[Location] Failed to broadcast location:', error);
-                }
-            }, 10000); // Broadcast every 10 seconds
+
+                    if (!this.currentMission?.id_phan_cong) return;
+                    try {
+                        await assignmentAPI.updateLocation(this.currentMission.id_phan_cong, { lat, lng });
+                        this.lastSentLat = lat;
+                        this.lastSentLng = lng;
+                        this.lastSentTime = now;
+                    } catch (error) {
+                        console.warn('[Location] Failed to broadcast:', error);
+                    }
+                },
+                (err) => console.warn('[Location] watchPosition error:', err),
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
         },
         stopLocationBroadcasting() {
+            if (this.locationWatchId !== null) {
+                navigator.geolocation.clearWatch(this.locationWatchId);
+                this.locationWatchId = null;
+            }
             if (this.locationBroadcastInterval) {
                 clearInterval(this.locationBroadcastInterval);
                 this.locationBroadcastInterval = null;
             }
         },
-        getCurrentPosition() {
-            return new Promise((resolve, reject) => {
-                if (!navigator.geolocation) {
-                    reject(new Error('Geolocation not supported'));
-                    return;
-                }
-
-                navigator.geolocation.getCurrentPosition(
-                    resolve,
-                    reject,
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 5000,
-                        maximumAge: 10000
-                    }
-                );
-            });
+        _haversineMeters(lat1, lng1, lat2, lng2) {
+            const R = 6371000;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         },
         cleanupRoute() {
             if (!this.map) return;

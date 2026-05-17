@@ -304,6 +304,7 @@ const BASE_URL = 'http://localhost:8000';
 const STATUS_META = {
   hoan_thanh: { label: "Hoàn thành", badge: "bg-success text-white" },
   dang_xu_ly: { label: "Đang xử lý", badge: "bg-warning text-dark" },
+  da_phan_cong: { label: "Đã phân công", badge: "bg-info text-white" },
   cho_xu_ly: { label: "Chờ xử lý", badge: "bg-danger text-white" },
   huy_bo: { label: "Đã huỷ", badge: "bg-secondary text-white" },
   processing: { label: "Đang xử lý", badge: "bg-warning text-dark" },
@@ -401,6 +402,8 @@ function parseStatusBadgeClass(rawStatus) {
     case "dang_xu_ly":
     case "processing":
       return "status-badge status-processing";
+    case "da_phan_cong":
+      return "status-badge status-assigned";
     case "cho_xu_ly":
     case "waiting":
       return "status-badge status-pending";
@@ -438,6 +441,8 @@ function parseStatusIcon(rawStatus) {
     case "dang_xu_ly":
     case "processing":
       return "bi-clock-fill";
+    case "da_phan_cong":
+      return "bi-person-check-fill";
     case "cho_xu_ly":
     case "waiting":
       return "bi-hourglass-split";
@@ -487,6 +492,7 @@ export default {
       selectedItem: null,
       isCancelModalOpen: false,
       cancelItem: null,
+      realtimeChannel: null,
     };
   },
   computed: {
@@ -501,11 +507,13 @@ export default {
     filteredList() {
       let result = [...this.danhsach];
 
-      // Ẩn các yêu cầu đã hoàn thành
-      const pendingStatuses = new Set(["cho_xu_ly", "chua_xu_ly", "cho_xac_nhan", "waiting", "pending"]);
+      // Chỉ hiển thị yêu cầu có trạng thái CHO_XU_LY
+      const visibleStatuses = new Set([
+        "cho_xu_ly", "waiting",
+      ]);
       result = result.filter(item => {
         const key = normalizeStatusKey(item.statusKey);
-        return pendingStatuses.has(key);
+        return visibleStatuses.has(key);
       });
 
       if (this.searchQuery.trim()) {
@@ -548,10 +556,60 @@ export default {
   },
   async created() {
     await this.loadRequests();
+    this.subscribeToReverb();
+  },
+  beforeUnmount() {
+    this.unsubscribeFromReverb();
   },
   methods: {
     onSearchInput() {},
     onFilterChange() {},
+
+    subscribeToReverb() {
+      if (!window.Echo) return;
+      this.realtimeChannel = window.Echo.channel('rescue-requests');
+      this.realtimeChannel.listen('RescueRequestUpdated', (data) => {
+        this.handleReverbEvent(data);
+      });
+    },
+
+    unsubscribeFromReverb() {
+      if (this.realtimeChannel) {
+        window.Echo.leaveChannel('rescue-requests');
+        this.realtimeChannel = null;
+      }
+    },
+
+    handleReverbEvent(data) {
+      const currentUserId = getCurrentUserId();
+      const eventUserId = Number(
+        data?.id_nguoi_dung ?? data?.user_id ?? data?.yeu_cau?.id_nguoi_dung ?? 0
+      );
+      if (!currentUserId || eventUserId !== currentUserId) return;
+
+      const eventId = Number(data?.id ?? data?.yeu_cau?.id ?? 0);
+      if (!eventId) return;
+
+      const newStatus = data?.trang_thai ?? data?.yeu_cau?.trang_thai;
+      const idx = this.danhsach.findIndex(item => Number(item.id) === eventId);
+
+      if (idx !== -1) {
+        // Cập nhật trạng thái item đã có trong danh sách
+        const updated = { ...this.danhsach[idx] };
+        if (newStatus) {
+          updated.statusKey = newStatus;
+          updated.statusText = parseStatus(newStatus).label;
+          updated.statusBadgeClass = parseStatusBadgeClass(newStatus);
+          updated.statusIcon = parseStatusIcon(newStatus);
+          if (updated.raw) updated.raw.trang_thai = newStatus;
+        }
+        this.danhsach.splice(idx, 1, updated);
+        // Đồng bộ selectedItem nếu đang mở modal
+        if (this.selectedItem && Number(this.selectedItem.id) === eventId) {
+          this.selectedItem = updated;
+        }
+      }
+    },
     
     viewAll() {
       this.searchQuery = "";
@@ -842,6 +900,13 @@ export default {
   color: #fff;
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+/* Đã phân công */
+.status-badge.status-assigned {
+  color: #fff;
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
 }
 
 /* Đã hủy */
