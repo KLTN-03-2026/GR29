@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Events\RescueRequestUpdated;
 use App\Http\Requests\YeuCauCuuHoRequest;
 use App\Jobs\AutoDispatchJob;
+use App\Jobs\DetectVictimsJob;
 use App\Models\{DoiCuuHo, YeuCauCuuHo, HangDoiXuLy, PhanLoaiAis, DuLieuHeatmap, PhanCongCuuHo, NguoiDung, LoaiSuCo};
 use App\Services\DistanceService;
 use App\Services\AutoDispatchService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Response;
@@ -570,8 +572,11 @@ class YeuCauCuuHoController extends Controller
                     }
                 }
             }
+            // Neu co anh -> de null cho DetectVictimsJob (YOLO) ghi vao.
+            // Neu khong co anh va FE khong gui -> default = 1.
+            $coAnh = $request->hasFile('hinh_anh');
             if (!array_key_exists('so_nguoi_bi_anh_huong', $validated) || $validated['so_nguoi_bi_anh_huong'] === null) {
-                $validated['so_nguoi_bi_anh_huong'] = 1;
+                $validated['so_nguoi_bi_anh_huong'] = $coAnh ? null : 1;
             }
             if (!array_key_exists('muc_do_khan_cap', $validated) || $validated['muc_do_khan_cap'] === null) {
                 $validated['muc_do_khan_cap'] = $this->mapDiemUuTienSangMucDoKhanCap(
@@ -636,8 +641,19 @@ class YeuCauCuuHoController extends Controller
 
             $this->safeBroadcastRescueUpdate($item, 'created');
 
-            // === Điều phối tự động: dispatch job nếu AutoDispatch đang bật ===
-            if (AutoDispatchService::daBat()) {
+            // === YOLO dem nan nhan: luon chay khi co anh, doc lap voi AutoDispatch ===
+            if ($hinhAnhPath) {
+                if (AutoDispatchService::daBat()) {
+                    // Chain: YOLO truoc, roi den AutoDispatch
+                    Bus::chain([
+                        new DetectVictimsJob($item->id_yeu_cau),
+                        new AutoDispatchJob($item->id_yeu_cau),
+                    ])->dispatch();
+                } else {
+                    // Chi chay YOLO, khong dispatch auto
+                    DetectVictimsJob::dispatch($item->id_yeu_cau);
+                }
+            } elseif (AutoDispatchService::daBat()) {
                 AutoDispatchJob::dispatch($item->id_yeu_cau);
             }
 
