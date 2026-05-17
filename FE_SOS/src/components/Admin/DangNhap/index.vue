@@ -50,6 +50,7 @@
 
 <script>
 import { authAPI } from "../../../services/api.js";
+import { emitAccountLocked } from "../../../utils/accountLockedEvent.js";
 
 export default {
   name: "AdminDangNhap",
@@ -77,6 +78,11 @@ export default {
           this.$toast.error(body.message || "Đăng nhập thất bại");
         }
       } catch (err) {
+        console.log("[AdminLogin] error", err.response?.status, err.response?.data);
+        if (err.response?.data?.account_locked) {
+          emitAccountLocked("admin");
+          return;
+        }
         this.$toast.error(
           err.response?.data?.message ||
             "Không kết nối được API. Chạy Laravel và kiểm tra CORS."

@@ -106,7 +106,7 @@
                           m.ho_ten ? m.ho_ten.charAt(0).toUpperCase() : '?' }}</span>
                       </div>
                       <span class="badge bg-secondary-subtle text-secondary-emphasis small fw-medium">
-                        {{ (team.thanhViens || []).length }} thành viên
+                        {{ team.thanh_viens_count ?? (team.thanhViens || []).length }} thành viên
                       </span>
                     </div>
                   </td>
@@ -230,8 +230,8 @@
     <!-- ========== CONFIRM DELETE MODAL ========== -->
     <div v-if="showDeleteModal" class="modal-overlay" @click.self="showDeleteModal = false">
       <div class="modal-dialog modal-dialog-centered modal-sm">
-        <div class="modal-content border-0 shadow-xl">
-          <div class="modal-body p-4 text-center">
+        <div class="modal-content delete-modal-content border-0 shadow-xl">
+          <div class="modal-body p-4 text-center bg-white">
             <div class="mb-3">
               <div class="delete-icon-wrap mx-auto">
                 <i class="fa-solid fa-trash text-danger fs-1"></i>
@@ -370,10 +370,14 @@ export default {
     },
     filteredTeams() {
       if (!this.searchTeams) return this.teams;
-      const q = this.searchTeams.toLowerCase();
+      const removeDiacritics = (str) => {
+        if (!str) return '';
+        return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
+      };
+      const q = removeDiacritics(this.searchTeams).toLowerCase();
       return this.teams.filter(t =>
-        (t.ten_doi || '').toLowerCase().includes(q) ||
-        (t.khu_vuc_quan_ly || '').toLowerCase().includes(q)
+        removeDiacritics(t.ten_doi || '').toLowerCase().includes(q) ||
+        removeDiacritics(t.khu_vuc_quan_ly || '').toLowerCase().includes(q)
       );
     },
     filteredResources() {
@@ -1052,6 +1056,21 @@ export default {
 }
 
 /* ===== DELETE MODAL ===== */
+.delete-modal-content {
+  background-color: #ffffff !important;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.delete-modal-content .modal-body {
+  background-color: #ffffff !important;
+}
+
+.delete-modal-content h5,
+.delete-modal-content p {
+  opacity: 1 !important;
+}
+
 .delete-icon-wrap {
   width: 80px;
   height: 80px;

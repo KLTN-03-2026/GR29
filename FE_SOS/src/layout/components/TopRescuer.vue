@@ -23,13 +23,13 @@
             <span class="text-white small fw-semibold">Khu vực thành viên</span>
           </div>
 
-          <div class="d-none d-lg-flex align-items-center bg-white bg-opacity-10 rounded-pill px-3 py-1 border border-white border-opacity-25">
+          <!-- <div class="d-none d-lg-flex align-items-center bg-white bg-opacity-10 rounded-pill px-3 py-1 border border-white border-opacity-25">
             <span class="text-white-50 small fw-bold me-2">TRẠNG THÁI TRỰC:</span>
             <div class="form-check form-switch m-0 p-0 d-flex align-items-center">
               <input class="form-check-input shadow-none cursor-pointer" type="checkbox" checked role="switch" id="statusSwitch">
               <label class="form-check-label text-white small fw-bold ms-2 cursor-pointer" for="statusSwitch">ONLINE</label>
             </div>
-          </div>
+          </div> -->
 
           <div class="d-none d-md-flex flex-column text-end">
             <div class="text-white-50 fw-bold" style="font-size: 10px;">ĐỘI CỨU HỘ</div>

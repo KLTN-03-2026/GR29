@@ -334,6 +334,7 @@
                   :center="mapCenter"
                   :zoom="12"
                   :showMarker="false"
+                  :incidents="mapIncidents"
                   :key="'dashboard-map-' + mapRefreshKey"
                 />
                 <!-- Map Stats Overlay -->
@@ -521,8 +522,10 @@ export default {
           address: r.address,
           lat: r.lat,
           lng: r.lng,
-          severityLabel: r.severityLabel,
-          severityBadge: r.severityBadge,
+          status: r.status,
+          time: r.time,
+          severityLabel: getSeverityLabel(r.mucDoKhanCap),
+          severityBadge: getSeverityBadge(r.mucDoKhanCap),
         }));
     },
     zoneStats() {

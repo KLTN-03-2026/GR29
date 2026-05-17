@@ -24,7 +24,7 @@ class GuiMaOtp extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Mã xác nhận đặt lại mật khẩu - FE SOS',
+            subject: 'Mã xác nhận đặt lại mật khẩu - NOWSOS',
         );
     }
 

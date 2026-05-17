@@ -95,7 +95,7 @@ class AutoDispatchJob implements ShouldQueue
 
         // === Bước 4: Kiểm tra trạng thái yêu cầu ===
         $trangThai = strtoupper(trim((string) ($yeuCau->trang_thai ?? '')));
-        $trangThaiChoPhep = ['CHO_XU_LY', 'MOI', 'WAITING', 'CHO_PHAN_CONG', 'DA_PHAN_CONG'];
+        $trangThaiChoPhep = ['CHO_XU_LY', 'MOI', 'WAITING', 'CHO_PHAN_CONG'];
         if (!in_array($trangThai, $trangThaiChoPhep, true)) {
             Log::info('[AutoDispatchJob] Yêu cầu không ở trạng thái cho phép, bỏ qua', [
                 'id_yeu_cau' => $this->idYeuCau,
@@ -160,6 +160,13 @@ class AutoDispatchJob implements ShouldQueue
             'so_lan_retry_hien_tai' => $this->soLanRetry,
         ]);
 
+        // Nếu tất cả đội phù hợp đều đầy capacity → dừng retry,
+        // đưa vào hàng chờ "chờ đội trống" để tự dispatch lại khi có slot
+        if (!empty($ketQua['tat_ca_day_capacity'])) {
+            $this->daoVaoHangChoDoiTrong($yeuCau);
+            return;
+        }
+
         // Kiểm tra xem có thể retry hay không
         if ($this->soLanRetry < self::SO_LAN_RETRY_TOI_DA) {
             // Dispatch retry job sau 30 phút
@@ -184,6 +191,76 @@ class AutoDispatchJob implements ShouldQueue
             ]);
 
             $this->thongBaoAdminCanThiep($yeuCau);
+        }
+    }
+
+    /**
+     * Đưa yêu cầu vào hàng chờ "chờ đội trống".
+     * Khi có đội có slot trở lại (CoDoiTrongTroLai), sẽ tự dispatch lại.
+     */
+    private function daoVaoHangChoDoiTrong(YeuCauCuuHo $yeuCau): void
+    {
+        $idLoaiSuCo = $yeuCau->id_loai_su_co;
+        $khoaCho = "cho_doi_trong_loai_{$idLoaiSuCo}";
+
+        $danhSachCho = Cache::get($khoaCho, []);
+
+        // Tránh trùng lặp
+        if (!in_array($this->idYeuCau, $danhSachCho, true)) {
+            $danhSachCho[] = $this->idYeuCau;
+            Cache::put($khoaCho, $danhSachCho, now()->addHours(24));
+        }
+
+        Log::info('[AutoDispatchJob] Đưa vào hàng chờ đội trống', [
+            'id_yeu_cau' => $this->idYeuCau,
+            'id_loai_su_co' => $idLoaiSuCo,
+            'so_luong_cho' => count($danhSachCho),
+        ]);
+    }
+
+    /**
+     * Dispatch lại tất cả yêu cầu đang chờ đội trống cho các loại sự cố mà đội vừa có slot.
+     * Được gọi từ listener CoDoiTrongTroLai.
+     *
+     * @param array $cacLoaiSuCoId Danh sách id_loai_su_co của đội vừa có slot
+     */
+    public static function dispatchLaiYeuCauChoDoi(array $cacLoaiSuCoId): void
+    {
+        foreach ($cacLoaiSuCoId as $idLoaiSuCo) {
+            $khoaCho = "cho_doi_trong_loai_{$idLoaiSuCo}";
+            $danhSachCho = Cache::get($khoaCho, []);
+
+            if (empty($danhSachCho)) {
+                continue;
+            }
+
+            Log::info('[AutoDispatchJob] Dispatch lại yêu cầu chờ đội trống', [
+                'id_loai_su_co' => $idLoaiSuCo,
+                'so_luong' => count($danhSachCho),
+                'danh_sach' => $danhSachCho,
+            ]);
+
+            // Xóa hàng chờ trước khi dispatch để tránh dispatch trùng
+            Cache::forget($khoaCho);
+
+            foreach ($danhSachCho as $idYeuCau) {
+                // Kiểm tra yêu cầu còn hợp lệ không trước khi dispatch
+                $yeuCau = YeuCauCuuHo::find($idYeuCau);
+                if (!$yeuCau) continue;
+
+                $trangThai = strtoupper(trim((string) ($yeuCau->trang_thai ?? '')));
+                $trangThaiChoPhep = ['CHO_XU_LY', 'MOI', 'WAITING', 'CHO_PHAN_CONG'];
+                if (!in_array($trangThai, $trangThaiChoPhep, true)) continue;
+
+                if (PhanCongCuuHo::where('id_yeu_cau', $idYeuCau)->exists()) continue;
+
+                self::dispatch($idYeuCau)->onQueue('auto-dispatch');
+
+                Log::info('[AutoDispatchJob] Đã dispatch lại yêu cầu chờ', [
+                    'id_yeu_cau' => $idYeuCau,
+                    'id_loai_su_co' => $idLoaiSuCo,
+                ]);
+            }
         }
     }
 

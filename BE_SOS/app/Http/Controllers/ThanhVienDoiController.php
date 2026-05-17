@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\ThanhVienDoiStatusChanged;
 use App\Models\ThanhVienDoi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,7 +20,21 @@ class ThanhVienDoiController extends Controller
 
         $user = ThanhVienDoi::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->mat_khau, $user->mat_khau)) {
+        if (!$user) {
+            throw ValidationException::withMessages([
+                'email' => ['The provided credentials are incorrect.'],
+            ]);
+        }
+
+        if ((int) $user->trang_thai === 0) {
+            return response()->json([
+                'status' => false,
+                'account_locked' => true,
+                'message' => 'Tài khoản của bạn đã bị khóa.',
+            ], 403);
+        }
+
+        if (!Hash::check($request->mat_khau, $user->mat_khau)) {
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
             ]);
@@ -97,6 +112,9 @@ class ThanhVienDoiController extends Controller
         $thanhVien = ThanhVienDoi::findOrFail($id);
         $thanhVien->trang_thai = $thanhVien->trang_thai == 1 ? 0 : 1;
         $thanhVien->save();
+
+        broadcast(new ThanhVienDoiStatusChanged((int) $thanhVien->id_thanh_vien_doi, (int) $thanhVien->trang_thai));
+
         return response()->json([
             'status' => true,
             'message' => 'Cập nhật trạng thái thành công',

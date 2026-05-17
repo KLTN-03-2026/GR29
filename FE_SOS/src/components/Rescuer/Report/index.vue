@@ -129,12 +129,11 @@
             <table class="table table-hover mb-0">
               <thead class="bg-light">
                 <tr>
-                  <th class="ps-4 py-3 fw-bold text-secondary">Ngày</th>
-                  <th class="py-3 fw-bold text-secondary">Loại sự cố</th>
+                  <th class="ps-4 py-3 fw-bold text-secondary">Thời gian</th>
+                  <th class="py-3 fw-bold text-secondary">ID sự cố</th>
                   <th class="py-3 fw-bold text-secondary">Địa điểm</th>
                   <th class="py-3 fw-bold text-secondary">Mức độ</th>
                   <th class="py-3 fw-bold text-secondary">Trạng thái</th>
-                  <th class="text-end pe-4 py-3 fw-bold text-secondary">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -144,7 +143,7 @@
                     <div class="text-muted small">{{ formatTime(mission.created_at) }}</div>
                   </td>
                   <td>
-                    <span class="fw-medium">{{ mission.yeu_cau?.loai_su_co?.ten_loai_su_co || 'Yêu cầu cứu hộ' }}</span>
+                    <span class="fw-medium">{{ mission.yeu_cau?.id_yeu_cau || '-' }}</span>
                   </td>
                   <td class="text-secondary">
                     {{ mission.yeu_cau?.dia_chi ? mission.yeu_cau.dia_chi.substring(0, 30) + '...' : '-' }}
@@ -159,11 +158,11 @@
                       {{ getStatusText(mission.trang_thai_nhiem_vu) }}
                     </span>
                   </td>
-                  <td class="text-end pe-4">
+                  <!-- <td class="text-end pe-4">
                     <button class="btn btn-sm btn-outline-secondary rounded-3" @click="viewDetail(mission)">
                       <i class="fa-solid fa-eye"></i>
                     </button>
-                  </td>
+                  </td> -->
                 </tr>
                 <tr v-if="recentMissions.length === 0">
                   <td colspan="6" class="text-center py-4 text-muted">
@@ -175,6 +174,52 @@
           </div>
         </div>
       </div>
+
+      <!-- Client Reviews Table -->
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden mt-4">
+        <div class="card-header bg-transparent border-bottom pb-3">
+          <h6 class="fw-bold mb-0">Đánh giá của client</h6>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead class="bg-light">
+                <tr>
+                  <th class="ps-4 py-3 fw-bold text-secondary">Thời gian</th>
+                  <th class="py-3 fw-bold text-secondary">Khách hàng</th>
+                  <th class="py-3 fw-bold text-secondary">Điểm</th>
+                  <th class="py-3 fw-bold text-secondary">Nội dung</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="review in teamReviews" :key="review.id_danh_gia">
+                  <td class="ps-4">
+                    <div class="fw-medium">{{ formatDate(review.created_at) }}</div>
+                  </td>
+                  <td>
+                    <span class="fw-medium">{{ review.nguoi_dung?.ho_ten || '-' }}</span>
+                  </td>
+                  <td>
+                    <div class="text-warning">
+                      <i v-for="n in review.diem_danh_gia" :key="n" class="fa-solid fa-star"></i>
+                      <i v-for="n in (5 - review.diem_danh_gia)" :key="'empty-'+n" class="fa-regular fa-star text-muted"></i>
+                    </div>
+                  </td>
+                  <td class="text-secondary">
+                    {{ review.noi_dung_danh_gia || '-' }}
+                  </td>
+                </tr>
+                <tr v-if="teamReviews.length === 0">
+                  <td colspan="4" class="text-center py-4 text-muted">
+                    Chưa có đánh giá nào
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </template>
@@ -188,6 +233,8 @@ export default {
     return {
       loading: false,
       allMissions: [],
+      teamReviews: [],
+      teamId: null,
       stats: {
         total: 0,
         urgent: 0,
@@ -202,22 +249,49 @@ export default {
       return this.allMissions.length;
     },
     priorityStats() {
-      const urgent = this.allMissions.filter(m => (m.yeu_cau?.muc_do_khan_cap || '').toUpperCase() === 'KHA_CAP').length;
-      const medium = this.allMissions.filter(m => (m.yeu_cau?.muc_do_khan_cap || '').toUpperCase() === 'TRUNG_BINH').length;
-      const normal = this.allMissions.filter(m => (m.yeu_cau?.muc_do_khan_cap || '').toUpperCase() === 'THUONG').length;
+      const critical = this.allMissions.filter(m => (m.yeu_cau?.muc_do_khan_cap || '').toUpperCase() === 'CRITICAL').length;
+      const high = this.allMissions.filter(m => (m.yeu_cau?.muc_do_khan_cap || '').toUpperCase() === 'HIGH').length;
+      const medium = this.allMissions.filter(m => (m.yeu_cau?.muc_do_khan_cap || '').toUpperCase() === 'MEDIUM').length;
+      const low = this.allMissions.filter(m => (m.yeu_cau?.muc_do_khan_cap || '').toUpperCase() === 'LOW').length;
       return [
-        { label: 'Khẩn cấp', count: urgent, class: 'bg-danger' },
-        { label: 'Trung bình', count: medium, class: 'bg-warning' },
-        { label: 'Thường', count: normal, class: 'bg-info' },
+        { label: 'Khẩn cấp', count: critical, class: 'bg-danger' },
+        { label: 'Cao', count: high, class: 'bg-warning' },
+        { label: 'Trung bình', count: medium, class: 'bg-info' },
+        { label: 'Thấp', count: low, class: 'bg-secondary' },
       ];
     },
     statusStats() {
-      const pending = this.allMissions.filter(m => m.trang_thai_nhiem_vu === 'CHUA_TIEP_NHAN').length;
-      const processing = this.allMissions.filter(m => m.trang_thai_nhiem_vu === 'DANG_XU_LY').length;
-      const completed = this.allMissions.filter(m => m.trang_thai_nhiem_vu === 'HOAN_THANH').length;
-      const declined = this.allMissions.filter(m => m.trang_thai_nhiem_vu === 'TU_CHOI').length;
+      const normalize = (s) => (s || '').toUpperCase().replace(/\s+/g, '_');
+      const pendingStatuses = new Set([
+        'DA_PHAN_CONG', 'MOI', 'CHO_NHAN', 'PENDING', 'ASSIGNED',
+        'WAITING', 'CHO_XU_LY', 'DA_DUOC_PHAN_CONG', 'CHUA_TIEP_NHAN',
+      ]);
+
+      const processingYeuCauIds = new Set();
+      this.allMissions.forEach(m => {
+        const st = normalize(m.trang_thai_nhiem_vu);
+        if (st === 'DANG_XU_LY' || st === 'DA_DEN_HIEN_TRUONG') {
+          if (m.yeu_cau?.id_yeu_cau) processingYeuCauIds.add(m.yeu_cau.id_yeu_cau);
+        }
+      });
+
+      const pendingYeuCauIds = new Set();
+      this.allMissions.forEach(m => {
+        const st = normalize(m.trang_thai_nhiem_vu);
+        if (!pendingStatuses.has(st)) return;
+        const ycId = m.yeu_cau?.id_yeu_cau;
+        if (!ycId || processingYeuCauIds.has(ycId)) return;
+        pendingYeuCauIds.add(ycId);
+      });
+
+      const processing = this.allMissions.filter(m => {
+        const st = normalize(m.trang_thai_nhiem_vu);
+        return st === 'DANG_XU_LY' || st === 'DA_DEN_HIEN_TRUONG';
+      }).length;
+      const completed = this.allMissions.filter(m => normalize(m.trang_thai_nhiem_vu) === 'HOAN_THANH').length;
+      const declined = this.allMissions.filter(m => normalize(m.trang_thai_nhiem_vu) === 'TU_CHOI').length;
       return [
-        { label: 'Chờ xử lý', count: pending, class: 'bg-secondary' },
+        { label: 'Chờ xử lý', count: pendingYeuCauIds.size, class: 'bg-secondary' },
         { label: 'Đang xử lý', count: processing, class: 'bg-primary' },
         { label: 'Hoàn thành', count: completed, class: 'bg-success' },
         { label: 'Từ chối', count: declined, class: 'bg-dark' },
@@ -237,17 +311,39 @@ export default {
       return Math.round((completed / this.totalMissions) * 100);
     },
     avgRating() {
-      return '4.8'; // Placeholder - có thể tính từ data đánh giá
+      if (this.teamReviews.length === 0) return '0.0';
+      const sum = this.teamReviews.reduce((acc, curr) => acc + Number(curr.diem_danh_gia), 0);
+      return (sum / this.teamReviews.length).toFixed(1);
     },
   },
   async mounted() {
-    await this.fetchReportData();
+    this.loadTeamData();
+    await Promise.all([this.fetchReportData(), this.fetchReviews()]);
+    this.setupReverb();
+  },
+  beforeUnmount() {
+    if (this.teamId && window.Echo) {
+      window.Echo.leave(`team.reviews.${this.teamId}`);
+    }
   },
   methods: {
+    loadTeamData() {
+      const teamStr = localStorage.getItem("rescuer_team");
+      if (teamStr) {
+        try {
+          const team = JSON.parse(teamStr);
+          this.teamId = team.id_doi_cuu_ho || team.id;
+        } catch (e) {
+          console.error('Error parsing team data', e);
+        }
+      }
+    },
     async fetchReportData() {
       this.loading = true;
       try {
-        const res = await rescuerAPI.getAssignments({ per_page: 100 });
+        const res = this.teamId
+          ? await rescuerAPI.getAssignmentByTeam(this.teamId, { per_page: 100 })
+          : await rescuerAPI.getAssignments({ per_page: 100 });
         if (res.data?.data?.data) {
           this.allMissions = res.data.data.data;
         } else if (res.data?.data) {
@@ -255,11 +351,43 @@ export default {
         } else if (Array.isArray(res.data)) {
           this.allMissions = res.data;
         }
+        if (this.teamId) {
+          this.allMissions = this.allMissions.filter(
+            m => Number(m.id_doi_cuu_ho) === Number(this.teamId)
+          );
+        }
       } catch (e) {
         console.error("Lỗi tải báo cáo:", e);
       } finally {
         this.loading = false;
       }
+    },
+    async fetchReviews() {
+      if (!this.teamId) return;
+      try {
+        const res = await rescuerAPI.getTeamReviews(this.teamId);
+        if (res.data?.data) {
+           this.teamReviews = res.data.data;
+        } else if (Array.isArray(res.data)) {
+           this.teamReviews = res.data;
+        }
+      } catch (e) {
+        console.error("Lỗi tải đánh giá:", e);
+      }
+    },
+    setupReverb() {
+      if (!this.teamId || !window.Echo) return;
+      window.Echo.channel(`team.reviews.${this.teamId}`)
+        .listen('.ReviewCreated', (e) => {
+          if (e.danhGia) {
+            const existingIdx = this.teamReviews.findIndex(r => r.id_danh_gia === e.danhGia.id_danh_gia);
+            if (existingIdx !== -1) {
+              this.teamReviews.splice(existingIdx, 1, e.danhGia);
+            } else {
+              this.teamReviews.unshift(e.danhGia);
+            }
+          }
+        });
     },
     viewDetail(mission) {
       console.log("View mission detail:", mission);
@@ -285,28 +413,40 @@ export default {
       return [headers, ...rows].map(row => row.join(',')).join('\n');
     },
     getPriorityClass(item) {
-      const mucDo = (item.yeu_cau?.muc_do_khan_cap || 'THUONG').toUpperCase();
-      if (mucDo === 'KHA_CAP') return 'bg-danger bg-opacity-10 text-danger border-danger border-opacity-25';
-      if (mucDo === 'TRUNG_BINH') return 'bg-warning bg-opacity-10 text-warning border-warning border-opacity-25';
-      return 'bg-info bg-opacity-10 text-info border-info border-opacity-25';
+      const mucDo = (item.yeu_cau?.muc_do_khan_cap || 'LOW').toUpperCase();
+      if (mucDo === 'CRITICAL') return 'bg-danger bg-opacity-10 text-danger border-danger border-opacity-25';
+      if (mucDo === 'HIGH') return 'bg-warning bg-opacity-10 text-warning border-warning border-opacity-25';
+      if (mucDo === 'MEDIUM') return 'bg-info bg-opacity-10 text-info border-info border-opacity-25';
+      return 'bg-secondary bg-opacity-10 text-secondary border-secondary border-opacity-25';
     },
     getPriorityText(item) {
-      const mucDo = (item.yeu_cau?.muc_do_khan_cap || 'THUONG').toUpperCase();
-      if (mucDo === 'KHA_CAP') return 'KHẨN CẤP';
-      if (mucDo === 'TRUNG_BINH') return 'TRUNG BÌNH';
-      return 'THƯỜNG';
+      const mucDo = (item.yeu_cau?.muc_do_khan_cap || 'LOW').toUpperCase();
+      if (mucDo === 'CRITICAL') return 'Khẩn cấp';
+      if (mucDo === 'HIGH') return 'Cao';
+      if (mucDo === 'MEDIUM') return 'Trung bình';
+      return 'Thấp';
     },
     getStatusClass(status) {
-      if (status === 'HOAN_THANH') return 'bg-success bg-opacity-10 text-success';
-      if (status === 'DANG_XU_LY') return 'bg-primary bg-opacity-10 text-primary';
-      if (status === 'CHUA_TIEP_NHAN') return 'bg-secondary bg-opacity-10 text-secondary';
+      const st = (status || '').toUpperCase().replace(/\s+/g, '_');
+      const pendingStatuses = new Set([
+        'DA_PHAN_CONG', 'MOI', 'CHO_NHAN', 'PENDING', 'ASSIGNED',
+        'WAITING', 'CHO_XU_LY', 'DA_DUOC_PHAN_CONG', 'CHUA_TIEP_NHAN',
+      ]);
+      if (st === 'HOAN_THANH') return 'bg-success bg-opacity-10 text-success';
+      if (st === 'DANG_XU_LY' || st === 'DA_DEN_HIEN_TRUONG') return 'bg-primary bg-opacity-10 text-primary';
+      if (pendingStatuses.has(st)) return 'bg-secondary bg-opacity-10 text-dark';
       return 'bg-dark bg-opacity-10 text-dark';
     },
     getStatusText(status) {
-      if (status === 'HOAN_THANH') return 'Hoàn thành';
-      if (status === 'DANG_XU_LY') return 'Đang xử lý';
-      if (status === 'CHUA_TIEP_NHAN') return 'Chờ xử lý';
-      if (status === 'TU_CHOI') return 'Từ chối';
+      const st = (status || '').toUpperCase().replace(/\s+/g, '_');
+      const pendingStatuses = new Set([
+        'DA_PHAN_CONG', 'MOI', 'CHO_NHAN', 'PENDING', 'ASSIGNED',
+        'WAITING', 'CHO_XU_LY', 'DA_DUOC_PHAN_CONG', 'CHUA_TIEP_NHAN',
+      ]);
+      if (st === 'HOAN_THANH') return 'Hoàn thành';
+      if (st === 'DANG_XU_LY' || st === 'DA_DEN_HIEN_TRUONG') return 'Đang xử lý';
+      if (pendingStatuses.has(st)) return 'Chờ xử lý';
+      if (st === 'TU_CHOI') return 'Từ chối';
       return status;
     },
     formatDate(dateString) {

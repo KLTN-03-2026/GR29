@@ -20,19 +20,19 @@
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
         <circle cx="12" cy="7" r="4"></circle>
       </svg>
-      <input v-model="nguoi_dung.ho_ten" type="text" id="fullname" placeholder="Nhap ho va ten cua ban" required>
+      <input v-model="nguoi_dung.ho_ten" type="text" id="fullname" placeholder="Nhập họ và tên của bạn" required>
     </div>
   </div>
 
   <div class="input-group">
-    <label for="phone">SO DIEN THOAI</label>
+    <label for="phone">SỐ ĐIỆN THOẠI</label>
     <div class="input-wrapper">
       <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
         <line x1="12" y1="18" x2="12.01" y2="18"></line>
       </svg>
-      <input v-model="nguoi_dung.so_dien_thoai" type="text" id="phone" placeholder="Nhap so dien thoai" required>
+      <input v-model="nguoi_dung.so_dien_thoai" type="text" id="phone" placeholder="Nhập số điện thoại" required>
     </div>
   </div>
 
@@ -44,12 +44,12 @@
         <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
         <polyline points="22,6 12,13 2,6"></polyline>
       </svg>
-      <input v-model="nguoi_dung.email" type="email" id="email" placeholder="Nhap email" required>
+      <input v-model="nguoi_dung.email" type="email" id="email" placeholder="Nhập email" required>
     </div>
   </div>
 
   <div class="input-group">
-    <label for="password">MAT KHAU</label>
+    <label for="password">MẬT KHẨU</label>
     <div class="input-wrapper">
       <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -57,7 +57,7 @@
         <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
       </svg>
       <input v-model="nguoi_dung.mat_khau" :type="showPassword ? 'text' : 'password'" id="password"
-        placeholder="Tao mat khau" required>
+        placeholder="Nhập mật khẩu" required>
       <span class="eye-icon" @click="showPassword = !showPassword">
         <i :class="showPassword ? 'fa-regular fa-eye' : 'fa-regular fa-eye-slash'"></i>
       </span>
@@ -65,7 +65,7 @@
   </div>
 
   <div class="input-group">
-    <label for="repassword">NHAP LAI MAT KHAU</label>
+    <label for="repassword">NHẬP LẠI MẬT KHẨU</label>
     <div class="input-wrapper">
       <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -73,7 +73,7 @@
         <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
       </svg>
       <input v-model="nguoi_dung.repassword" :type="showRePassword ? 'text' : 'password'" id="repassword"
-        placeholder="Nhap lai mat khau" required>
+        placeholder="Nhập lại mật khẩu" required>
       <span class="eye-icon" @click="showRePassword = !showRePassword">
         <i :class="showRePassword ? 'fa-regular fa-eye' : 'fa-regular fa-eye-slash'"></i>
       </span>
@@ -83,7 +83,7 @@
   <!-- Thong bao link yeu cau cu -->
   <div v-if="linkedRequestsCount > 0" class="linked-banner">
     <i class="fa-solid fa-link"></i>
-    <span>{{ linkedRequestsCount }} yeu cau cuu ho cua ban da duoc lien ket voi tai khoan nay.</span>
+    <span>{{ linkedRequestsCount }} yêu cầu cứu hộ của bạn đã được liên kết với tài khoản này.</span>
   </div>
 
   <!-- 🔥 BUTTON CLICK -->
@@ -162,7 +162,7 @@ export default {
         });
 
         const body = res.data;
-        this.$toast.success(body.message || "Dang ky thanh cong");
+        this.$toast.success(body.message || "Đăng ký thành công");
         if (body.linked_requests_count > 0) {
           this.linkedRequestsCount = body.linked_requests_count;
         }

@@ -80,7 +80,7 @@ export default {
         { key: "assigned", label: "Đã có người nhận", subtitle: "Đội đã tiếp nhận" },
         { key: "moving", label: "Đang di chuyển", subtitle: "Đội đang trên đường" },
         { key: "arrived", label: "Đã đến nơi", subtitle: "Đội đã tới hiện trường" },
-        { key: "processing", label: "Đang xử lý", subtitle: "Cứu hộ đang làm việc" },
+        // { key: "processing", label: "Đang xử lý", subtitle: "Cứu hộ đang làm việc" },
       ],
     };
   },

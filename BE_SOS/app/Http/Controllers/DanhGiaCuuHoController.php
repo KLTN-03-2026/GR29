@@ -127,6 +127,12 @@ class DanhGiaCuuHoController extends Controller
             ]);
             $existing->load(['yeuCau', 'nguoiDung']);
 
+            // Lấy ID đội cứu hộ từ phân công mới nhất để broadcast
+            $phanCong = $yeuCau->phanCongs()->orderBy('id_phan_cong', 'desc')->first();
+            if ($phanCong && $phanCong->id_doi_cuu_ho) {
+                event(new \App\Events\DanhGiaCreated($existing, $phanCong->id_doi_cuu_ho));
+            }
+
             return response()->json([
                 'status' => true,
                 'message' => 'Cập nhật đánh giá thành công',
@@ -135,11 +141,44 @@ class DanhGiaCuuHoController extends Controller
         }
 
         $item = DanhGiaCuuHo::create($validated);
+        $item->load(['yeuCau', 'nguoiDung']);
+
+        // Lấy ID đội cứu hộ từ phân công mới nhất để broadcast
+        $phanCong = $yeuCau->phanCongs()->orderBy('id_phan_cong', 'desc')->first();
+        if ($phanCong && $phanCong->id_doi_cuu_ho) {
+            event(new \App\Events\DanhGiaCreated($item, $phanCong->id_doi_cuu_ho));
+        }
 
         return response()->json([
             'status' => true,
             'message' => 'Tạo đánh giá cho yêu cầu thành công',
             'data' => $item
         ], 201);
+    }
+
+    /**
+     * Lấy các đánh giá của một đội cứu hộ (thông qua bảng phan_cong_cuu_ho)
+     */
+    public function getByTeam(Request $request, $id_doi_cuu_ho)
+    {
+        $perPage = $request->get('per_page', 50);
+
+        $items = DanhGiaCuuHo::whereHas('yeuCau.phanCongs', function ($query) use ($id_doi_cuu_ho) {
+                $query->where('id_doi_cuu_ho', $id_doi_cuu_ho);
+            })
+            ->with(['yeuCau', 'nguoiDung'])
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage);
+
+        return response()->json([
+            'status' => true,
+            'data' => $items->items(),
+            'pagination' => [
+                'total' => $items->total(),
+                'per_page' => $items->perPage(),
+                'current_page' => $items->currentPage(),
+                'last_page' => $items->lastPage(),
+            ]
+        ]);
     }
 }

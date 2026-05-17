@@ -68,6 +68,7 @@ class DoiCuuHoController extends Controller
             $sortOrder = $request->get('sort_order', 'desc');
 
             $query = DoiCuuHo::with(['thanhViens', 'taiNguyens', 'viTris', 'nangLuc', 'loaiSuCos', 'phanCongs'])
+                ->withCount('thanhViens')
                 ->orderBy($sortBy, $sortOrder);
 
             // Luôn trả về tất cả đội cho dashboard (không pagination)
@@ -207,6 +208,7 @@ class DoiCuuHoController extends Controller
     {
         try {
             $item = DoiCuuHo::with(['thanhViens', 'taiNguyens', 'viTris', 'nangLuc', 'loaiSuCos', 'phanCongs'])
+                ->withCount('thanhViens')
                 ->findOrFail($id);
 
             $this->appendCapacityFields($item);
@@ -915,6 +917,7 @@ class DoiCuuHoController extends Controller
         try {
             $perPage = $request->get('per_page', 15);
             $items = DoiCuuHo::with(['thanhViens', 'taiNguyens'])
+                ->withCount('thanhViens')
                 ->orderBy('id_doi_cuu_ho', 'desc')
                 ->paginate($perPage);
 
@@ -945,13 +948,7 @@ class DoiCuuHoController extends Controller
                 'vi_tri_lng' => 'nullable|numeric',
                 'trang_thai' => 'nullable|string|max:30',
                 'mo_ta' => 'nullable|string',
-                'email' => 'nullable|email|max:255',
-                'mat_khau' => 'nullable|string|min:6',
             ]);
-
-            if (isset($validated['mat_khau'])) {
-                $validated['mat_khau'] = Hash::make($validated['mat_khau']);
-            }
 
             $item = DoiCuuHo::create($validated);
             $item->load('thanhViens', 'taiNguyens', 'viTris', 'nangLuc', 'loaiSuCos');
@@ -992,13 +989,7 @@ class DoiCuuHoController extends Controller
                 'vi_tri_lng' => 'nullable|numeric',
                 'trang_thai' => 'nullable|string|max:30',
                 'mo_ta' => 'nullable|string',
-                'email' => 'nullable|email|max:255',
-                'mat_khau' => 'nullable|string|min:6',
             ]);
-
-            if (isset($validated['mat_khau'])) {
-                $validated['mat_khau'] = Hash::make($validated['mat_khau']);
-            }
 
             $item->update($validated);
             $item->load('thanhViens', 'taiNguyens', 'viTris', 'nangLuc', 'loaiSuCos');
@@ -1168,7 +1159,7 @@ class DoiCuuHoController extends Controller
     public function getKhoTaiNguyen(Request $request)
     {
         try {
-            $loaiTaiNguyen = ['xe_cuu_ho', 'nhu_yeu_pham', 'vat_tu_y_te', 'dung_cu_thi_cong'];
+            $loaiMacDinh = ['xe_cuu_ho', 'nhu_yeu_pham', 'vat_tu_y_te', 'dung_cu_thi_cong'];
             $tenHienThi = [
                 'xe_cuu_ho' => 'Xe cứu hộ',
                 'nhu_yeu_pham' => 'Nhu yếu phẩm',
@@ -1176,13 +1167,25 @@ class DoiCuuHoController extends Controller
                 'dung_cu_thi_cong' => 'Dụng cụ thi công',
             ];
 
+            $khoRows = \App\Models\KhoTaiNguyen::orderBy('id_tai_nguyen')->get()->keyBy('slug_tai_nguyen');
+
             $result = [];
-            foreach ($loaiTaiNguyen as $loai) {
-                $kho = \App\Models\KhoTaiNguyen::where('slug_tai_nguyen', $loai)->first();
+            $daThem = [];
+            foreach ($loaiMacDinh as $loai) {
+                $kho = $khoRows->get($loai);
                 $result[] = [
                     'slug_tai_nguyen' => $loai,
-                    'ten_hien_thi' => $tenHienThi[$loai] ?? $loai,
+                    'ten_hien_thi' => $kho->ten_tai_nguyen ?? ($tenHienThi[$loai] ?? $loai),
                     'tong_so_luong' => $kho ? (int) $kho->so_luong : 0,
+                ];
+                $daThem[] = $loai;
+            }
+            foreach ($khoRows as $slug => $kho) {
+                if (in_array($slug, $daThem, true)) continue;
+                $result[] = [
+                    'slug_tai_nguyen' => $slug,
+                    'ten_hien_thi' => $kho->ten_tai_nguyen ?: $slug,
+                    'tong_so_luong' => (int) $kho->so_luong,
                 ];
             }
 
@@ -1236,6 +1239,53 @@ class DoiCuuHoController extends Controller
             return Response::json([
                 'success' => true,
                 'message' => 'Nhập kho thành công'
+            ], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi xác thực dữ liệu',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Them loai tai nguyen moi vao kho_tai_nguyen (slug & ten tu nhap)
+     */
+    public function themLoaiKho(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'slug_tai_nguyen' => 'required|string|max:100',
+                'ten_tai_nguyen' => 'required|string|max:255',
+                'so_luong' => 'required|integer|min:0',
+            ]);
+
+            $slug = trim($validated['slug_tai_nguyen']);
+
+            $exists = \App\Models\KhoTaiNguyen::where('slug_tai_nguyen', $slug)->exists();
+            if ($exists) {
+                return Response::json([
+                    'success' => false,
+                    'message' => 'Loại tài nguyên với slug này đã tồn tại trong kho'
+                ], 422);
+            }
+
+            $kho = \App\Models\KhoTaiNguyen::create([
+                'slug_tai_nguyen' => $slug,
+                'ten_tai_nguyen' => $validated['ten_tai_nguyen'],
+                'so_luong' => (int) $validated['so_luong'],
+            ]);
+
+            return Response::json([
+                'success' => true,
+                'message' => 'Thêm tài nguyên mới vào kho thành công',
+                'data' => $kho,
             ], 200);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return Response::json([

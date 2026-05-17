@@ -95,11 +95,11 @@
       <div class="row g-4">
 
         <!-- ===== LEFT PANEL: Cấu hình ===== -->
-        <div class="col-xl-5">
-          <div class="config-panel">
+        <!-- <div class="col-xl-5">
+          <div class="config-panel"> -->
 
             <!-- Panel Header -->
-            <div class="panel-header">
+            <!-- <div class="panel-header">
               <div class="d-flex align-items-center gap-2">
                 <div class="panel-icon">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/></svg>
@@ -111,13 +111,13 @@
                 <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" class="spin"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" stroke-dasharray="40" stroke-dashoffset="20"/></svg>
                 {{ saving ? 'Đang lưu...' : 'Lưu' }}
               </button>
-            </div>
+            </div> -->
 
             <!-- Panel Body -->
-            <div class="panel-body">
+            <!-- <div class="panel-body"> -->
 
               <!-- ===== DISPATCH MODE SELECTOR ===== -->
-              <div class="config-section">
+              <!-- <div class="config-section">
                 <div class="section-title">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                   Chế độ điều phối
@@ -158,25 +158,25 @@
                     </div>
                   </button>
                 </div>
-              </div>
+              </div> -->
 
               <!-- ===== CUSTOM MODE: Priority Rules ===== -->
-              <div v-if="dispatchMode === 'custom'" class="config-section">
+              <!-- <div v-if="dispatchMode === 'custom'" class="config-section">
                 <div class="section-title">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" stroke="currentColor" stroke-width="2"/><line x1="4" y1="22" x2="4" y2="15" stroke="currentColor" stroke-width="2"/></svg>
                   Quy tắc ưu tiên tùy chỉnh
                   <span class="badge-count">{{ customRules.length }}</span>
                 </div>
-                <p class="section-desc">Kéo thả để sắp xếp thứ tự ưu tiên. Loại sự cố trên cùng sẽ được xử lý trước.</p>
+                <p class="section-desc">Kéo thả để sắp xếp thứ tự ưu tiên. Loại sự cố trên cùng sẽ được xử lý trước.</p> -->
 
                 <!-- Add Rule -->
-                <div class="add-rule-zone" @click="showRuleModal = true">
+                <!-- <div class="add-rule-zone" @click="showRuleModal = true">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                   <span>Thêm quy tắc ưu tiên</span>
-                </div>
+                </div> -->
 
                 <!-- Rules List -->
-                <div class="rules-list" v-if="customRules.length > 0">
+                <!-- <div class="rules-list" v-if="customRules.length > 0">
                   <div
                     v-for="(rule, idx) in customRules"
                     :key="rule.id"
@@ -204,17 +204,17 @@
                       </button>
                     </div>
                   </div>
-                </div>
+                </div> -->
 
-                <div v-else class="empty-rules">
+                <!-- <div v-else class="empty-rules">
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" stroke="currentColor" stroke-width="1.5"/><line x1="4" y1="22" x2="4" y2="15" stroke="currentColor" stroke-width="1.5"/></svg>
                   <p>Chưa có quy tắc ưu tiên</p>
                   <small>Bấm "Thêm quy tắc" để bắt đầu cấu hình</small>
                 </div>
-              </div>
+              </div> -->
 
               <!-- ===== SCORING CONFIG (Normal mode) ===== -->
-              <div v-if="dispatchMode === 'normal'" class="config-section">
+              <!-- <div v-if="dispatchMode === 'normal'" class="config-section">
                 <div class="section-title">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                   Trọng số tính điểm
@@ -242,17 +242,17 @@
                     </div>
                   </div>
                 </div>
-              </div>
+              </div> -->
 
               <!-- ===== General Settings ===== -->
-              <div class="config-section config-section-last">
+              <!-- <div class="config-section config-section-last">
                 <div class="section-title">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="2"/></svg>
                   Cài đặt chung
-                </div>
+                </div> -->
 
                 <!-- Delay -->
-                <div class="setting-item">
+                <!-- <div class="setting-item">
                   <div class="setting-info">
                     <span class="setting-label">Thời gian chờ tự động gán</span>
                     <small class="setting-desc">Sau khi có yêu cầu mới</small>
@@ -261,10 +261,10 @@
                     <input type="number" class="setting-input" v-model.number="generalConfig.autoAssignDelay" min="5" max="300" />
                     <span class="setting-unit">giây</span>
                   </div>
-                </div>
+                </div> -->
 
                 <!-- Max Distance -->
-                <div class="setting-item">
+                <!-- <div class="setting-item">
                   <div class="setting-info">
                     <span class="setting-label">Bán kính tìm kiếm tối đa</span>
                     <small class="setting-desc">Giới hạn bán kính tìm đội cứu hộ</small>
@@ -273,10 +273,10 @@
                     <input type="number" class="setting-input" v-model.number="generalConfig.maxDistance" min="1" max="100" />
                     <span class="setting-unit">km</span>
                   </div>
-                </div>
+                </div> -->
 
                 <!-- Max Teams -->
-                <div class="setting-item">
+                <!-- <div class="setting-item">
                   <div class="setting-info">
                     <span class="setting-label">Số đội tối đa mỗi sự cố</span>
                     <small class="setting-desc">Số lượng đội cứu hộ được gán tối đa</small>
@@ -285,10 +285,10 @@
                     <input type="number" class="setting-input" v-model.number="generalConfig.maxTeamsPerIncident" min="1" max="10" />
                     <span class="setting-unit">đội</span>
                   </div>
-                </div>
+                </div> -->
 
                 <!-- Auto Escalate -->
-                <div class="setting-item">
+                <!-- <div class="setting-item">
                   <div class="setting-info">
                     <span class="setting-label">Tự động leo thang</span>
                     <small class="setting-desc">Leo thang lên điều phối viên khi hết thời gian chờ</small>
@@ -296,10 +296,10 @@
                   <button class="toggle-mini" :class="{ 'active': generalConfig.autoEscalate }" @click="generalConfig.autoEscalate = !generalConfig.autoEscalate">
                     <span class="toggle-mini-thumb"></span>
                   </button>
-                </div>
+                </div> -->
 
                 <!-- Notify Operator -->
-                <div class="setting-item setting-item-last">
+                <!-- <div class="setting-item setting-item-last">
                   <div class="setting-info">
                     <span class="setting-label">Thông báo điều phối viên</span>
                     <small class="setting-desc">Gửi thông báo khi có auto-dispatch</small>
@@ -312,7 +312,7 @@
 
             </div>
           </div>
-        </div>
+        </div> -->
 
         <!-- ===== RIGHT PANEL: Giám sát ===== -->
         <div class="col-xl-7">
@@ -430,10 +430,11 @@
                         <span class="activity-title">{{ act.title }}</span>
                         <small class="activity-desc d-block">{{ act.description }}</small>
                       </div>
-                      <div class="activity-meta">
+                      <!-- bage auto -->
+                      <!-- <div class="activity-meta">
                         <span class="activity-badge" :style="{ background: act.badgeBg, color: act.badgeColor }">{{ act.typeLabel }}</span>
                         <small class="activity-time">{{ act.timeAgo }}</small>
-                      </div>
+                      </div> -->
                     </div>
                     <div v-if="act.details && act.details.length" class="activity-tags">
                       <span class="act-tag" v-for="tag in act.details" :key="tag.text">{{ tag.text }}</span>
@@ -551,12 +552,14 @@ export default {
   data() {
     return {
       dispatchEnabled: false,
+      togglingDispatch: false,
       dispatchMode: "normal",
       loading: false,
       saving: false,
       uptimeSeconds: 0,
       uptimeInterval: null,
       realtimeChannel: null,
+      dispatchChannel: null,
       showRuleModal: false,
       editingRule: null,
       customRules: [],
@@ -840,16 +843,6 @@ export default {
     async saveConfig() {
       this.saving = true;
       try {
-        localStorage.setItem(
-          "realtimeDispatchConfig",
-          JSON.stringify({
-            dispatchMode: this.dispatchMode,
-            customRules: this.customRules,
-            generalConfig: this.generalConfig,
-            scoringWeights: this.scoringWeights.map((w) => ({ key: w.key, value: w.value })),
-          })
-        );
-
         if (this.dispatchEnabled) {
           await autoDispatchAPI.enable();
         } else {
@@ -860,7 +853,18 @@ export default {
           so_doi_toi_da: this.generalConfig.maxTeamsPerIncident,
         });
 
-        await new Promise((r) => setTimeout(r, 600));
+        // Persist to localStorage AFTER server confirms — include dispatchEnabled
+        localStorage.setItem(
+          "realtimeDispatchConfig",
+          JSON.stringify({
+            dispatchEnabled: this.dispatchEnabled,
+            dispatchMode: this.dispatchMode,
+            customRules: this.customRules,
+            generalConfig: this.generalConfig,
+            scoringWeights: this.scoringWeights.map((w) => ({ key: w.key, value: w.value })),
+          })
+        );
+
         this.$toaster?.success?.("Đã lưu cấu hình thành công!");
       } catch (err) {
         console.error("Save config error:", err);
@@ -870,35 +874,48 @@ export default {
       }
     },
 
-    toggleDispatch() {
-      this.dispatchEnabled = !this.dispatchEnabled;
-      if (this.dispatchEnabled) {
-        this.startUptimeTimer();
-        this.subscribeRealtime();
-      } else {
-        if (this.uptimeInterval) {
-          clearInterval(this.uptimeInterval);
-          this.uptimeInterval = null;
+    async toggleDispatch() {
+      if (this.togglingDispatch) return;
+      this.togglingDispatch = true;
+      const previous = this.dispatchEnabled;
+      try {
+        const res = await autoDispatchAPI.toggle();
+        // Trust server response as source of truth
+        const confirmed = res?.data?.du_lieu?.dieu_phoi_tu_dong ?? !previous;
+        this.dispatchEnabled = confirmed;
+
+        if (this.dispatchEnabled) {
+          this.startUptimeTimer();
+          this.subscribeRealtime();
+        } else {
+          if (this.uptimeInterval) {
+            clearInterval(this.uptimeInterval);
+            this.uptimeInterval = null;
+          }
+          this.uptimeSeconds = 0;
+          this.unsubscribeRealtime();
         }
-        this.uptimeSeconds = 0;
-        this.unsubscribeRealtime();
-      }
 
-      const saved = localStorage.getItem("realtimeDispatchConfig");
-      const config = saved ? JSON.parse(saved) : {};
-      config.dispatchEnabled = this.dispatchEnabled;
-      localStorage.setItem("realtimeDispatchConfig", JSON.stringify(config));
+        // Persist confirmed state to localStorage
+        const saved = localStorage.getItem("realtimeDispatchConfig");
+        const config = saved ? JSON.parse(saved) : {};
+        config.dispatchEnabled = this.dispatchEnabled;
+        localStorage.setItem("realtimeDispatchConfig", JSON.stringify(config));
 
-      window.dispatchEvent(
-        new CustomEvent("dispatch-status-changed", {
-          detail: { enabled: this.dispatchEnabled },
-        })
-      );
-
-      autoDispatchAPI.toggle().catch((err) => {
+        // Notify other tabs / pages
+        window.dispatchEvent(
+          new CustomEvent("dispatch-status-changed", {
+            detail: { enabled: this.dispatchEnabled },
+          })
+        );
+      } catch (err) {
         console.error("Toggle dispatch error:", err);
+        // Rollback local state on API failure
+        this.dispatchEnabled = previous;
         this.$toaster?.error?.("Không thể toggle auto-dispatch!");
-      });
+      } finally {
+        this.togglingDispatch = false;
+      }
     },
 
     handleDispatchStatusChange(e) {
@@ -1054,7 +1071,9 @@ export default {
           ? escRes.data
           : [];
 
-        const allRequests = Array.isArray(reqRes.data?.data)
+        const allRequests = Array.isArray(reqRes.data?.data?.data)
+          ? reqRes.data.data.data
+          : Array.isArray(reqRes.data?.data)
           ? reqRes.data.data
           : Array.isArray(reqRes.data)
           ? reqRes.data
@@ -1249,12 +1268,38 @@ export default {
         if (!this.dispatchEnabled) return;
         this.handleRealtimeUpdate(event);
       });
+
+      // Listen for dispatch toggle from other tabs / server
+      this.dispatchChannel = window.Echo.channel("admin.dispatch");
+      this.dispatchChannel.listen(".auto_dispatch_status_changed", (event) => {
+        if (event?.enabled !== undefined) {
+          this.dispatchEnabled = event.enabled;
+          if (this.dispatchEnabled) {
+            this.startUptimeTimer();
+          } else {
+            if (this.uptimeInterval) {
+              clearInterval(this.uptimeInterval);
+              this.uptimeInterval = null;
+            }
+            this.uptimeSeconds = 0;
+          }
+          // Keep localStorage in sync
+          const saved = localStorage.getItem("realtimeDispatchConfig");
+          const config = saved ? JSON.parse(saved) : {};
+          config.dispatchEnabled = this.dispatchEnabled;
+          localStorage.setItem("realtimeDispatchConfig", JSON.stringify(config));
+        }
+      });
     },
 
     unsubscribeRealtime() {
       if (this.realtimeChannel) {
         window.Echo?.leave("rescue-requests");
         this.realtimeChannel = null;
+      }
+      if (this.dispatchChannel) {
+        window.Echo?.leave("admin.dispatch");
+        this.dispatchChannel = null;
       }
     },
 

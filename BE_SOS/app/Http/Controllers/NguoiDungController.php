@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\UserStatusChanged;
 use App\Models\NguoiDung;
 use App\Models\GuestSession;
 use App\Models\YeuCauCuuHo;
@@ -20,10 +21,26 @@ class NguoiDungController extends Controller
             'password' => 'nullable|string',
         ]);
 
-        $password = $request->input('mat_khau', $request->input('password'));
         $user = NguoiDung::where('email', $request->email)->first();
 
-        if (!$user || !$password) {
+        if (!$user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Tai khoan sai email hoac password',
+            ], 401);
+        }
+
+        if ((int) $user->trang_thai === 0) {
+            return response()->json([
+                'status' => false,
+                'account_locked' => true,
+                'message' => 'Tài khoản của bạn đã bị khóa.',
+            ], 403);
+        }
+
+        $password = $request->input('mat_khau', $request->input('password'));
+
+        if (!$password) {
             return response()->json([
                 'status' => false,
                 'message' => 'Tai khoan sai email hoac password',
@@ -42,11 +59,13 @@ class NguoiDungController extends Controller
             ], 401);
         }
 
+
+
         $token = $user->createToken('nguoi-dung-token')->plainTextToken;
 
         return response()->json([
             'status' => true,
-            'message' => 'Dang nhap thanh cong',
+            'message' => 'Đăng nhập thành công',
             'token' => $token,
             'token_type' => 'Bearer',
             'data' => $user->makeHidden(['mat_khau', 'api_token']),
@@ -83,7 +102,7 @@ class NguoiDungController extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => 'Dang ky thanh cong',
+            'message' => 'Đăng ký thành công',
             'token' => $token,
             'token_type' => 'Bearer',
             'linked_requests_count' => $linkedRequestsCount,
@@ -350,6 +369,8 @@ class NguoiDungController extends Controller
 
         $user->trang_thai = $user->trang_thai == 1 ? 0 : 1;
         $user->save();
+
+        broadcast(new UserStatusChanged((int) $user->id_nguoi_dung, (int) $user->trang_thai));
 
         return response()->json([
             'status' => true,

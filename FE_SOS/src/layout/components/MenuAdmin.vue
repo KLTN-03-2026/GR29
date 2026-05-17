@@ -45,7 +45,7 @@
       </router-link>
 
       <router-link class="nav-item-link" to="/admin/tracking">
-        <i class="fa-solid fa-route nav-icon"></i>Vị trí đội (real-time)
+        <i class="fa-solid fa-route nav-icon"></i>Vị trí đội
       </router-link>
 
       <router-link class="nav-item-link" to="/admin/reports">

@@ -78,7 +78,8 @@
             <h6 class="fw-bold text-dark">Chưa có tài nguyên nào</h6>
             <p class="text-muted small">Tài nguyên sẽ được hiển thị khi có dữ liệu từ các đội</p>
           </div>
-          <div v-else class="row g-4">
+          <div v-else>
+          <div class="row g-4">
             <div v-for="group in groupedResources" :key="group.teamId" class="col-md-6 col-xl-4">
               <div class="card h-100 border-0 shadow-sm rounded-4 resource-team-card overflow-hidden transition-all">
                 <div class="card-header bg-white border-bottom pt-3 pb-3 px-4 d-flex align-items-center gap-3">
@@ -123,6 +124,13 @@
               </div>
             </div>
           </div>
+          <div v-if="loadedTeamsCount < teams.length" class="text-center mt-4">
+            <button class="btn btn-outline-primary fw-bolder px-4 py-2 rounded-pill" :disabled="loadingMoreResources" @click="loadMoreResources">
+              <span v-if="loadingMoreResources"><i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải...</span>
+              <span v-else><i class="fa-solid fa-chevron-down me-2"></i>Xem thêm ({{ teams.length - loadedTeamsCount }} đội còn lại)</span>
+            </button>
+          </div>
+          </div>
         </div>
       </div>
     </div>
@@ -145,7 +153,7 @@
                 <span class="search-icon"><i class="fa-solid fa-search"></i></span>
                 <input v-model="searchWarehouse" type="text" class="form-control" placeholder="Tìm tài nguyên trong kho...">
               </div>
-              <button class="btn btn-primary fw-bolder d-flex align-items-center gap-2 px-3" @click="openAddResourceModal">
+              <button class="btn btn-primary fw-bolder d-flex align-items-center gap-2 px-3" @click="openAddKhoModal">
                 <i class="fa-solid fa-plus"></i>
                 <span class="d-none d-sm-inline">Thêm tài nguyên mới</span>
               </button>
@@ -554,6 +562,50 @@
       </div>
     </div>
 
+    <!-- ========== MODAL: THEM LOAI TAI NGUYEN MOI VAO KHO ========== -->
+    <div v-if="showAddKhoModal" class="modal-overlay" @click.self="closeAddKhoModal">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-xl">
+          <div class="modal-header border-bottom-0 bg-white py-3 px-4">
+            <h5 class="modal-title fw-bolder text-dark">
+              <i class="fa-solid fa-plus text-primary me-2"></i>
+              Thêm tài nguyên mới vào kho
+            </h5>
+            <button type="button" class="btn-close" @click="closeAddKhoModal"></button>
+          </div>
+          <div class="modal-body p-4 bg-white">
+            <div class="alert alert-purple-light d-flex align-items-center gap-2 mb-3">
+              <i class="fa-solid fa-circle-info text-purple"></i>
+              <span class="small text-purple-dark">Tạo một loại tài nguyên mới trong kho tổng (bảng <code>kho_tai_nguyen</code>). Slug phải duy nhất.</span>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-muted small fw-bolder text-uppercase">Tên tài nguyên <span class="text-danger">*</span></label>
+              <input v-model="addKhoForm.ten_tai_nguyen" type="text" class="form-control custom-input"
+                placeholder="VD: Áo phao cứu hộ" @input="onAddKhoTenChange">
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-muted small fw-bolder text-uppercase">Slug (định danh) <span class="text-danger">*</span></label>
+              <input v-model="addKhoForm.slug_tai_nguyen" type="text" class="form-control custom-input"
+                placeholder="VD: ao_phao_cuu_ho" @input="addKhoSlugTouched = true">
+              <small class="text-muted">Chỉ chữ thường, số và dấu gạch dưới (_). Tự sinh từ tên nếu để trống.</small>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-muted small fw-bolder text-uppercase">Số lượng ban đầu <span class="text-danger">*</span></label>
+              <input v-model.number="addKhoForm.so_luong" type="number" min="0" class="form-control custom-input"
+                placeholder="Nhập số lượng...">
+            </div>
+          </div>
+          <div class="modal-footer border-top-0 bg-light py-3 px-4">
+            <button type="button" class="btn btn-light fw-medium px-4" @click="closeAddKhoModal">Hủy</button>
+            <button type="button" class="btn btn-primary fw-bolder px-4" :disabled="!canSubmitAddKho || submittingAddKho" @click="submitAddKho">
+              <span v-if="submittingAddKho"><i class="fa-solid fa-spinner fa-spin me-2"></i>Đang xử lý...</span>
+              <span v-else><i class="fa-solid fa-plus me-2"></i>Thêm vào kho</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ========== CONFIRM DELETE MODAL ========== -->
     <div v-if="showDeleteModal" class="modal-overlay" @click.self="showDeleteModal = false">
       <div class="modal-dialog modal-dialog-centered modal-sm">
@@ -638,6 +690,9 @@ export default {
       searchTeams: '',
       allResources: [],
       loadingResources: false,
+      loadingMoreResources: false,
+      resourcesPageSize: 6,
+      loadedTeamsCount: 0,
       searchResources: '',
       filterResourceTeam: '',
 
@@ -706,6 +761,16 @@ export default {
         ghi_chu: '',
       },
 
+      // Add new resource type to kho_tai_nguyen
+      showAddKhoModal: false,
+      submittingAddKho: false,
+      addKhoSlugTouched: false,
+      addKhoForm: {
+        ten_tai_nguyen: '',
+        slug_tai_nguyen: '',
+        so_luong: 0,
+      },
+
       // Delete modal
       showDeleteModal: false,
       submittingDelete: false,
@@ -727,7 +792,23 @@ export default {
       return this.warehouseItems.reduce((sum, item) => sum + (parseInt(item.tong_so_luong) || 0), 0);
     },
     filteredWarehouseHistory() {
-      let list = this.warehouseHistory;
+      const nhapList = (this.warehouseHistory || []).map(h => ({
+        ...h,
+        loai: h.loai || 'nhap',
+      }));
+      const xuatList = (this.lichSuCapPhat || [])
+        .filter(r => r.trang_thai === 'DA_CAP_PHAT')
+        .map(r => ({
+          id: 'cp-' + (r.id_cap_phat ?? r.id),
+          loai: 'xuat',
+          slug_tai_nguyen: r.slug_tai_nguyen,
+          so_luong: r.so_luong_yeu_cau,
+          created_at: r.thoi_gian_duyet,
+          ghi_chu: `Cấp cho ${r.ten_doi || '—'}${r.ten_nguoi_yeu_cau ? ' (' + r.ten_nguoi_yeu_cau + ')' : ''}`,
+        }));
+      let list = [...nhapList, ...xuatList].sort(
+        (a, b) => new Date(b.created_at || b.thoi_gian || 0) - new Date(a.created_at || a.thoi_gian || 0)
+      );
       if (this.filterWarehouseType) {
         list = list.filter(h => h.slug_tai_nguyen === this.filterWarehouseType);
       }
@@ -782,6 +863,10 @@ export default {
       });
       return Object.values(groups);
     },
+    canSubmitAddKho() {
+      const f = this.addKhoForm;
+      return !!(f.ten_tai_nguyen && f.ten_tai_nguyen.trim() && f.slug_tai_nguyen && /^[a-z0-9_]+$/.test(f.slug_tai_nguyen) && Number(f.so_luong) >= 0);
+    },
     canSubmitResource() {
       return this.editingResource
         ? (this.resourceForm.slug_tai_nguyen && this.resourceForm.so_luong >= 0)
@@ -795,7 +880,7 @@ export default {
       }
       if (tab === 'teams') this.loadTeams();
       else if (tab === 'resources') this.loadResources();
-      else if (tab === 'warehouse') { this.loadWarehouse(); this.loadWarehouseHistory(); }
+      else if (tab === 'warehouse') { this.loadWarehouse(); this.loadWarehouseHistory(); this.taiLichSuCapPhatCoBoLoc(); }
       else if (tab === 'allocation') {
         this.taiLaiToanBoCapPhat();
         this.$nextTick(() => this.ketNoiEchoYeuCauCapPhat());
@@ -838,25 +923,49 @@ export default {
     },
     async loadResources() {
       this.loadingResources = true;
+      this.allResources = [];
+      this.loadedTeamsCount = 0;
       try {
         const res = await adminResourcesAPI.getList({ per_page: 500 });
         const teamsData = res.data?.data?.data ?? res.data?.data ?? [];
         this.teams = Array.isArray(teamsData) ? teamsData : [];
 
-        let allRes = [];
-        for (const team of this.teams) {
-          try {
-            const r = await adminResourcesAPI.getByDoi(team.id_doi_cuu_ho);
-            const resources = r.data?.data ?? [];
-            allRes = allRes.concat(resources);
-          } catch (_) {}
-        }
-        this.allResources = allRes;
+        await this.fetchResourcesForTeamRange(0, this.resourcesPageSize);
       } catch (e) {
         console.error('loadResources', e);
         this.showToast('Không thể tải tài nguyên', 'error');
       } finally {
         this.loadingResources = false;
+      }
+    },
+    async fetchResourcesForTeamRange(start, end) {
+      const slice = this.teams.slice(start, end);
+      const results = await Promise.all(
+        slice.map(async (team) => {
+          try {
+            const r = await adminResourcesAPI.getByDoi(team.id_doi_cuu_ho);
+            return r.data?.data ?? [];
+          } catch (_) {
+            return [];
+          }
+        })
+      );
+      const flat = results.flat();
+      this.allResources = this.allResources.concat(flat);
+      this.loadedTeamsCount = Math.min(end, this.teams.length);
+    },
+    async loadMoreResources() {
+      if (this.loadingMoreResources) return;
+      this.loadingMoreResources = true;
+      try {
+        const start = this.loadedTeamsCount;
+        const end = start + this.resourcesPageSize;
+        await this.fetchResourcesForTeamRange(start, end);
+      } catch (e) {
+        console.error('loadMoreResources', e);
+        this.showToast('Không thể tải thêm tài nguyên', 'error');
+      } finally {
+        this.loadingMoreResources = false;
       }
     },
     async loadWarehouse() {
@@ -871,16 +980,29 @@ export default {
         this.loadingWarehouse = false;
       }
     },
-    async loadWarehouseHistory() {
+    loadWarehouseHistory() {
       this.loadingWarehouseHistory = true;
       try {
-        const res = await adminResourcesAPI.getLichSuKho({ per_page: 100 });
-        const data = res.data?.data?.data ?? res.data?.data ?? res.data ?? [];
+        const raw = localStorage.getItem('warehouseHistoryNhap');
+        const data = raw ? JSON.parse(raw) : [];
         this.warehouseHistory = Array.isArray(data) ? data : [];
       } catch (e) {
-        console.error('loadWarehouseHistory', e);
+        console.error('loadWarehouseHistory (localStorage)', e);
+        this.warehouseHistory = [];
       } finally {
         this.loadingWarehouseHistory = false;
+      }
+    },
+    luuLichSuNhapVaoLocal(record) {
+      try {
+        const raw = localStorage.getItem('warehouseHistoryNhap');
+        const list = raw ? JSON.parse(raw) : [];
+        const arr = Array.isArray(list) ? list : [];
+        arr.unshift(record);
+        const trimmed = arr.slice(0, 500);
+        localStorage.setItem('warehouseHistoryNhap', JSON.stringify(trimmed));
+      } catch (e) {
+        console.error('luuLichSuNhapVaoLocal', e);
       }
     },
     layNhanLoaiTaiNguyen(slug) {
@@ -1221,16 +1343,77 @@ export default {
           so_luong: this.warehouseForm.so_luong_nhap,
           ghi_chu: this.warehouseForm.ghi_chu || '',
         });
+        this.luuLichSuNhapVaoLocal({
+          id: 'nh-' + Date.now(),
+          loai: 'nhap',
+          slug_tai_nguyen: this.warehouseForm.slug_tai_nguyen,
+          so_luong: parseInt(this.warehouseForm.so_luong_nhap, 10) || 0,
+          ghi_chu: this.warehouseForm.ghi_chu || '',
+          created_at: new Date().toISOString(),
+        });
         this.showToast('Nhập kho thành công!', 'success');
         this.closeWarehouseModal();
         await this.loadWarehouse();
-        await this.loadWarehouseHistory();
+        this.loadWarehouseHistory();
       } catch (e) {
         console.error('submitWarehouse', e);
         const msg = e.response?.data?.message || 'Có lỗi xảy ra';
         this.showToast(msg, 'error');
       } finally {
         this.submittingWarehouse = false;
+      }
+    },
+
+    // ============ ADD NEW KHO TYPE ============
+    slugifyTen(text) {
+      return this.removeDiacritics(String(text || ''))
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+    },
+    openAddKhoModal() {
+      this.addKhoForm = { ten_tai_nguyen: '', slug_tai_nguyen: '', so_luong: 0 };
+      this.addKhoSlugTouched = false;
+      this.showAddKhoModal = true;
+    },
+    closeAddKhoModal() {
+      this.showAddKhoModal = false;
+    },
+    onAddKhoTenChange() {
+      if (!this.addKhoSlugTouched) {
+        this.addKhoForm.slug_tai_nguyen = this.slugifyTen(this.addKhoForm.ten_tai_nguyen);
+      }
+    },
+    async submitAddKho() {
+      if (!this.canSubmitAddKho) {
+        this.showToast('Vui lòng nhập đầy đủ thông tin hợp lệ', 'error');
+        return;
+      }
+      this.submittingAddKho = true;
+      try {
+        await adminResourcesAPI.themLoaiKho({
+          ten_tai_nguyen: this.addKhoForm.ten_tai_nguyen.trim(),
+          slug_tai_nguyen: this.addKhoForm.slug_tai_nguyen.trim(),
+          so_luong: parseInt(this.addKhoForm.so_luong, 10) || 0,
+        });
+        this.luuLichSuNhapVaoLocal({
+          id: 'nh-' + Date.now(),
+          loai: 'nhap',
+          slug_tai_nguyen: this.addKhoForm.slug_tai_nguyen.trim(),
+          so_luong: parseInt(this.addKhoForm.so_luong, 10) || 0,
+          ghi_chu: 'Thêm loại tài nguyên mới: ' + this.addKhoForm.ten_tai_nguyen.trim(),
+          created_at: new Date().toISOString(),
+        });
+        this.showToast('Thêm tài nguyên mới vào kho thành công!', 'success');
+        this.closeAddKhoModal();
+        await this.loadWarehouse();
+        this.loadWarehouseHistory();
+      } catch (e) {
+        console.error('submitAddKho', e);
+        const msg = e.response?.data?.message || 'Có lỗi xảy ra';
+        this.showToast(msg, 'error');
+      } finally {
+        this.submittingAddKho = false;
       }
     },
 
@@ -1342,7 +1525,9 @@ export default {
       return map[type] || '';
     },
     getWarehouseUnit(type) {
-      const map = { Vehicle: 'chiếc', Supply: 'bộ', Medical: 'bộ', Equipment: 'bộ' };
+      const map = {
+        xe_cuu_ho: 'chiếc', nhu_yeu_pham: 'bộ', vat_tu_y_te: 'bộ', dung_cu_thi_cong: 'bộ',
+      };
       return map[type] || 'bộ';
     },
     getWarehouseMax(type) {

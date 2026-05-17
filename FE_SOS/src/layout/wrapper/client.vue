@@ -19,10 +19,33 @@ import "../../assets/plugins/perfect-scrollbar/js/perfect-scrollbar.js";
 import "../../assets/js/index.js";
 import "../../assets/js/app.js";
 import "../../assets/js/pace.min.js";
+import "../../bootstrap-echo.js";
+import { emitAccountLocked } from "../../utils/accountLockedEvent";
+
 export default {
     name: "app",
     components: {
         MenuClient, BotClient
+    },
+    mounted() {
+        const user = JSON.parse(localStorage.getItem("user") || "null");
+        const userId = user?.id_nguoi_dung;
+        if (!userId || !window.Echo) return;
+
+        window.Echo.channel(`user.${userId}`)
+            .listen('.user_status_changed', (e) => {
+                if (e.trang_thai === 0 || e.trang_thai === "0") {
+                    window.Echo.leaveChannel(`user.${userId}`);
+                    emitAccountLocked();
+                }
+            });
+    },
+    beforeUnmount() {
+        const user = JSON.parse(localStorage.getItem("user") || "null");
+        const userId = user?.id_nguoi_dung;
+        if (userId && window.Echo) {
+            window.Echo.leaveChannel(`user.${userId}`);
+        }
     }
 }
 </script>
@@ -50,6 +73,5 @@ export default {
     flex: 1 1 auto;
     min-height: 0;
     padding-top: 56px;
-    padding-bottom: 60px;
 }
 </style>

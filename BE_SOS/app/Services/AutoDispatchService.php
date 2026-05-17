@@ -250,7 +250,7 @@ class AutoDispatchService
         }
 
         // Loc bo team qua tai TRUOC KHI sort - DUNG logic duy nhat
-        $danhSach = $tatCaDoi->filter(function ($doi) {
+        $danhSach = $tatCaDoi->filter(function ($doi) use ($yeuCau) {
             $capacity = $doi->capacity ?? 0;
             if ($capacity <= 0) {
                 Log::debug('[AutoDispatch] Loai bo doi khong co thanh vien', [
@@ -260,6 +260,28 @@ class AutoDispatchService
                 ]);
                 return false;
             }
+
+            // === FIX: Loai bo doi khong phu hop loai su co ===
+            $idLoaiSuCoYeuCau = $yeuCau->id_loai_su_co;
+            if ($idLoaiSuCoYeuCau) {
+                $loaiSuCos = $doi->loaiSuCos ?? collect();
+                $loaiSuCoIds = $loaiSuCos
+                    ->map(fn($lsc) => $lsc->id_loai_su_co ?? $lsc->id ?? null)
+                    ->filter()
+                    ->map(fn($id) => (int) $id)
+                    ->toArray();
+
+                if (!in_array((int) $idLoaiSuCoYeuCau, $loaiSuCoIds, true)) {
+                    Log::debug('[AutoDispatch] Loai bo doi khong khop loai su co', [
+                        'doi_id' => $doi->id_doi_cuu_ho,
+                        'ten_doi' => $doi->ten_doi,
+                        'loai_su_co_doi' => $loaiSuCoIds,
+                        'loai_su_co_yeu_cau' => $idLoaiSuCoYeuCau,
+                    ]);
+                    return false;
+                }
+            }
+            // ==================================================
 
             $active = $doi->active_count_real ?? 0;
             $conSlot = $capacity - $active;
@@ -348,7 +370,8 @@ class AutoDispatchService
 
     /**
      * Tinh diem khop loai su co giua yeu cau va doi cuu ho.
-     * Ưu tiên cao nhất cho đội có cùng loại sự cố.
+     * Da duoc loc nghiem ngat o layDanhSachDoiGanNhatInternal,
+     * nhung van giu diem so de tuong thich.
      */
     private function tinhDiemLoaiSuCoInternal(YeuCauCuuHo $yeuCau, DoiCuuHo $doi): int
     {
@@ -357,19 +380,9 @@ class AutoDispatchService
             return 0;
         }
 
-        $loaiSuCos = $doi->loaiSuCos ?? collect();
-        $loaiSuCoIds = $loaiSuCos
-            ->map(fn($lsc) => $lsc->id_loai_su_co ?? $lsc->id ?? null)
-            ->filter()
-            ->map(fn($id) => (int) $id)
-            ->toArray();
-
-        if (empty($loaiSuCoIds)) {
-            return 0;
-        }
-
-        // Tăng điểm khớp loại sự cố lên 20 để ưu tiên hơn khoảng cách
-        return in_array((int) $idLoaiSuCoYeuCau, $loaiSuCoIds, true) ? 20 : 0;
+        // Teams remaining here are guaranteed to match the incident type 
+        // due to the filter in layDanhSachDoiGanNhatInternal.
+        return 20;
     }
 
     /**
@@ -606,7 +619,7 @@ class AutoDispatchService
      */
     public static function layTrangThai(): bool
     {
-        return Cache::get('auto_dispatch_enabled', true);
+        return (bool) Cache::get('auto_dispatch_enabled', false);
     }
 
     /**
@@ -699,30 +712,38 @@ class AutoDispatchService
     public function capNhatSucChuaRealtime(int $doiId): void
     {
         try {
-            $doi = DoiCuuHo::with(['thanhViens', 'phanCongs'])->find($doiId);
+            $doi = DoiCuuHo::with(['thanhViens', 'phanCongs', 'loaiSuCos'])->find($doiId);
             if (!$doi) {
                 return;
             }
 
-            $maxAssignments = $doi->thanhViens ? $doi->thanhViens->count() : 0;
-            $activeCount = PhanCongCuuHo::where('id_doi_cuu_ho', $doiId)
+            $soThanhVienToiDa = $doi->thanhViens ? $doi->thanhViens->count() : 0;
+            $soNhiemVuHienTai = PhanCongCuuHo::where('id_doi_cuu_ho', $doiId)
                 ->whereIn('trang_thai_nhiem_vu', self::ACTIVE_STATUSES)
                 ->count();
-            $availableCapacity = $maxAssignments - $activeCount;
+            $soSlotConTrong = $soThanhVienToiDa - $soNhiemVuHienTai;
+
+            // Lấy danh sách id_loai_su_co của đội để listener có thể dispatch lại đúng loại
+            $cacIdLoaiSuCo = ($doi->loaiSuCos ?? collect())
+                ->map(fn($lsc) => $lsc->id_loai_su_co ?? $lsc->id ?? null)
+                ->filter()
+                ->map(fn($id) => (int) $id)
+                ->values()
+                ->toArray();
 
             $payload = [
-                'team_id' => $doiId,
-                'team_name' => $doi->ten_doi,
-                'current_assignments' => $activeCount,
-                'max_assignments' => $maxAssignments,
-                'available_capacity' => $availableCapacity,
-                'timestamp' => now()->toISOString()
+                'team_id'              => $doiId,
+                'team_name'            => $doi->ten_doi,
+                'current_assignments'  => $soNhiemVuHienTai,
+                'max_assignments'      => $soThanhVienToiDa,
+                'available_capacity'   => $soSlotConTrong,
+                'loai_su_co_ids'       => $cacIdLoaiSuCo,
+                'timestamp'            => now()->toISOString(),
             ];
 
-            // Broadcast các sự kiện realtime
             event(new SucChuaDoiDaCapNhat($payload));
 
-            if ($availableCapacity > 0) {
+            if ($soSlotConTrong > 0) {
                 event(new CoDoiTrongTroLai($payload));
             }
 
@@ -731,7 +752,7 @@ class AutoDispatchService
         } catch (\Throwable $e) {
             Log::error('[AutoDispatch] Lỗi cập nhật sức chứa realtime', [
                 'doi_id' => $doiId,
-                'error' => $e->getMessage()
+                'error'  => $e->getMessage(),
             ]);
         }
     }

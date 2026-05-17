@@ -3,9 +3,12 @@
         <!-- ====== HEADER ====== -->
         <div class="sos-header">
             <div class="sos-header__badge">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path
+                        d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
                 </svg>
             </div>
             <div class="sos-header__text">
@@ -32,21 +35,21 @@
 
                     <!-- Error state -->
                     <div v-else-if="incidentTypes.length === 0" class="sos-alert sos-alert--danger" role="alert">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="15" y1="9" x2="9" y2="15" />
+                            <line x1="9" y1="9" x2="15" y2="15" />
+                        </svg>
                         <span>{{ incidentTypeError || "Chua co du lieu loai su co tu he thong." }}</span>
                     </div>
 
                     <!-- Incident type grid -->
                     <div v-else class="sos-type-grid" role="group" aria-label="Chon loai su co">
-                        <button
-                            v-for="type in incidentTypes"
-                            :key="type.id"
-                            type="button"
+                        <button v-for="type in incidentTypes" :key="type.id" type="button"
                             :class="['sos-type-card', { 'sos-type-card--active': selectedType === type.id }]"
-                            :aria-pressed="selectedType === type.id"
-                            :aria-label="type.label"
-                            @click="chonLoaiSuCo(type.id)"
-                        >
+                            :aria-pressed="selectedType === type.id" :aria-label="type.label"
+                            @click="chonLoaiSuCo(type.id)">
                             <div class="sos-type-card__icon">
                                 <i :class="['fa-solid', type.icon]" aria-hidden="true"></i>
                             </div>
@@ -69,14 +72,10 @@
                         </div>
 
                         <div v-else class="sos-chip-group" role="group" aria-label="Chon chi tiet su co">
-                            <button
-                                v-for="detail in incidentDetails"
-                                :key="detail.id"
-                                type="button"
+                            <button v-for="detail in incidentDetails" :key="detail.id" type="button"
                                 :class="['sos-chip', { 'sos-chip--active': selectedDetailIds.includes(detail.id) }]"
                                 :aria-pressed="selectedDetailIds.includes(detail.id)"
-                                @click="chuyenDoiChiTiet(detail.id)"
-                            >
+                                @click="chuyenDoiChiTiet(detail.id)">
                                 {{ detail.label }}
                             </button>
                         </div>
@@ -92,14 +91,13 @@
                     <div class="sos-section__header">
                         <span class="sos-section__step">3</span>
                         <h2 class="sos-section__title" id="section-location">Vị Trí Cứu Hộ</h2>
-                        <button
-                            type="button"
-                            class="sos-gps-btn"
-                            :disabled="locating"
-                            @click="layGps"
-                            aria-label="Lay vi tri GPS hien tai"
-                        >
-                            <svg v-if="!locating" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+                        <button type="button" class="sos-gps-btn" :disabled="locating" @click="layGps"
+                            aria-label="Lay vi tri GPS hien tai">
+                            <svg v-if="!locating" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                                <circle cx="12" cy="12" r="3" />
+                                <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+                            </svg>
                             <i v-else class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
                             <span>{{ locating ? 'Dang xác định...' : 'GPS' }}</span>
                         </button>
@@ -108,43 +106,35 @@
                     <!-- Search input -->
                     <div class="sos-search-wrapper">
                         <div class="sos-search-input-wrap">
-                            <svg class="sos-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                            <input
-                                v-model="addressSearch"
-                                type="text"
-                                class="sos-search-input"
-                                placeholder="Nhập địa chỉ, tên đường, khu vực..."
-                                autocomplete="off"
-                                @input="timDiaChi"
-                                aria-label="Tìm kiếm địa chỉ"
-                            />
-                            <button
-                                v-if="addressSearch"
-                                type="button"
-                                class="sos-search-clear"
-                                @click="addressSearch = ''; addressSuggestions = []"
-                                aria-label="Xoa tim kiem"
-                            >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            <svg class="sos-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <circle cx="11" cy="11" r="8" />
+                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            </svg>
+                            <input v-model="addressSearch" type="text" class="sos-search-input"
+                                placeholder="Nhập địa chỉ, tên đường, khu vực..." autocomplete="off" @input="timDiaChi"
+                                aria-label="Tìm kiếm địa chỉ" />
+                            <button v-if="addressSearch" type="button" class="sos-search-clear"
+                                @click="addressSearch = ''; addressSuggestions = []" aria-label="Xoa tim kiem">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5" aria-hidden="true">
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
                             </button>
                         </div>
 
                         <transition name="sos-fade">
-                            <ul
-                                v-if="addressSuggestions.length > 0"
-                                class="sos-suggestions"
-                                role="listbox"
-                                aria-label="Goi y dia chi"
-                            >
-                                <li
-                                    v-for="(suggestion, index) in addressSuggestions"
-                                    :key="index"
-                                    class="sos-suggestion-item"
-                                    role="option"
-                                    @click="chonDiaChi(suggestion)"
-                                >
+                            <ul v-if="addressSuggestions.length > 0" class="sos-suggestions" role="listbox"
+                                aria-label="Goi y dia chi">
+                                <li v-for="(suggestion, index) in addressSuggestions" :key="index"
+                                    class="sos-suggestion-item" role="option" @click="chonDiaChi(suggestion)">
                                     <div class="sos-suggestion-icon">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                            <circle cx="12" cy="10" r="3" />
+                                        </svg>
                                     </div>
                                     <div class="sos-suggestion-text">
                                         <span class="sos-suggestion-main">{{ suggestion.display_name }}</span>
@@ -158,7 +148,11 @@
                     <!-- Selected address display -->
                     <div :class="['sos-address-card', { 'sos-address-card--filled': address }]">
                         <div class="sos-address-card__icon">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" aria-hidden="true">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                <circle cx="12" cy="10" r="3" />
+                            </svg>
                         </div>
                         <div class="sos-address-card__content">
                             <label class="sos-address-card__label">Địa chỉ hiện tại</label>
@@ -170,14 +164,22 @@
                     <!-- Coordinates info -->
                     <div v-if="coordsText" class="sos-coords-bar">
                         <span class="sos-coords-source">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5" aria-hidden="true">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>
                             Nguồn: {{ coordsSource }}
                         </span>
                         <span class="sos-coords-value">{{ coordsText.replace('GPS: ', '') }}</span>
                     </div>
 
                     <p class="sos-hint-text">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
                         Hoặc click trực tiếp lên bản đồ bên phải
                     </p>
                 </section>
@@ -188,13 +190,9 @@
                         <span class="sos-section__step">4</span>
                         <h2 class="sos-section__title" id="section-desc">Mô tả tình huống</h2>
                     </div>
-                    <textarea
-                        v-model="description"
-                        class="sos-textarea"
-                        rows="3"
+                    <textarea v-model="description" class="sos-textarea" rows="3"
                         placeholder="Số người bị nạn, tình trạng hiện tại, thông tin thêm..."
-                        aria-label="Mô tả tình huống"
-                    ></textarea>
+                        aria-label="Mô tả tình huống"></textarea>
                 </section>
 
                 <!-- Section: Hinh anh -->
@@ -204,64 +202,70 @@
                         <h2 class="sos-section__title" id="section-image">Ảnh Hiện Trường</h2>
                     </div>
                     <label class="sos-upload-zone">
-                        <input
-                            type="file"
-                            class="d-none"
-                            accept="image/*,video/*"
-                            @change="handleFileSelect"
-                            aria-label="Tai len anh hoac video"
-                        />
+                        <input type="file" class="d-none" accept="image/*,video/*" @change="handleFileSelect"
+                            aria-label="Tai len anh hoac video" />
                         <div class="sos-upload-zone__inner">
                             <div class="sos-upload-zone__icon">
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="1.5" aria-hidden="true">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="17 8 12 3 7 8" />
+                                    <line x1="12" y1="3" x2="12" y2="15" />
+                                </svg>
                             </div>
-                            <p class="sos-upload-zone__text">Tải lên ảnh/video</p>
+                            <p class="sos-upload-zone__text">Tải lên ảnh hiện trường</p>
                             <p class="sos-upload-zone__hint">Click hoặc kéo thả file vào đây</p>
                         </div>
                     </label>
                     <p v-if="selectedImageName" class="sos-file-name">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" aria-hidden="true">
+                            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+                            <polyline points="13 2 13 9 20 9" />
+                        </svg>
                         {{ selectedImageName }}
                     </p>
                 </section>
 
                 <!-- Section: Lien he (guest only) -->
                 <transition name="sos-slide">
-                    <section v-if="!isUserLoggedIn" class="sos-section sos-guest-section" aria-labelledby="section-contact">
+                    <section v-if="!isUserLoggedIn" class="sos-section sos-guest-section"
+                        aria-labelledby="section-contact">
                         <div class="sos-guest-badge">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" aria-hidden="true">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                            </svg>
                             <span>Ban chua dang nhap</span>
                         </div>
                         <div class="sos-field">
                             <label class="sos-field__label" for="guest-phone">Số điện thoại liên lạc (bắt buộc)</label>
-                            <input
-                                id="guest-phone"
-                                v-model="guestPhone"
-                                type="tel"
-                                class="sos-input"
-                                placeholder="0xxxxxxxxx"
-                                autocomplete="tel"
-                                @input="validateGuestPhone"
-                            />
+                            <input id="guest-phone" v-model="guestPhone" type="tel" class="sos-input"
+                                placeholder="0xxxxxxxxx" autocomplete="tel" @input="validateGuestPhone" />
                             <p v-if="guestPhoneError" class="sos-field__error" role="alert">{{ guestPhoneError }}</p>
                         </div>
                         <p class="sos-hint-text">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" aria-hidden="true">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
                             Sau khi đăng ký tài khoản, các yêu cầu sẽ được theo dõi ngay.
                         </p>
                     </section>
                 </transition>
 
                 <!-- Submit CTA -->
-                <button
-                    type="button"
-                    class="sos-submit-btn"
-                    :disabled="submitting"
-                    @click="guiYeuCau"
-                    aria-label="Gui yeu cau cuu ho"
-                >
+                <button type="button" class="sos-submit-btn" :disabled="submitting" @click="guiYeuCau"
+                    aria-label="Gui yeu cau cuu ho">
                     <span v-if="!submitting" class="sos-submit-btn__content">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.08 6.08l1.87-1.87a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.5 16a2 2 0 0 1 .5.92z"/></svg>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" aria-hidden="true">
+                            <path
+                                d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.08 6.08l1.87-1.87a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.5 16a2 2 0 0 1 .5.92z" />
+                        </svg>
                         Gửi Cứu Hộ Ngay
                     </span>
                     <span v-else class="sos-submit-btn__content">
@@ -274,17 +278,18 @@
             <!-- RIGHT PANEL: Map -->
             <div class="sos-map-panel" role="complementary" aria-label="Ban do vi tri">
                 <div class="sos-map-container">
-                    <MapboxMap
-                        ref="mapRef"
-                        class="sos-map"
-                        :enableClick="true"
-                        @mapClick="xuLyClickMap"
-                    />
+                    <MapboxMap ref="mapRef" class="sos-map" :enableClick="true" @mapClick="xuLyClickMap" />
 
                     <!-- Units overlay -->
                     <div class="sos-units-card" aria-label="Lực lượng cứu hộ">
                         <h3 class="sos-units-card__title">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5" aria-hidden="true">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                <circle cx="9" cy="7" r="4" />
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                            </svg>
                             Lực Lượng Cứu Hộ
                         </h3>
                         <ul class="sos-units-list">
@@ -306,13 +311,8 @@
 
     <Teleport to="body">
         <Transition name="sos-rl-fade">
-            <div
-                v-if="rateLimitModalOpen"
-                class="sos-rl-overlay"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="sos-rl-title"
-            >
+            <div v-if="rateLimitModalOpen" class="sos-rl-overlay" role="dialog" aria-modal="true"
+                aria-labelledby="sos-rl-title">
                 <div class="sos-rl-backdrop" @click="closeRateLimitModal"></div>
                 <div class="sos-rl-dialog">
                     <div class="sos-rl-icon-wrap" aria-hidden="true">
@@ -333,13 +333,8 @@
 
     <Teleport to="body">
         <Transition name="sos-gs-fade">
-            <div
-                v-if="guestPostSuccessModalOpen"
-                class="sos-gs-overlay"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="sos-gs-title"
-            >
+            <div v-if="guestPostSuccessModalOpen" class="sos-gs-overlay" role="dialog" aria-modal="true"
+                aria-labelledby="sos-gs-title">
                 <div class="sos-gs-backdrop" @click="closeGuestPostSuccessModal"></div>
                 <div class="sos-gs-dialog">
                     <div class="sos-gs-icon" aria-hidden="true">
@@ -455,6 +450,7 @@ function anhXaChiTietSuCo(item, index) {
 }
 
 /** Phản hồi giới hạn gửi yêu cầu (429 hoặc message từ backend). */
+
 function laPhanHoiGioiHanGuiYeuCau(error) {
     const status = Number(error?.response?.status);
     const data = error?.response?.data;
@@ -696,6 +692,8 @@ export default {
                     this.selectedCoords = { lng, lat };
                     this.coordsText = `GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
                     this.coordsSource = "GPS";
+                    this.addressSuggestions = [];
+                    await this.diaChiTuCoords(lat, lng);
                 }
             } catch (e) {
                 this.coordsText = "Không lấy được vị trí (cấp quyền trình duyệt hoặc dùng HTTPS).";
@@ -859,7 +857,10 @@ export default {
                 if (this.selectedImageFile) {
                     payload.append('hinh_anh', this.selectedImageFile);
                 }
-                payload.append('so_nguoi_bi_anh_huong', Number(this.soNguoiBiAnhHuong) || 1);
+                // Khi co anh, de BE/YOLO tu dem so nan nhan. Khi khong co anh moi gui gia tri mac dinh.
+                if (!this.selectedImageFile) {
+                    payload.append('so_nguoi_bi_anh_huong', Number(this.soNguoiBiAnhHuong) || 1);
+                }
                 if (this.diemUuTien !== null) {
                     payload.append('diem_uu_tien', Number(this.diemUuTien));
                 }
@@ -889,7 +890,7 @@ export default {
                 if (loggedIn) {
                     this.hienToast(
                         "success",
-                        `Gui yeu cau cuu ho thanh cong${newId ? `. Ma yeu cau: ${newId}` : "."}`
+                        `Gửi yêu cầu thành công${newId ? `. Mã yêu cầu: ${newId}` : "."}`
                     );
                     this.$router.push("/client/requests");
                 } else {
@@ -902,7 +903,8 @@ export default {
             } catch (error) {
                 const hinhAnhLoi = error?.response?.data?.errors?.hinh_anh?.[0] || "";
                 let message;
-                if (laPhanHoiGioiHanGuiYeuCau(error)) {
+                if
+                 (laPhanHoiGioiHanGuiYeuCau(error)) {
                     const data = error?.response?.data;
                     const retryAfter = Number(data?.retry_after);
                     const msg =
@@ -911,7 +913,8 @@ export default {
                     this.openRateLimitModal(Number.isFinite(retryAfter) ? retryAfter : 0, msg);
                     console.error("Giới hạn gửi yêu cầu:", error?.response?.status, data);
                     return;
-                } else if (hinhAnhLoi && (hinhAnhLoi.toLowerCase().includes("xác thực") || hinhAnhLoi.toLowerCase().includes("authentication") || hinhAnhLoi.toLowerCase().includes("xac thuc"))) {
+                } 
+                else if (hinhAnhLoi && (hinhAnhLoi.toLowerCase().includes("xác thực") || hinhAnhLoi.toLowerCase().includes("authentication") || hinhAnhLoi.toLowerCase().includes("xac thuc"))) {
                     message = "Bạn chưa gửi ảnh.";
                 } else if (hinhAnhLoi) {
                     message = hinhAnhLoi;
@@ -1187,8 +1190,13 @@ export default {
 }
 
 @keyframes sos-skeleton {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
 }
 
 /* --- CHIPS --- */
@@ -1728,12 +1736,14 @@ export default {
 .sos-map-panel {
     flex: 1;
     position: relative;
-    min-height: 360px;
+    min-height: 300px;
+    max-height: 340px;
 }
 
 @media (min-width: 992px) {
     .sos-map-panel {
         min-height: 0;
+        max-height: calc(100vh - 20px);
     }
 }
 
@@ -1741,7 +1751,7 @@ export default {
     position: relative;
     width: 100%;
     height: 100%;
-    min-height: 360px;
+    min-height: 350px;
 }
 
 .sos-map {

@@ -193,6 +193,7 @@ Route::middleware(['auth:admin', 'check.admin'])->group(function () {
     // Kho tài nguyên tổng & Cấp phát
     Route::get('admin/tai-nguyen/kho', [DoiCuuHoController::class, 'getKhoTaiNguyen']);
     Route::post('admin/tai-nguyen/kho/nhap', [DoiCuuHoController::class, 'nhapKho']);
+    Route::post('admin/tai-nguyen/kho/them-loai', [DoiCuuHoController::class, 'themLoaiKho']);
     Route::post('admin/tai-nguyen/kho/cap-nhat', [DoiCuuHoController::class, 'capNhatKhoTaiNguyen']);
     Route::get('admin/tai-nguyen/lich-su-cap', [YeuCauCapPhatController::class, 'lichSu']);
     Route::get('admin/tai-nguyen/yeu-cau-cap-phat', [YeuCauCapPhatController::class, 'danhSachAdmin']);
@@ -240,6 +241,10 @@ Route::middleware(['auth:thanh-vien-doi', 'check.rescuer'])->group(function () {
     Route::post('rescuer/gui-bao-cao', [BaoCaoCuuHoController::class, 'guiBaoCao']);
     Route::get('rescuer/bao-cao/theo-doi/{id}', [BaoCaoCuuHoController::class, 'getByDoi']);
     Route::get('rescuer/bao-cao/{id}', [BaoCaoCuuHoController::class, 'show']);
+
+    // Đánh giá của đội (Client reviews)
+    Route::get('rescuer/danh-gia/theo-doi/{id_doi_cuu_ho}', [DanhGiaCuuHoController::class, 'getByTeam']);
+
 
     // Quản lý thành viên (role-based filtering)
     // MANAGER_TEAM(0): see all members

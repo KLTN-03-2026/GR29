@@ -153,6 +153,16 @@
                                     </svg>
                                     <span>NGƯỜI ĐIỀU PHỐI: </span>
                                 </div>
+                                <div class="info-item" v-if="item.yeu_cau?.so_nguoi_bi_anh_huong || item.yeu_cau?.hinh_anh">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2">
+                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="9" cy="7" r="4"/>
+                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                    </svg>
+                                    <span style="color:#dc2626;font-weight:600;" v-if="item.yeu_cau.so_nguoi_bi_anh_huong">{{ item.yeu_cau.so_nguoi_bi_anh_huong }} nạn nhân ước tính</span>
+                                    <span style="color:#64748b;font-style:italic;" v-else>Đang phân tích ảnh…</span>
+                                </div>
                             </div>
 
                             <div class="card-footer">
@@ -275,6 +285,16 @@
                                 <span class="info-phone" v-if="selectedMission.yeu_cau.so_dien_thoai_nguoi_dung || getReporterPhone(selectedMission)">
                                     {{ selectedMission.yeu_cau.so_dien_thoai_nguoi_dung || getReporterPhone(selectedMission) }}
                                 </span>
+                            </div>
+                            <div class="info-row" v-if="selectedMission.yeu_cau?.so_nguoi_bi_anh_huong || selectedMission.yeu_cau?.hinh_anh">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                </svg>
+                                <span style="color:#dc2626;" v-if="selectedMission.yeu_cau.so_nguoi_bi_anh_huong"><strong>{{ selectedMission.yeu_cau.so_nguoi_bi_anh_huong }} nạn nhân ước tính</strong></span>
+                                <span style="color:#64748b;font-style:italic;" v-else>Đang phân tích ảnh…</span>
                             </div>
                         </div>
 

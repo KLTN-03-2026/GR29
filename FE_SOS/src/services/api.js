@@ -58,6 +58,7 @@ api.interceptors.request.use((config) => {
     match('/get-ket-qua-cuu-ho') ||
     match('/get-danh-gia-cuu-ho') ||
     match('/post-danh-gia-cuu-ho') ||
+    match('/rescuer/danh-gia') ||
     match('/tai-nguyen') ||
     // Các PUT/GET /phan-cong-cuu-ho/{id}/trang-thai và tương tự (có id số trong URL)
     /^\/phan-cong-cuu-ho\/\d+/.test(url);
@@ -331,6 +332,7 @@ export const rescuerAPI = {
 
   // Đánh giá cứu hộ
   getRatings: (yeuCauId) => api.get('/get-danh-gia-cuu-ho/yeu-cau/' + yeuCauId),
+  getTeamReviews: (teamId) => api.get('/rescuer/danh-gia/theo-doi/' + teamId),
 
   // Đổi mật khẩu rescuer
   changePassword: (data) => api.post('/rescuer/change-password', data),
@@ -387,6 +389,7 @@ export const adminResourcesAPI = {
   capNhatKho: (data) => api.post('/admin/tai-nguyen/kho/cap-nhat', data),
   getLichSuKho: (params = {}) => api.get('/admin/tai-nguyen/kho/lich-su', { params }),
   nhapKho: (data) => api.post('/admin/tai-nguyen/kho/nhap', data),
+  themLoaiKho: (data) => api.post('/admin/tai-nguyen/kho/them-loai', data),
 
   // Yêu cầu cấp phát (TAB Cấp phát admin)
   layDanhSachYeuCauCapPhat: (params = {}) =>
